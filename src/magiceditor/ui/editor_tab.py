@@ -173,3 +173,23 @@ class EditorTab(QWidget):
 
     def zoom_reset(self) -> None:
         self.editor.reset_zoom()
+
+    def undo(self) -> None:
+        self.editor.undo()
+
+    def redo(self) -> None:
+        self.editor.redo()
+
+    def line_count(self) -> int:
+        if isinstance(self.editor, VirtualEditor):
+            return self.document.line_index().line_count
+        assert isinstance(self.editor, TextEditor)
+        return max(1, self.editor.blockCount())
+
+    def current_line(self) -> int:
+        """1-based current line."""
+        if isinstance(self.editor, VirtualEditor):
+            line, _ = self.editor.cursor_line_col()
+            return line
+        assert isinstance(self.editor, TextEditor)
+        return self.editor.textCursor().blockNumber() + 1

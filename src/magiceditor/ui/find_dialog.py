@@ -23,7 +23,7 @@ class FindDialog(QDialog):
     """Centered modal for search (and optional replace).
 
     Works with ``TextEditor`` (QPlainTextEdit) and ``VirtualEditor``
-    (duck-typed ``find_text``).
+    (duck-typed ``find_text`` / ``replace_text``).
     """
 
     def __init__(
@@ -46,7 +46,7 @@ class FindDialog(QDialog):
         self.find_input.setPlaceholderText("Find…")
         self.replace_input = QLineEdit(self)
         self.replace_input.setPlaceholderText("Replace with…")
-        self.replace_input.setVisible(replace_mode and not self._virtual)
+        self.replace_input.setVisible(replace_mode)
 
         self.case_box = QCheckBox("Match case", self)
         self.wrap_box = QCheckBox("Wrap around", self)
@@ -55,7 +55,7 @@ class FindDialog(QDialog):
         self._status = QLabel("", self)
         self._status.setObjectName("findDialogStatus")
         if self._virtual and replace_mode:
-            self._status.setText("Replace is limited in huge-file mode.")
+            self._status.setText("Replace works in huge-file mode (capped replace-all).")
 
         form = QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)
@@ -63,7 +63,7 @@ class FindDialog(QDialog):
         form.setVerticalSpacing(10)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form.addRow("Find:", self.find_input)
-        if replace_mode and not self._virtual:
+        if replace_mode:
             form.addRow("Replace:", self.replace_input)
 
         options = QHBoxLayout()
@@ -85,15 +85,14 @@ class FindDialog(QDialog):
         btn_all.clicked.connect(self.replace_all)
         btn_close.clicked.connect(self.reject)
 
-        use_replace = replace_mode and not self._virtual
-        btn_replace.setVisible(use_replace)
-        btn_all.setVisible(use_replace)
+        btn_replace.setVisible(replace_mode)
+        btn_all.setVisible(replace_mode)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         buttons.addWidget(btn_prev)
         buttons.addWidget(btn_next)
-        if use_replace:
+        if replace_mode:
             buttons.addWidget(btn_replace)
             buttons.addWidget(btn_all)
         buttons.addStretch(1)
@@ -169,23 +168,48 @@ class FindDialog(QDialog):
             self._status.setText("No matches.")
 
     def replace_one(self) -> None:
-        if not self._replace_mode or self._virtual:
-            return
-        cursor = self._editor.textCursor()
-        needle = self.find_input.text()
-        if cursor.hasSelection() and self._selection_matches(cursor, needle):
-            cursor.insertText(self.replace_input.text())
-            self._status.setText("Replaced 1 match.")
-        self.find_next()
-
-    def replace_all(self) -> None:
-        if not self._replace_mode or self._virtual:
+        if not self._replace_mode:
             return
         needle = self.find_input.text()
         if not needle:
             self._status.setText("Enter text to find.")
             return
         repl = self.replace_input.text()
+
+        if self._virtual and hasattr(self._editor, "replace_text"):
+            ok = self._editor.replace_text(
+                needle,
+                repl,
+                case_sensitive=self.case_box.isChecked(),
+            )
+            self._status.setText("Replaced 1 match." if ok else "No matches.")
+            return
+
+        cursor = self._editor.textCursor()
+        if cursor.hasSelection() and self._selection_matches(cursor, needle):
+            cursor.insertText(repl)
+            self._status.setText("Replaced 1 match.")
+        self.find_next()
+
+    def replace_all(self) -> None:
+        if not self._replace_mode:
+            return
+        needle = self.find_input.text()
+        if not needle:
+            self._status.setText("Enter text to find.")
+            return
+        repl = self.replace_input.text()
+
+        if self._virtual and hasattr(self._editor, "replace_all_text"):
+            count = self._editor.replace_all_text(
+                needle,
+                repl,
+                case_sensitive=self.case_box.isChecked(),
+            )
+            extra = " (capped)" if count >= 50_000 else ""
+            self._status.setText(f"Replaced {count} match(es){extra}.")
+            return
+
         doc = self._editor.document()
         cursor = QTextCursor(doc)
         cursor.beginEditBlock()

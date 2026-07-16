@@ -4,7 +4,7 @@
 **Branch:** `feature/editor-mvp`
 
 ## Current phase
-**Feature expansion** — huge-file virtual viewport + syntax + print.
+**Feature expansion** — daily-driver editing on classic + huge-file paths.
 
 ## Done
 - [x] AI harness, model routing, Cascadia Code bundled
@@ -13,22 +13,29 @@
 - [x] Syntax highlighting + Syntax menu
 - [x] Print / Export PDF (clean light styles)
 - [x] **Virtual viewport** (`VirtualEditor`) for files >5MB; **mmap** >50MB
+- [x] Incremental line index on insert/delete
+- [x] Find in Files (workspace)
+- [x] Syntax on virtual viewport (visible lines only)
+- [x] Go to Line (Ctrl+G)
+- [x] Replace in virtual mode + find match highlight
+- [x] Undo/Redo on virtual editor (Ctrl+Z / Ctrl+Y)
 - [x] `MagicEditor.exe` pipeline at repo root
 
 ## Delivery rule
 Every feature delivery: rebuild root exe:
 
 ```powershell
-pwsh -File scripts/build_exe.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ```
 
 ## Next
-1. [ ] Incremental line index on huge edits (avoid full rebuild)
-2. [ ] Search in folder / multi-file
-3. [ ] Syntax highlight on virtual viewport (visible lines only)
+1. [ ] Regex find / folder search
+2. [ ] Search across all open tabs
+3. [ ] Soft wrap for virtual editor (optional)
 4. [ ] REVIEW before merge to `main`
 
 ## Handoff
 - `core/` stays Qt-free (syntax rules pure)
 - Architecture: `docs/magiceditor-architecture.md`
 - Design tokens: `docs/DESIGN.md`
+- UI smoke tests must inject isolated `AppSettings` and clear modified flags

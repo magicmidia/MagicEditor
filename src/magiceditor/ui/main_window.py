@@ -26,6 +26,7 @@ from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
+from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
@@ -156,9 +157,12 @@ class MainWindow(QMainWindow):
         act("action.save_as", self.save_current_as, "Ctrl+Shift+S")
         act("action.print", self.print_current, "Ctrl+P")
         act("action.export_pdf", self.export_pdf_current, "Ctrl+Shift+E")
+        act("action.undo", self.undo_current, "Ctrl+Z")
+        act("action.redo", self.redo_current, "Ctrl+Y")
         act("action.find", self.show_find, "Ctrl+F")
         act("action.replace", self.show_replace, "Ctrl+H")
         act("action.find_in_files", self.show_find_in_files, "Ctrl+Shift+F")
+        act("action.goto_line", self.show_goto_line, "Ctrl+G")
         act("action.preview", self.toggle_preview, "Ctrl+Shift+P")
         act("action.toggle_sidebar", self.toggle_sidebar, "Ctrl+B", checkable=True)
         act("action.word_wrap", self.toggle_word_wrap, "Alt+Z", checkable=True)
@@ -196,7 +200,15 @@ class MainWindow(QMainWindow):
         self._menu_file.addSeparator()
         self._menu_file.addAction(self._actions["action.exit"])
 
-        for key in ("action.find", "action.replace", "action.find_in_files"):
+        for key in ("action.undo", "action.redo"):
+            self._menu_edit.addAction(self._actions[key])
+        self._menu_edit.addSeparator()
+        for key in (
+            "action.find",
+            "action.replace",
+            "action.find_in_files",
+            "action.goto_line",
+        ):
             self._menu_edit.addAction(self._actions[key])
 
         for key in (
@@ -340,9 +352,12 @@ class MainWindow(QMainWindow):
             "action.save_as": t("action.save_as", "Save As"),
             "action.print": t("action.print", "Print…"),
             "action.export_pdf": t("action.export_pdf", "Export PDF…"),
+            "action.undo": t("action.undo", "Undo"),
+            "action.redo": t("action.redo", "Redo"),
             "action.find": t("action.find", "Find"),
             "action.replace": t("action.replace", "Replace"),
             "action.find_in_files": t("action.find_in_files", "Find in Files"),
+            "action.goto_line": t("action.goto_line", "Go to Line…"),
             "action.preview": t("action.preview", "Preview"),
             "action.toggle_sidebar": t("action.toggle_sidebar", "Toggle Explorer"),
             "action.word_wrap": t("action.word_wrap", "Word Wrap"),
@@ -639,6 +654,29 @@ class MainWindow(QMainWindow):
         dlg = FindInFilesDialog(self._workspace, self)
         dlg.hit_activated.connect(self._open_search_hit)
         dlg.exec()
+
+    def show_goto_line(self) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        dlg = GoToLineDialog(tab.line_count(), tab.current_line(), self)
+        if dlg.exec() == GoToLineDialog.DialogCode.Accepted:
+            tab.goto_line(dlg.line_number(), 1)
+            self._update_status_for(tab)
+
+    def undo_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.undo()
+            self._refresh_tab_titles()
+            self._update_status_for(tab)
+
+    def redo_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.redo()
+            self._refresh_tab_titles()
+            self._update_status_for(tab)
 
     def _open_search_hit(self, path: str, line: int, column: int) -> None:
         tab = self.open_path(path)

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Literal
+
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QKeyEvent, QPainter, QPaintEvent, QWheelEvent
 from PyQt6.QtWidgets import QAbstractScrollArea, QWidget
@@ -22,6 +25,16 @@ _SYNTAX_PALETTE: dict[str, tuple[str, bool]] = {
     "link": ("#80CBC4", False),
 }
 _DEFAULT_FG = "#E2E8F0"
+_FIND_BG = QColor(234, 179, 8, 90)
+_MAX_REPLACE_ALL = 50_000
+_MAX_UNDO = 500
+
+
+@dataclass(slots=True)
+class _EditOp:
+    kind: Literal["insert", "delete"]
+    offset: int
+    data: bytes
 
 
 class VirtualEditor(QAbstractScrollArea):
@@ -47,6 +60,11 @@ class VirtualEditor(QAbstractScrollArea):
         self._gutter_width = 48
         self._pad_x = 8
         self._language = "text"
+        self._find_needle = ""
+        self._find_case = False
+        self._undo: list[_EditOp] = []
+        self._redo: list[_EditOp] = []
+        self._applying_history = False
 
         self.setFont(editor_font(12))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -71,6 +89,11 @@ class VirtualEditor(QAbstractScrollArea):
 
     def language(self) -> str:
         return self._language
+
+    def set_find_highlight(self, needle: str, *, case_sensitive: bool = False) -> None:
+        self._find_needle = needle
+        self._find_case = case_sensitive
+        self.viewport().update()
 
     def goto_line(self, line: int, column: int = 0) -> None:
         """Move caret to 0-based line/column and scroll into view."""
@@ -130,6 +153,7 @@ class VirtualEditor(QAbstractScrollArea):
     ) -> bool:
         if not needle:
             return False
+        self.set_find_highlight(needle, case_sensitive=case_sensitive)
         enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
         needle_b = needle.encode(enc, errors="replace")
         if not case_sensitive:
@@ -141,7 +165,6 @@ class VirtualEditor(QAbstractScrollArea):
             return False
 
         start_line = self._cursor_line
-        order: list[int]
         if backward:
             order = list(range(start_line, -1, -1)) + (
                 list(range(n_lines - 1, start_line, -1)) if wrap else []
@@ -158,7 +181,6 @@ class VirtualEditor(QAbstractScrollArea):
             pos = hay.find(needle_b)
             if pos < 0:
                 continue
-            # Skip current caret match when searching forward from same line
             if line == start_line and not backward:
                 col_bytes = self._col_to_byte(line, self._cursor_col)
                 pos = hay.find(needle_b, col_bytes + (1 if col_bytes < len(hay) else 0))
@@ -171,6 +193,130 @@ class VirtualEditor(QAbstractScrollArea):
             self.viewport().update()
             return True
         return False
+
+    def replace_text(
+        self,
+        needle: str,
+        replacement: str,
+        *,
+        case_sensitive: bool = False,
+    ) -> bool:
+        """Replace match at caret if it equals ``needle``, else find next and replace."""
+        if not needle:
+            return False
+        self.set_find_highlight(needle, case_sensitive=case_sensitive)
+        if not self._match_at_cursor(needle, case_sensitive=case_sensitive):
+            if not self.find_text(needle, case_sensitive=case_sensitive, backward=False, wrap=True):
+                return False
+            if not self._match_at_cursor(needle, case_sensitive=case_sensitive):
+                return False
+        off = self._byte_offset_at_cursor()
+        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
+        needle_b = needle.encode(enc, errors="replace")
+        repl_b = replacement.encode(enc, errors="replace")
+        self._delete_bytes_tracked(off, len(needle_b))
+        if repl_b:
+            self._insert_bytes_tracked(off, repl_b)
+        self._cursor_line = self._doc.line_index().offset_to_line(off + len(repl_b))
+        line_start = self._doc.line_index().line_start(self._cursor_line)
+        self._cursor_col = self._byte_to_col(self._cursor_line, off + len(repl_b) - line_start)
+        self._emit_edit()
+        return True
+
+    def replace_all_text(
+        self,
+        needle: str,
+        replacement: str,
+        *,
+        case_sensitive: bool = False,
+        max_replacements: int = _MAX_REPLACE_ALL,
+    ) -> int:
+        """Replace all non-overlapping matches (line scan, reverse order)."""
+        if not needle:
+            return 0
+        self.set_find_highlight(needle, case_sensitive=case_sensitive)
+        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
+        needle_b = needle.encode(enc, errors="replace")
+        repl_b = replacement.encode(enc, errors="replace")
+        needle_cmp = needle_b if case_sensitive else needle_b.lower()
+
+        # Collect (byte_offset, length) from end so earlier offsets stay valid.
+        matches: list[tuple[int, int]] = []
+        idx = self._doc.line_index()
+        for line in range(idx.line_count - 1, -1, -1):
+            start = idx.line_start(line)
+            length = idx.line_length(line)
+            try:
+                raw = self._doc.buffer.get_text(start, length)
+            except IndexError:
+                continue
+            hay = raw if case_sensitive else raw.lower()
+            pos = 0
+            line_hits: list[tuple[int, int]] = []
+            nlen = len(needle_cmp)
+            if nlen == 0:
+                break
+            while True:
+                found = hay.find(needle_cmp, pos)
+                if found < 0:
+                    break
+                line_hits.append((start + found, len(needle_b)))
+                pos = found + nlen
+            matches.extend(reversed(line_hits))
+            if len(matches) >= max_replacements:
+                matches = matches[:max_replacements]
+                break
+
+        # Apply from highest offset first
+        matches.sort(key=lambda m: m[0], reverse=True)
+        count = 0
+        for off, nlen in matches:
+            self._delete_bytes_tracked(off, nlen)
+            if repl_b:
+                self._insert_bytes_tracked(off, repl_b)
+            count += 1
+        if count:
+            self._cursor_line = min(self._cursor_line, self._line_count() - 1)
+            self._cursor_col = min(
+                self._cursor_col, len(self._doc.line_text(self._cursor_line))
+            )
+            self._emit_edit()
+        return count
+
+    def undo(self) -> None:
+        if not self._undo:
+            return
+        op = self._undo.pop()
+        self._applying_history = True
+        try:
+            if op.kind == "insert":
+                self._doc.delete_bytes(op.offset, len(op.data))
+                self._redo.append(op)
+            else:
+                self._doc.insert_bytes(op.offset, op.data)
+                self._redo.append(op)
+            self._place_cursor_at(op.offset)
+            self._emit_edit(clear_redo=False)
+        finally:
+            self._applying_history = False
+
+    def redo(self) -> None:
+        if not self._redo:
+            return
+        op = self._redo.pop()
+        self._applying_history = True
+        try:
+            if op.kind == "insert":
+                self._doc.insert_bytes(op.offset, op.data)
+                self._undo.append(op)
+                self._place_cursor_at(op.offset + len(op.data))
+            else:
+                self._doc.delete_bytes(op.offset, len(op.data))
+                self._undo.append(op)
+                self._place_cursor_at(op.offset)
+            self._emit_edit(clear_redo=False)
+        finally:
+            self._applying_history = False
 
     def centerCursor(self) -> None:
         self._ensure_visible(self._cursor_line)
@@ -258,6 +404,9 @@ class VirtualEditor(QAbstractScrollArea):
             base_x = gutter + self._pad_x - h_off
             baseline = y + fm.ascent() + 1
 
+            if self._find_needle:
+                self._paint_find_hits(painter, text, base_x, y, lh, fm)
+
             if do_syntax and text and len(text) <= 8000:
                 self._paint_syntax_line(painter, text, display, base_x, baseline, fm)
             else:
@@ -270,6 +419,32 @@ class VirtualEditor(QAbstractScrollArea):
                 painter.setPen(QColor(56, 189, 248))
                 painter.drawLine(cx, y + 1, cx, y + lh - 2)
 
+    def _paint_find_hits(
+        self,
+        painter: QPainter,
+        text: str,
+        base_x: int,
+        y: int,
+        lh: int,
+        fm,
+    ) -> None:
+        needle = self._find_needle
+        if not needle or not text:
+            return
+        hay = text if self._find_case else text.lower()
+        n = needle if self._find_case else needle.lower()
+        pos = 0
+        while True:
+            found = hay.find(n, pos)
+            if found < 0:
+                break
+            prefix = text[:found].replace("\t", "    ")
+            match = text[found : found + len(needle)].replace("\t", "    ")
+            x0 = base_x + fm.horizontalAdvance(prefix)
+            w = fm.horizontalAdvance(match)
+            painter.fillRect(x0, y + 1, w, lh - 2, _FIND_BG)
+            pos = found + max(1, len(n))
+
     def _paint_syntax_line(
         self,
         painter: QPainter,
@@ -281,8 +456,6 @@ class VirtualEditor(QAbstractScrollArea):
     ) -> None:
         """Paint a line with per-token colors (visible range only)."""
         spans = tokenize_line(text, self._language)
-        # Map original char indices through tab expansion for x positions
-        # We draw on ``text`` widths with tabs as 4 spaces — expand positions.
         claimed_end = 0
         x = base_x
         bold_font = QFont(self.font())
@@ -337,6 +510,17 @@ class VirtualEditor(QAbstractScrollArea):
         mod = event.modifiers()
         lines = self._line_count()
         visible = max(1, self.viewport().height() // self._line_height)
+        ctrl = bool(mod & Qt.KeyboardModifier.ControlModifier)
+
+        if ctrl and key == Qt.Key.Key_Z and not (mod & Qt.KeyboardModifier.ShiftModifier):
+            self.undo()
+            event.accept()
+            return
+        shift = bool(mod & Qt.KeyboardModifier.ShiftModifier)
+        if ctrl and (key == Qt.Key.Key_Y or (key == Qt.Key.Key_Z and shift)):
+            self.redo()
+            event.accept()
+            return
 
         if key == Qt.Key.Key_Up:
             self._cursor_line = max(0, self._cursor_line - 1)
@@ -362,7 +546,7 @@ class VirtualEditor(QAbstractScrollArea):
             self._backspace()
         elif key == Qt.Key.Key_Delete:
             self._delete_forward()
-        elif event.text() and not (mod & Qt.KeyboardModifier.ControlModifier):
+        elif event.text() and not ctrl:
             self._insert_at_cursor(event.text())
         else:
             super().keyPressEvent(event)
@@ -398,7 +582,7 @@ class VirtualEditor(QAbstractScrollArea):
             self.setFocus()
         super().mousePressEvent(event)
 
-    # --- edits (piece table + incremental line index) -----------------
+    # --- edits (piece table + incremental line index + undo) ----------
 
     def _byte_offset_at_cursor(self) -> int:
         idx = self._doc.line_index()
@@ -427,48 +611,80 @@ class VirtualEditor(QAbstractScrollArea):
                 break
         return col
 
+    def _match_at_cursor(self, needle: str, *, case_sensitive: bool) -> bool:
+        text = self._doc.line_text(self._cursor_line)
+        end = self._cursor_col + len(needle)
+        if end > len(text):
+            return False
+        frag = text[self._cursor_col : end]
+        if case_sensitive:
+            return frag == needle
+        return frag.lower() == needle.lower()
+
+    def _push_undo(self, op: _EditOp) -> None:
+        if self._applying_history:
+            return
+        self._undo.append(op)
+        if len(self._undo) > _MAX_UNDO:
+            self._undo = self._undo[-_MAX_UNDO:]
+        self._redo.clear()
+
+    def _insert_bytes_tracked(self, offset: int, data: bytes) -> None:
+        if not data:
+            return
+        self._doc.insert_bytes(offset, data)
+        self._push_undo(_EditOp("insert", offset, data))
+
+    def _delete_bytes_tracked(self, offset: int, length: int) -> None:
+        if length <= 0:
+            return
+        deleted = self._doc.buffer.get_text(offset, length)
+        self._doc.delete_bytes(offset, length)
+        self._push_undo(_EditOp("delete", offset, deleted))
+
+    def _place_cursor_at(self, byte_off: int) -> None:
+        byte_off = max(0, min(len(self._doc.buffer), byte_off))
+        self._cursor_line = self._doc.line_index().offset_to_line(byte_off)
+        line_start = self._doc.line_index().line_start(self._cursor_line)
+        self._cursor_col = self._byte_to_col(self._cursor_line, byte_off - line_start)
+
+    def _emit_edit(self, *, clear_redo: bool = True) -> None:
+        if clear_redo and not self._applying_history:
+            pass  # redo already cleared in _push_undo
+        self._modified = True
+        self._update_scrollbars()
+        self.textChanged.emit()
+        self.modificationChanged.emit(True)
+        self.cursorPositionChanged.emit()
+        self.viewport().update()
+
     def _insert_at_cursor(self, text: str) -> None:
         enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
         data = text.encode(enc, errors="replace")
         off = self._byte_offset_at_cursor()
-        self._doc.insert_bytes(off, data)
-        self._modified = True
+        self._insert_bytes_tracked(off, data)
         if b"\n" in data or b"\r" in data:
             self._cursor_line = self._doc.line_index().offset_to_line(off + len(data))
             line_start = self._doc.line_index().line_start(self._cursor_line)
             self._cursor_col = self._byte_to_col(self._cursor_line, off + len(data) - line_start)
         else:
             self._cursor_col += len(text)
-        self._update_scrollbars()
-        self.textChanged.emit()
-        self.modificationChanged.emit(True)
-        self.viewport().update()
+        self._emit_edit()
 
     def _backspace(self) -> None:
         off = self._byte_offset_at_cursor()
         if off <= 0:
             return
-        self._doc.delete_bytes(off - 1, 1)
-        self._modified = True
-        new_off = off - 1
-        self._cursor_line = self._doc.line_index().offset_to_line(new_off)
-        line_start = self._doc.line_index().line_start(self._cursor_line)
-        self._cursor_col = self._byte_to_col(self._cursor_line, new_off - line_start)
-        self._update_scrollbars()
-        self.textChanged.emit()
-        self.modificationChanged.emit(True)
-        self.viewport().update()
+        self._delete_bytes_tracked(off - 1, 1)
+        self._place_cursor_at(off - 1)
+        self._emit_edit()
 
     def _delete_forward(self) -> None:
         off = self._byte_offset_at_cursor()
         if off >= len(self._doc.buffer):
             return
-        self._doc.delete_bytes(off, 1)
-        self._modified = True
-        self._update_scrollbars()
-        self.textChanged.emit()
-        self.modificationChanged.emit(True)
-        self.viewport().update()
+        self._delete_bytes_tracked(off, 1)
+        self._emit_edit()
 
     def cursor_line_col(self) -> tuple[int, int]:
         return self._cursor_line + 1, self._cursor_col + 1
