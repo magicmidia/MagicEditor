@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut, QTextCursor, QTextDocument
 from PyQt6.QtWidgets import (
@@ -16,15 +18,17 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from magiceditor.ui.text_editor import TextEditor
-
 
 class FindDialog(QDialog):
-    """Centered modal for search (and optional replace)."""
+    """Centered modal for search (and optional replace).
+
+    Works with ``TextEditor`` (QPlainTextEdit) and ``VirtualEditor``
+    (duck-typed ``find_text``).
+    """
 
     def __init__(
         self,
-        editor: TextEditor,
+        editor: Any,
         parent: QWidget | None = None,
         *,
         replace_mode: bool = False,
@@ -32,6 +36,7 @@ class FindDialog(QDialog):
         super().__init__(parent)
         self._editor = editor
         self._replace_mode = replace_mode
+        self._virtual = hasattr(editor, "find_text")
         self.setModal(True)
         self.setWindowTitle("Find and Replace" if replace_mode else "Find")
         self.setMinimumWidth(420)
@@ -41,7 +46,7 @@ class FindDialog(QDialog):
         self.find_input.setPlaceholderText("Find…")
         self.replace_input = QLineEdit(self)
         self.replace_input.setPlaceholderText("Replace with…")
-        self.replace_input.setVisible(replace_mode)
+        self.replace_input.setVisible(replace_mode and not self._virtual)
 
         self.case_box = QCheckBox("Match case", self)
         self.wrap_box = QCheckBox("Wrap around", self)
@@ -49,6 +54,8 @@ class FindDialog(QDialog):
 
         self._status = QLabel("", self)
         self._status.setObjectName("findDialogStatus")
+        if self._virtual and replace_mode:
+            self._status.setText("Replace is limited in huge-file mode.")
 
         form = QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)
@@ -56,7 +63,7 @@ class FindDialog(QDialog):
         form.setVerticalSpacing(10)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form.addRow("Find:", self.find_input)
-        if replace_mode:
+        if replace_mode and not self._virtual:
             form.addRow("Replace:", self.replace_input)
 
         options = QHBoxLayout()
@@ -78,14 +85,15 @@ class FindDialog(QDialog):
         btn_all.clicked.connect(self.replace_all)
         btn_close.clicked.connect(self.reject)
 
-        btn_replace.setVisible(replace_mode)
-        btn_all.setVisible(replace_mode)
+        use_replace = replace_mode and not self._virtual
+        btn_replace.setVisible(use_replace)
+        btn_all.setVisible(use_replace)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         buttons.addWidget(btn_prev)
         buttons.addWidget(btn_next)
-        if replace_mode:
+        if use_replace:
             buttons.addWidget(btn_replace)
             buttons.addWidget(btn_all)
         buttons.addStretch(1)
@@ -102,11 +110,12 @@ class FindDialog(QDialog):
         self.find_input.returnPressed.connect(self.find_next)
         QShortcut(QKeySequence("Esc"), self, activated=self.reject)
 
-        cursor = editor.textCursor()
-        if cursor.hasSelection():
-            sel = cursor.selectedText().replace("\u2029", "\n")
-            if "\n" not in sel:
-                self.find_input.setText(sel)
+        if not self._virtual:
+            cursor = editor.textCursor()
+            if cursor.hasSelection():
+                sel = cursor.selectedText().replace("\u2029", "\n")
+                if "\n" not in sel:
+                    self.find_input.setText(sel)
         self.find_input.selectAll()
         self.find_input.setFocus()
 
@@ -127,6 +136,21 @@ class FindDialog(QDialog):
         if not text:
             self._status.setText("Enter text to find.")
             return
+
+        if self._virtual:
+            found = self._editor.find_text(
+                text,
+                case_sensitive=self.case_box.isChecked(),
+                backward=backward,
+                wrap=self.wrap_box.isChecked(),
+            )
+            if found:
+                self._status.setText("Match found.")
+                self._editor.centerCursor()
+            else:
+                self._status.setText("No matches.")
+            return
+
         flags = self._flags()
         if backward:
             flags |= QTextDocument.FindFlag.FindBackward
@@ -145,7 +169,7 @@ class FindDialog(QDialog):
             self._status.setText("No matches.")
 
     def replace_one(self) -> None:
-        if not self._replace_mode:
+        if not self._replace_mode or self._virtual:
             return
         cursor = self._editor.textCursor()
         needle = self.find_input.text()
@@ -155,7 +179,7 @@ class FindDialog(QDialog):
         self.find_next()
 
     def replace_all(self) -> None:
-        if not self._replace_mode:
+        if not self._replace_mode or self._virtual:
             return
         needle = self.find_input.text()
         if not needle:

@@ -1,9 +1,10 @@
-"""In-memory document model (path, buffer, metadata)."""
+"""Document model backed by a piece table (optional huge/mmap mode)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from magiceditor.core.encoding import EncodingName, Eol
 from magiceditor.core.line_index import LineIndex
@@ -20,6 +21,10 @@ class Document:
     eol: Eol = "LF"
     modified: bool = False
     title: str = "Untitled"
+    # When True, UI uses VirtualEditor (viewport only) instead of QPlainTextEdit.
+    huge_mode: bool = False
+    # Keep mmap alive while document is open (if used).
+    _mmap: Any = field(default=None, repr=False, compare=False)
     _line_index: LineIndex | None = field(default=None, repr=False, compare=False)
 
     @classmethod
@@ -43,6 +48,7 @@ class Document:
             eol=eol,
             modified=False,
             title=title,
+            huge_mode=False,
         )
 
     def mark_modified(self) -> None:
@@ -60,6 +66,22 @@ class Document:
             self._line_index = LineIndex.from_piece_table(self.buffer)
         return self._line_index
 
+    def line_text(self, line: int) -> str:
+        idx = self.line_index()
+        start = idx.line_start(line)
+        length = idx.line_length(line)
+        raw = self.buffer.get_text(start, length)
+        enc = self.encoding if self.encoding != "utf-8-sig" else "utf-8"
+        return raw.decode(enc, errors="replace")
+
     def display_name(self) -> str:
         mark = " *" if self.modified else ""
         return f"{self.title}{mark}"
+
+    def close(self) -> None:
+        mmap_src = self._mmap
+        self._mmap = None
+        if mmap_src is not None:
+            close = getattr(mmap_src, "close", None)
+            if callable(close):
+                close()

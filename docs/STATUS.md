@@ -4,14 +4,15 @@
 **Branch:** `feature/editor-mvp`
 
 ## Current phase
-**Feature expansion** — syntax highlighting + clean print/PDF on MVP UI.
+**Feature expansion** — huge-file virtual viewport + syntax + print.
 
 ## Done
 - [x] AI harness, model routing, Cascadia Code bundled
 - [x] Modern MainWindow (themes, explorer optional, session restore, find modal)
 - [x] Piece table, line index, document I/O
-- [x] **Syntax highlighting** (detect by extension + Syntax menu, QSyntaxHighlighter)
-- [x] **Print / Export PDF** (clean light styles)
+- [x] Syntax highlighting + Syntax menu
+- [x] Print / Export PDF (clean light styles)
+- [x] **Virtual viewport** (`VirtualEditor`) for files >5MB; **mmap** >50MB
 - [x] `MagicEditor.exe` pipeline at repo root
 
 ## Delivery rule
@@ -22,9 +23,9 @@ pwsh -File scripts/build_exe.ps1
 ```
 
 ## Next
-1. [ ] Virtual viewport + mmap stream (huge files without full load into QTextDocument)
+1. [ ] Incremental line index on huge edits (avoid full rebuild)
 2. [ ] Search in folder / multi-file
-3. [ ] Stronger lexers / theme-aware syntax palettes per QSS theme
+3. [ ] Syntax highlight on virtual viewport (visible lines only)
 4. [ ] REVIEW before merge to `main`
 
 ## Handoff

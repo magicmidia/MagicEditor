@@ -47,6 +47,12 @@ class MmapSource:
     def read_all(self) -> bytes:
         return self[:]
 
+    def as_memoryview(self) -> memoryview:
+        """Zero-copy view of the mapped file (empty if file is empty)."""
+        if self._mmap is None:
+            return memoryview(b"")
+        return memoryview(self._mmap)
+
     def close(self) -> None:
         if self._mmap is not None:
             self._mmap.close()

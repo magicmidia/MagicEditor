@@ -541,7 +541,7 @@ class MainWindow(QMainWindow):
             return
         tab.sync_document_from_editor()
         ok = print_plain_text(
-            tab.editor.toPlainText(),
+            tab.export_text(),
             parent=self,
             title=tab.document.title,
         )
@@ -563,7 +563,7 @@ class MainWindow(QMainWindow):
         if not path:
             return
         try:
-            export_pdf(tab.editor.toPlainText(), path, title=tab.document.title)
+            export_pdf(tab.export_text(), path, title=tab.document.title)
         except OSError as exc:
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return
@@ -582,7 +582,8 @@ class MainWindow(QMainWindow):
         except OSError as exc:
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return
-        tab.editor.document().setModified(False)
+        if not tab.is_huge:
+            tab.editor.document().setModified(False)  # type: ignore[union-attr]
         tab.document.modified = False
         self._refresh_tab_titles()
         self._update_status_for(tab)
@@ -607,7 +608,8 @@ class MainWindow(QMainWindow):
         except OSError as exc:
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return
-        tab.editor.document().setModified(False)
+        if not tab.is_huge:
+            tab.editor.document().setModified(False)  # type: ignore[union-attr]
         tab.document.modified = False
         self._refresh_tab_titles()
         self._update_status_for(tab)
@@ -629,9 +631,13 @@ class MainWindow(QMainWindow):
 
     def toggle_preview(self) -> None:
         tab = self.current_tab()
-        if tab is not None:
-            on = tab.toggle_preview()
-            self._status.showMessage("Preview on" if on else "Preview off", 2000)
+        if tab is None:
+            return
+        if tab.is_huge:
+            self._status.showMessage("Preview disabled in huge-file mode", 3000)
+            return
+        on = tab.toggle_preview()
+        self._status.showMessage("Preview on" if on else "Preview off", 2000)
 
     def toggle_sidebar(self) -> None:
         visible = not self._sidebar_dock.isVisible()
@@ -662,17 +668,17 @@ class MainWindow(QMainWindow):
     def zoom_in(self) -> None:
         tab = self.current_tab()
         if tab is not None:
-            tab.editor.zoom_in_one()
+            tab.zoom_in()
 
     def zoom_out(self) -> None:
         tab = self.current_tab()
         if tab is not None:
-            tab.editor.zoom_out_one()
+            tab.zoom_out()
 
     def zoom_reset(self) -> None:
         tab = self.current_tab()
         if tab is not None:
-            tab.editor.reset_zoom()
+            tab.zoom_reset()
 
     def toggle_fullscreen(self) -> None:
         if self.isFullScreen():
@@ -726,7 +732,10 @@ class MainWindow(QMainWindow):
         doc = tab.document
         self._status.set_encoding(doc.encoding)
         self._status.set_eol(doc.eol)
-        self._status.set_filetype(language_label(tab.language).upper())
+        label = language_label(tab.language).upper()
+        if tab.is_huge:
+            label = f"{label} · HUGE"
+        self._status.set_filetype(label)
         self.setWindowTitle(f"{doc.display_name()} — MagicEditor")
         self._sync_syntax_check()
 

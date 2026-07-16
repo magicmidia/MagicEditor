@@ -24,14 +24,15 @@ class PieceTable:
     Offsets and lengths are in **bytes** (UTF-8 logical buffer).
     """
 
-    def __init__(self, original: bytes | str = "") -> None:
+    def __init__(self, original: bytes | str | memoryview = "") -> None:
+        # ``memoryview`` (e.g. from mmap) is kept by reference — no full RAM copy.
         if isinstance(original, str):
-            self._original = original.encode("utf-8")
+            self._original: bytes | memoryview = original.encode("utf-8")
         else:
             self._original = original
         self._add = bytearray()
         self._pieces: list[Piece] = []
-        if self._original:
+        if len(self._original):
             self._pieces.append(Piece(source="original", offset=0, length=len(self._original)))
         self._length = len(self._original)
 
@@ -153,7 +154,8 @@ class PieceTable:
         start = piece.offset + local_start
         end = start + take
         if piece.source == "original":
-            return self._original[start:end]
+            chunk = self._original[start:end]
+            return chunk if isinstance(chunk, bytes) else bytes(chunk)
         return bytes(self._add[start:end])
 
     def _coalesce_around(self, index: int) -> None:

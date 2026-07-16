@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Any
+
 from magiceditor.core.piece_table import PieceTable
 
 
@@ -27,6 +30,15 @@ class LineIndex:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> LineIndex:
+        return cls.from_buffer(data)
+
+    @classmethod
+    def from_buffer(cls, data: Any) -> LineIndex:
+        """Build index from any buffer supporting ``len`` and int indexing.
+
+        Works with ``bytes``, ``bytearray``, ``memoryview``, and mmap views
+        without requiring an intermediate full ``bytes`` copy of the file.
+        """
         starts: list[int] = []
         content_ends: list[int] = []
         start = 0
@@ -34,6 +46,8 @@ class LineIndex:
         n = len(data)
         while i < n:
             b = data[i]
+            if isinstance(b, bytes):
+                b = b[0]
             if b == 0x0A:  # LF
                 starts.append(start)
                 content_ends.append(i)
@@ -42,12 +56,16 @@ class LineIndex:
             elif b == 0x0D:  # CR or CRLF
                 starts.append(start)
                 content_ends.append(i)
-                if i + 1 < n and data[i + 1] == 0x0A:
-                    start = i + 2
-                    i += 2
-                else:
-                    start = i + 1
-                    i += 1
+                if i + 1 < n:
+                    nxt = data[i + 1]
+                    if isinstance(nxt, bytes):
+                        nxt = nxt[0]
+                    if nxt == 0x0A:
+                        start = i + 2
+                        i += 2
+                        continue
+                start = i + 1
+                i += 1
             else:
                 i += 1
         starts.append(start)
@@ -56,7 +74,7 @@ class LineIndex:
 
     @classmethod
     def from_piece_table(cls, table: PieceTable) -> LineIndex:
-        # MVP: rebuild from full text. Huge files will use incremental indexing later.
+        # Prefer buffer scan without materializing when table is a single original piece.
         return cls.from_bytes(table.get_text())
 
     @property
@@ -86,3 +104,7 @@ class LineIndex:
             else:
                 hi = mid - 1
         return ans
+
+
+def is_byte_sequence(data: Sequence[int]) -> bool:
+    return hasattr(data, "__len__") and hasattr(data, "__getitem__")
