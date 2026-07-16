@@ -37,15 +37,15 @@ QMenu {
   color: #E5E2E1;
   border: 1px solid rgba(255, 255, 255, 36);
   border-radius: 6px;
-  padding: 4px;
+  padding: 2px;
 }
 QMenu::item {
   background: transparent;
   color: #E5E2E1;
-  padding: 6px 28px 6px 28px;
-  margin: 1px 2px;
-  border-radius: 4px;
-  min-height: 16px;
+  padding: 5px 12px 5px 8px;
+  margin: 0px;
+  border-radius: 3px;
+  min-height: 20px;
 }
 QMenu::item:selected {
   background-color: rgba(255, 215, 0, 28);
@@ -57,19 +57,20 @@ QMenu::item:checked {
 QMenu::indicator {
   width: 12px;
   height: 12px;
-  left: 8px;
+  left: 6px;
 }
 QMenu::indicator:checked {
   background-color: #FFD700;
   border-radius: 2px;
 }
 QMenu::icon {
-  padding-left: 6px;
+  left: 4px;
+  padding-left: 0px;
 }
 QMenu::separator {
   height: 1px;
   background: rgba(255, 255, 255, 26);
-  margin: 4px 8px;
+  margin: 3px 6px;
 }
 
 /* --- Toolbar --- */
@@ -339,7 +340,7 @@ QLineEdit {
   border: 1px solid rgba(255, 255, 255, 20);
   border-radius: 4px;
   padding: 6px 10px;
-  min-height: 16px;
+  min-height: 18px;
   selection-background-color: rgba(255, 215, 0, 55);
 }
 QLineEdit:focus {
@@ -351,7 +352,7 @@ QPushButton {
   border: 1px solid rgba(255, 255, 255, 26);
   border-radius: 4px;
   padding: 6px 14px;
-  min-height: 16px;
+  min-height: 18px;
 }
 QPushButton:hover {
   background-color: #353534;
@@ -413,7 +414,7 @@ QGroupBox::title {
 QLabel#findDialogStatus {
   color: #999077;
   padding: 2px 0px;
-  min-height: 16px;
+  min-height: 18px;
 }
 QListWidget {
   background-color: #1C1B1B;
@@ -498,5 +499,11 @@ QMessageBox {
 }
 QMessageBox QLabel {
   color: #E5E2E1;
-  min-width: 260px;
+  min-width: 200px;
+  max-width: 420px;
+  padding: 4px;
+}
+QMessageBox QPushButton {
+  min-width: 72px;
+  padding: 5px 12px;
 }

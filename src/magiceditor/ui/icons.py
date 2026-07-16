@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
@@ -225,6 +226,46 @@ def _draw_about(p: QPainter) -> None:
     p.drawEllipse(QPointF(12, 7.8), 0.6, 0.6)
 
 
+def _draw_undo(p: QPainter) -> None:
+    p.drawArc(QRectF(5, 6, 14, 12), 40 * 16, 200 * 16)
+    p.drawLine(QPointF(6.5, 7), QPointF(5, 11))
+    p.drawLine(QPointF(6.5, 7), QPointF(10, 8.5))
+
+
+def _draw_redo(p: QPainter) -> None:
+    p.drawArc(QRectF(5, 6, 14, 12), -40 * 16, -200 * 16)
+    p.drawLine(QPointF(17.5, 7), QPointF(19, 11))
+    p.drawLine(QPointF(17.5, 7), QPointF(14, 8.5))
+
+
+def _draw_settings(p: QPainter) -> None:
+    p.drawEllipse(QPointF(12, 12), 3.2, 3.2)
+    for i in range(8):
+        a = i * math.pi / 4
+        p.drawLine(
+            QPointF(12 + 5.5 * math.cos(a), 12 + 5.5 * math.sin(a)),
+            QPointF(12 + 8.2 * math.cos(a), 12 + 8.2 * math.sin(a)),
+        )
+
+
+def _draw_bookmark(p: QPainter) -> None:
+    path = QPainterPath()
+    path.moveTo(7, 3)
+    path.lineTo(17, 3)
+    path.lineTo(17, 20)
+    path.lineTo(12, 16)
+    path.lineTo(7, 20)
+    path.closeSubpath()
+    p.drawPath(path)
+
+
+def _draw_goto(p: QPainter) -> None:
+    p.drawLine(QPointF(4, 12), QPointF(16, 12))
+    p.drawLine(QPointF(13, 8), QPointF(18, 12))
+    p.drawLine(QPointF(13, 16), QPointF(18, 12))
+    p.drawLine(QPointF(6, 6), QPointF(6, 18))
+
+
 _DRAWERS: dict[str, DrawFn] = {
     "new": _draw_new,
     "open": _draw_open,
@@ -243,4 +284,9 @@ _DRAWERS: dict[str, DrawFn] = {
     "fullscreen": _draw_fullscreen,
     "exit": _draw_exit,
     "about": _draw_about,
+    "undo": _draw_undo,
+    "redo": _draw_redo,
+    "settings": _draw_settings,
+    "bookmark": _draw_bookmark,
+    "goto": _draw_goto,
 }

@@ -21,12 +21,14 @@ from PyQt6.QtWidgets import (
 from magiceditor.core.text_match import PatternError, compile_pattern, expand_replacement
 
 
-class FindDialog(QDialog):
-    """Centered modal for search (and optional replace).
+def _t(tr: Any | None, key: str, default: str) -> str:
+    if tr is not None:
+        return tr.t(key, default)
+    return default
 
-    Works with ``TextEditor`` (QPlainTextEdit) and ``VirtualEditor``
-    (duck-typed ``find_text`` / ``replace_text``).
-    """
+
+class FindDialog(QDialog):
+    """Centered modal for search (and optional replace)."""
 
     def __init__(
         self,
@@ -34,77 +36,88 @@ class FindDialog(QDialog):
         parent: QWidget | None = None,
         *,
         replace_mode: bool = False,
+        tr: Any | None = None,
     ) -> None:
         super().__init__(parent)
         self._editor = editor
         self._replace_mode = replace_mode
         self._virtual = hasattr(editor, "find_text")
+        self._tr = tr
         self.setModal(True)
-        self.setWindowTitle("Find and Replace" if replace_mode else "Find")
-        self.setMinimumWidth(440)
+        self.setMinimumWidth(420)
         self.setObjectName("findDialog")
 
+        t = lambda k, d: _t(tr, k, d)  # noqa: E731
+
+        self.setWindowTitle(
+            t("find.replace_title", "Localizar e substituir")
+            if replace_mode
+            else t("find.title", "Localizar")
+        )
+
         self.find_input = QLineEdit(self)
-        self.find_input.setPlaceholderText("Find…")
+        self.find_input.setPlaceholderText(t("find.placeholder", "Localizar…"))
         self.replace_input = QLineEdit(self)
-        self.replace_input.setPlaceholderText("Replace with… (\\1 groups if regex)")
+        self.replace_input.setPlaceholderText(
+            t("find.replace_placeholder", "Substituir por… (\\1 com regex)")
+        )
         self.replace_input.setVisible(replace_mode)
 
-        self.case_box = QCheckBox("Match case", self)
-        self.wrap_box = QCheckBox("Wrap around", self)
+        self.case_box = QCheckBox(t("find.match_case", "Diferenciar maiúsculas"), self)
+        self.wrap_box = QCheckBox(t("find.wrap", "Circular"), self)
         self.wrap_box.setChecked(True)
-        self.regex_box = QCheckBox("Regex", self)
+        self.regex_box = QCheckBox(t("find.regex", "Expressão regular"), self)
 
         self._status = QLabel("", self)
         self._status.setObjectName("findDialogStatus")
         if self._virtual and replace_mode:
-            self._status.setText("Replace works in huge-file mode (capped replace-all).")
+            self._status.setText(t("find.huge_hint", "Substituir funciona em arquivos grandes."))
 
         form = QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)
-        form.setHorizontalSpacing(12)
-        form.setVerticalSpacing(10)
+        form.setHorizontalSpacing(10)
+        form.setVerticalSpacing(8)
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        form.addRow("Find:", self.find_input)
+        form.addRow(t("find.title", "Localizar") + ":", self.find_input)
         if replace_mode:
-            form.addRow("Replace:", self.replace_input)
+            form.addRow(t("find.replace", "Substituir") + ":", self.replace_input)
 
         options = QHBoxLayout()
-        options.setSpacing(16)
+        options.setSpacing(12)
         options.addWidget(self.case_box)
         options.addWidget(self.wrap_box)
         options.addWidget(self.regex_box)
         options.addStretch(1)
 
-        btn_prev = QPushButton("Find Previous", self)
-        btn_next = QPushButton("Find Next", self)
-        btn_next.setDefault(True)
-        btn_replace = QPushButton("Replace", self)
-        btn_all = QPushButton("Replace All", self)
-        btn_close = QPushButton("Close", self)
+        self._btn_prev = QPushButton(t("find.prev", "Anterior"), self)
+        self._btn_next = QPushButton(t("find.next", "Próximo"), self)
+        self._btn_next.setDefault(True)
+        self._btn_replace = QPushButton(t("find.replace", "Substituir"), self)
+        self._btn_all = QPushButton(t("find.replace_all", "Substituir tudo"), self)
+        self._btn_close = QPushButton(t("find.close", "Fechar"), self)
 
-        btn_prev.clicked.connect(self.find_prev)
-        btn_next.clicked.connect(self.find_next)
-        btn_replace.clicked.connect(self.replace_one)
-        btn_all.clicked.connect(self.replace_all)
-        btn_close.clicked.connect(self.reject)
+        self._btn_prev.clicked.connect(self.find_prev)
+        self._btn_next.clicked.connect(self.find_next)
+        self._btn_replace.clicked.connect(self.replace_one)
+        self._btn_all.clicked.connect(self.replace_all)
+        self._btn_close.clicked.connect(self.reject)
 
-        btn_replace.setVisible(replace_mode)
-        btn_all.setVisible(replace_mode)
+        self._btn_replace.setVisible(replace_mode)
+        self._btn_all.setVisible(replace_mode)
 
         buttons = QHBoxLayout()
-        buttons.setSpacing(8)
-        buttons.addWidget(btn_prev)
-        buttons.addWidget(btn_next)
+        buttons.setSpacing(6)
+        buttons.addWidget(self._btn_prev)
+        buttons.addWidget(self._btn_next)
         if replace_mode:
-            buttons.addWidget(btn_replace)
-            buttons.addWidget(btn_all)
+            buttons.addWidget(self._btn_replace)
+            buttons.addWidget(self._btn_all)
         buttons.addStretch(1)
-        buttons.addWidget(btn_close)
+        buttons.addWidget(self._btn_close)
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(12)
+        root.setContentsMargins(14, 14, 14, 14)
+        root.setSpacing(10)
         root.addLayout(form)
         root.addLayout(options)
         root.addWidget(self._status)
@@ -122,6 +135,9 @@ class FindDialog(QDialog):
         self.find_input.selectAll()
         self.find_input.setFocus()
 
+    def _tt(self, key: str, default: str) -> str:
+        return _t(self._tr, key, default)
+
     def _flags(self) -> QTextDocument.FindFlag:
         flags = QTextDocument.FindFlag(0)
         if self.case_box.isChecked():
@@ -133,7 +149,7 @@ class FindDialog(QDialog):
     def _validate_pattern(self) -> bool:
         needle = self.find_input.text()
         if not needle:
-            self._status.setText("Enter text to find.")
+            self._status.setText(self._tt("find.enter_text", "Digite o texto a localizar."))
             return False
         if not self.regex_box.isChecked():
             return True
@@ -144,7 +160,9 @@ class FindDialog(QDialog):
                 use_regex=True,
             )
         except PatternError as exc:
-            self._status.setText(f"Invalid regex: {exc}")
+            self._status.setText(
+                self._tt("find.invalid_regex", "Regex inválida: {err}").format(err=exc)
+            )
             return False
         return True
 
@@ -168,10 +186,10 @@ class FindDialog(QDialog):
                 use_regex=self.regex_box.isChecked(),
             )
             if found:
-                self._status.setText("Match found.")
+                self._status.setText(self._tt("find.found", "Ocorrência encontrada."))
                 self._editor.centerCursor()
             else:
-                self._status.setText("No matches.")
+                self._status.setText(self._tt("find.none", "Nenhuma ocorrência."))
             return
 
         flags = self._flags()
@@ -186,10 +204,10 @@ class FindDialog(QDialog):
             self._editor.setTextCursor(cursor)
             found = self._editor.find(text, flags)
         if found:
-            self._status.setText("Match found.")
+            self._status.setText(self._tt("find.found", "Ocorrência encontrada."))
             self._editor.centerCursor()
         else:
-            self._status.setText("No matches.")
+            self._status.setText(self._tt("find.none", "Nenhuma ocorrência."))
 
     def replace_one(self) -> None:
         if not self._replace_mode or not self._validate_pattern():
@@ -204,7 +222,11 @@ class FindDialog(QDialog):
                 case_sensitive=self.case_box.isChecked(),
                 use_regex=self.regex_box.isChecked(),
             )
-            self._status.setText("Replaced 1 match." if ok else "No matches.")
+            self._status.setText(
+                self._tt("find.replaced_one", "1 ocorrência substituída.")
+                if ok
+                else self._tt("find.none", "Nenhuma ocorrência.")
+            )
             return
 
         cursor = self._editor.textCursor()
@@ -224,7 +246,7 @@ class FindDialog(QDialog):
             else:
                 text = repl
             cursor.insertText(text)
-            self._status.setText("Replaced 1 match.")
+            self._status.setText(self._tt("find.replaced_one", "1 ocorrência substituída."))
         self.find_next()
 
     def replace_all(self) -> None:
@@ -240,8 +262,13 @@ class FindDialog(QDialog):
                 case_sensitive=self.case_box.isChecked(),
                 use_regex=self.regex_box.isChecked(),
             )
-            extra = " (capped)" if count >= 50_000 else ""
-            self._status.setText(f"Replaced {count} match(es){extra}.")
+            key = "find.replaced_capped" if count >= 50_000 else "find.replaced_n"
+            default = (
+                "{n} ocorrência(s) substituída(s) (limite)."
+                if count >= 50_000
+                else "{n} ocorrência(s) substituída(s)."
+            )
+            self._status.setText(self._tt(key, default).format(n=count))
             return
 
         if self.regex_box.isChecked():
@@ -252,7 +279,9 @@ class FindDialog(QDialog):
                     use_regex=True,
                 )
             except PatternError as exc:
-                self._status.setText(f"Invalid regex: {exc}")
+                self._status.setText(
+                    self._tt("find.invalid_regex", "Regex inválida: {err}").format(err=exc)
+                )
                 return
             plain = self._editor.toPlainText()
             new_text, count = pat.subn(repl, plain)
@@ -262,7 +291,9 @@ class FindDialog(QDialog):
                 cursor.select(QTextCursor.SelectionType.Document)
                 cursor.insertText(new_text)
                 cursor.endEditBlock()
-            self._status.setText(f"Replaced {count} match(es).")
+            self._status.setText(
+                self._tt("find.replaced_n", "{n} ocorrência(s) substituída(s).").format(n=count)
+            )
             return
 
         doc = self._editor.document()
@@ -277,7 +308,9 @@ class FindDialog(QDialog):
             cursor.insertText(repl)
             count += 1
         cursor.endEditBlock()
-        self._status.setText(f"Replaced {count} match(es).")
+        self._status.setText(
+            self._tt("find.replaced_n", "{n} ocorrência(s) substituída(s).").format(n=count)
+        )
 
     def _selection_matches(self, cursor: QTextCursor, needle: str) -> bool:
         selected = cursor.selectedText().replace("\u2029", "\n")

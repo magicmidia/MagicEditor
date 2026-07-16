@@ -155,7 +155,18 @@ class Sidebar(QWidget):
         self._ws_title.setText(name)
 
     def set_workspace_label(self, name: str) -> None:
-        self._ws_title.setText(name or "Workspace")
+        self._ws_title.setText(name or self._ws_title.text())
+
+    def retranslate(self, tr) -> None:
+        """Apply UI language to fixed labels."""
+        t = tr.t
+        if self._ws_title.text() in {"Workspace", "Área de trabalho", ""}:
+            self._ws_title.setText(t("panel.workspace", "Área de trabalho"))
+        self._btn_explorer.setText("  " + t("nav.explorer", "Explorador"))
+        self._btn_search.setText("  " + t("nav.search", "Pesquisar"))
+        self._btn_settings.setText("  " + t("nav.settings", "Configurações"))
+        self._open_label.setText(t("panel.open_editors", "Editores abertos").upper())
+        self._proj_label.setText(t("panel.project_files", "Arquivos do projeto").upper())
 
     def set_open_editors(self, items: list[tuple[str, str]]) -> None:
         """``items``: list of (display_name, path_or_key)."""

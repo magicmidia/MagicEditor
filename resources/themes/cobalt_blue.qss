@@ -15,7 +15,7 @@ QMenu {
   border: 1px solid #0A4A80; border-radius: 6px; padding: 4px;
 }
 QMenu::item {
-  padding: 6px 28px 6px 28px; margin: 1px 2px; border-radius: 4px; min-height: 16px;
+  padding: 4px 14px 4px 10px; margin: 0px; border-radius: 4px; min-height: 18px;
 }
 QMenu::item:selected { background-color: #0A4A80; color: #FFFFFF; }
 QMenu::indicator { width: 12px; height: 12px; left: 8px; }
@@ -67,12 +67,12 @@ QTreeView::item:selected { background-color: #0A4A80; color: #FFFFFF; }
 QDialog { background-color: #001F38; color: #E8F1FF; }
 QLineEdit {
   background-color: #002B4D; color: #E8F1FF; border: 1px solid #0A4A80;
-  border-radius: 6px; padding: 6px 10px; min-height: 16px;
+  border-radius: 6px; padding: 6px 10px; min-height: 18px;
 }
 QLineEdit:focus { border: 1px solid #F5C542; }
 QPushButton {
   background-color: #0A3A66; color: #E8F1FF; border: 1px solid #0A4A80;
-  border-radius: 6px; padding: 6px 12px; min-height: 16px;
+  border-radius: 6px; padding: 6px 12px; min-height: 18px;
 }
 QPushButton:hover { background-color: #0A4A80; }
 QPushButton:default, QPushButton:pressed {

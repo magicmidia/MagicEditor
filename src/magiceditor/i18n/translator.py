@@ -22,7 +22,7 @@ class TranslatorManager(QObject):
     ) -> None:
         super().__init__(parent)
         self._locales_dir = locales_path or locales_dir()
-        self._lang = "en_US"
+        self._lang = "pt_BR"
         self._catalog: dict[str, str] = {}
 
     @property

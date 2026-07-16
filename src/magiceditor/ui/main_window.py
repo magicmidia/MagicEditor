@@ -342,9 +342,15 @@ class MainWindow(QMainWindow):
             "action.save_as": "save_as",
             "action.print": "save",
             "action.export_pdf": "save_as",
+            "action.undo": "undo",
+            "action.redo": "redo",
             "action.find": "find",
             "action.replace": "replace",
             "action.find_in_files": "find",
+            "action.goto_line": "goto",
+            "action.toggle_bookmark": "bookmark",
+            "action.next_bookmark": "bookmark",
+            "action.prev_bookmark": "bookmark",
             "action.preview": "preview",
             "action.toggle_sidebar": "sidebar",
             "action.word_wrap": "wrap",
@@ -353,6 +359,8 @@ class MainWindow(QMainWindow):
             "action.zoom_out": "zoom_out",
             "action.zoom_reset": "zoom_reset",
             "action.fullscreen": "fullscreen",
+            "action.settings": "settings",
+            "action.quick_open": "find",
             "action.exit": "exit",
             "action.about": "about",
         }
@@ -381,48 +389,58 @@ class MainWindow(QMainWindow):
 
     def retranslate_ui(self) -> None:
         t = self._tr.t
-        self._menu_file.setTitle(t("menu.file", "File"))
-        self._menu_edit.setTitle(t("menu.edit", "Edit"))
-        self._menu_view.setTitle(t("menu.view", "View"))
-        self._menu_syntax.setTitle(t("menu.syntax", "Syntax"))
-        self._menu_themes.setTitle(t("menu.themes", "Themes"))
-        self._menu_lang.setTitle(t("menu.ui_language", "UI Language"))
-        self._menu_help.setTitle(t("menu.help", "Help"))
-        self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorer"))
+        self._menu_file.setTitle(t("menu.file", "Arquivo"))
+        self._menu_edit.setTitle(t("menu.edit", "Editar"))
+        self._menu_view.setTitle(t("menu.view", "Exibir"))
+        self._menu_syntax.setTitle(t("menu.syntax", "Sintaxe"))
+        self._menu_themes.setTitle(t("menu.themes", "Temas"))
+        self._menu_lang.setTitle(t("menu.ui_language", "Idioma da interface"))
+        self._menu_help.setTitle(t("menu.help", "Ajuda"))
+        self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorador"))
         labels = {
-            "action.new": t("action.new", "New"),
-            "action.open": t("action.open", "Open"),
-            "action.open_folder": t("action.open_folder", "Open Folder…"),
-            "action.save": t("action.save", "Save"),
-            "action.save_as": t("action.save_as", "Save As"),
-            "action.print": t("action.print", "Print…"),
-            "action.export_pdf": t("action.export_pdf", "Export PDF…"),
-            "action.undo": t("action.undo", "Undo"),
-            "action.redo": t("action.redo", "Redo"),
-            "action.find": t("action.find", "Find"),
-            "action.replace": t("action.replace", "Replace"),
-            "action.find_in_files": t("action.find_in_files", "Find in Files"),
-            "action.goto_line": t("action.goto_line", "Go to Line…"),
-            "action.toggle_bookmark": t("action.toggle_bookmark", "Toggle Bookmark"),
-            "action.next_bookmark": t("action.next_bookmark", "Next Bookmark"),
-            "action.prev_bookmark": t("action.prev_bookmark", "Previous Bookmark"),
-            "action.preview": t("action.preview", "Preview"),
-            "action.toggle_sidebar": t("action.toggle_sidebar", "Toggle Explorer"),
-            "action.word_wrap": t("action.word_wrap", "Word Wrap"),
-            "action.line_numbers": t("action.line_numbers", "Line Numbers"),
-            "action.zoom_in": t("action.zoom_in", "Zoom In"),
-            "action.zoom_out": t("action.zoom_out", "Zoom Out"),
-            "action.zoom_reset": t("action.zoom_reset", "Reset Zoom"),
-            "action.fullscreen": t("action.fullscreen", "Full Screen"),
-            "action.settings": t("action.settings", "Settings…"),
-            "action.quick_open": t("action.quick_open", "Quick Open"),
-            "action.exit": t("action.exit", "Exit"),
-            "action.about": t("action.about", "About"),
+            "action.new": t("action.new", "Novo"),
+            "action.open": t("action.open", "Abrir"),
+            "action.open_folder": t("action.open_folder", "Abrir pasta…"),
+            "action.save": t("action.save", "Salvar"),
+            "action.save_as": t("action.save_as", "Salvar como…"),
+            "action.print": t("action.print", "Imprimir…"),
+            "action.export_pdf": t("action.export_pdf", "Exportar PDF…"),
+            "action.undo": t("action.undo", "Desfazer"),
+            "action.redo": t("action.redo", "Refazer"),
+            "action.find": t("action.find", "Localizar"),
+            "action.replace": t("action.replace", "Substituir"),
+            "action.find_in_files": t("action.find_in_files", "Localizar nos arquivos"),
+            "action.goto_line": t("action.goto_line", "Ir para linha…"),
+            "action.toggle_bookmark": t("action.toggle_bookmark", "Alternar marcador"),
+            "action.next_bookmark": t("action.next_bookmark", "Próximo marcador"),
+            "action.prev_bookmark": t("action.prev_bookmark", "Marcador anterior"),
+            "action.preview": t("action.preview", "Pré-visualizar"),
+            "action.toggle_sidebar": t("action.toggle_sidebar", "Alternar explorador"),
+            "action.word_wrap": t("action.word_wrap", "Quebra de linha"),
+            "action.line_numbers": t("action.line_numbers", "Números de linha"),
+            "action.zoom_in": t("action.zoom_in", "Aumentar zoom"),
+            "action.zoom_out": t("action.zoom_out", "Diminuir zoom"),
+            "action.zoom_reset": t("action.zoom_reset", "Zoom padrão"),
+            "action.fullscreen": t("action.fullscreen", "Tela cheia"),
+            "action.settings": t("action.settings", "Configurações…"),
+            "action.quick_open": t("action.quick_open", "Abrir rapidamente"),
+            "action.exit": t("action.exit", "Sair"),
+            "action.about": t("action.about", "Sobre"),
         }
         for key, label in labels.items():
             if key in self._actions:
                 self._actions[key].setText(label)
                 self._actions[key].setToolTip(label)
+        # Theme menu labels
+        for tid, action in self._theme_actions.items():
+            action.setText(t(f"theme.{tid}", action.text()))
+        if self._quick_search is not None:
+            self._quick_search.setPlaceholderText(
+                t("toolbar.search_placeholder", "Pesquisar arquivos (Ctrl+P)")
+            )
+        self._sidebar.retranslate(self._tr)
+        if self._workspace is None:
+            self._status.set_sync_message(t("status.sync", "Sincronização: MagicCloud"))
         tab = self.current_tab()
         if tab is not None:
             self._update_status_for(tab)
@@ -552,7 +570,7 @@ class MainWindow(QMainWindow):
                 w.editor.apply_theme_palette(theme)
 
     def show_settings(self) -> None:
-        dlg = SettingsDialog(self._session, self)
+        dlg = SettingsDialog(self._session, self, tr=self._tr)
         if dlg.exec() != SettingsDialog.DialogCode.Accepted:
             return
         old_gpu = self._session.gpu_acceleration
@@ -566,9 +584,12 @@ class MainWindow(QMainWindow):
         ):
             QMessageBox.information(
                 self,
-                "MagicEditor",
-                "GPU / MSAA settings are applied on the next launch.\n"
-                "Restart MagicEditor to enable the new rendering path.",
+                self._tr.t("app.name", "MagicEditor"),
+                self._tr.t(
+                    "msg.gpu_restart",
+                    "As opções de GPU/MSAA são aplicadas na próxima inicialização.\n"
+                    "Reinicie o MagicEditor para ativar o novo modo de renderização.",
+                ),
             )
 
     def show_quick_open(self) -> None:
@@ -705,7 +726,9 @@ class MainWindow(QMainWindow):
         self._sidebar.set_workspace_label(path.name)
         self._sidebar_dock.show()
         self._actions["action.toggle_sidebar"].setChecked(True)
-        self._status.set_sync_message(f"Workspace: {path.name}")
+        self._status.set_sync_message(
+            self._tr.t("status.workspace", "Projeto: {name}").format(name=path.name)
+        )
         if persist:
             self._persist_session()
 
@@ -835,14 +858,14 @@ class MainWindow(QMainWindow):
         tab = self.current_tab()
         if tab is None:
             return
-        dlg = FindDialog(tab.editor, self, replace_mode=False)
+        dlg = FindDialog(tab.editor, self, replace_mode=False, tr=self._tr)
         dlg.exec()
 
     def show_replace(self) -> None:
         tab = self.current_tab()
         if tab is None:
             return
-        dlg = FindDialog(tab.editor, self, replace_mode=True)
+        dlg = FindDialog(tab.editor, self, replace_mode=True, tr=self._tr)
         dlg.exec()
 
     def show_find_in_files(self) -> None:
@@ -872,7 +895,7 @@ class MainWindow(QMainWindow):
         tab = self.current_tab()
         if tab is None:
             return
-        dlg = GoToLineDialog(tab.line_count(), tab.current_line(), self)
+        dlg = GoToLineDialog(tab.line_count(), tab.current_line(), self, tr=self._tr)
         if dlg.exec() == GoToLineDialog.DialogCode.Accepted:
             tab.goto_line(dlg.line_number(), 1)
             self._update_status_for(tab)
@@ -987,17 +1010,41 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
         self._actions["action.fullscreen"].setChecked(self.isFullScreen())
 
+    def _msg_buttons(self, box: QMessageBox) -> None:
+        """Localize standard QMessageBox buttons."""
+        t = self._tr.t
+        mapping = {
+            QMessageBox.StandardButton.Save: t("dialog.save", "Salvar"),
+            QMessageBox.StandardButton.Discard: t("dialog.discard", "Descartar"),
+            QMessageBox.StandardButton.Cancel: t("dialog.cancel", "Cancelar"),
+            QMessageBox.StandardButton.Yes: t("dialog.yes", "Sim"),
+            QMessageBox.StandardButton.No: t("dialog.no", "Não"),
+            QMessageBox.StandardButton.Ok: t("dialog.ok", "OK"),
+            QMessageBox.StandardButton.Close: t("dialog.close", "Fechar"),
+        }
+        for std, label in mapping.items():
+            btn = box.button(std)
+            if btn is not None:
+                btn.setText(label)
+
     def _close_tab(self, index: int) -> None:
         widget = self.tabs.widget(index)
         if isinstance(widget, EditorTab) and widget.document.modified:
-            reply = QMessageBox.question(
-                self,
-                "MagicEditor",
-                f"Save changes to {widget.document.title}?",
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Icon.Question)
+            box.setWindowTitle(self._tr.t("app.name", "MagicEditor"))
+            box.setText(
+                self._tr.t("msg.save_changes", "Salvar alterações em «{name}»?").format(
+                    name=widget.document.title
+                )
+            )
+            box.setStandardButtons(
                 QMessageBox.StandardButton.Save
                 | QMessageBox.StandardButton.Discard
-                | QMessageBox.StandardButton.Cancel,
+                | QMessageBox.StandardButton.Cancel
             )
+            self._msg_buttons(box)
+            reply = box.exec()
             if reply == QMessageBox.StandardButton.Cancel:
                 return
             if reply == QMessageBox.StandardButton.Save:
@@ -1045,11 +1092,14 @@ class MainWindow(QMainWindow):
     def _about(self) -> None:
         QMessageBox.about(
             self,
-            "MagicEditor",
-            "<h3>MagicEditor</h3>"
-            "<p>Modern, fast text &amp; code editor for everyday work.</p>"
-            "<p>Piece table · mmap-ready core · live preview · themes · i18n</p>"
-            "<p>Version 0.1.0</p>",
+            self._tr.t("msg.about_title", "Sobre o MagicEditor"),
+            self._tr.t(
+                "msg.about_body",
+                "<h3>MagicEditor</h3>"
+                "<p>Editor de texto e código moderno e rápido para o dia a dia.</p>"
+                "<p>Piece table · mmap · pré-visualização · temas · i18n</p>"
+                "<p>Versão 0.1.0</p>",
+            ),
         )
 
     def closeEvent(self, event: QCloseEvent | None) -> None:
@@ -1058,13 +1108,20 @@ class MainWindow(QMainWindow):
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab) and w.document.modified:
-                reply = QMessageBox.question(
-                    self,
-                    "MagicEditor",
-                    "There are unsaved documents. Quit anyway?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                box = QMessageBox(self)
+                box.setIcon(QMessageBox.Icon.Question)
+                box.setWindowTitle(self._tr.t("app.name", "MagicEditor"))
+                box.setText(
+                    self._tr.t(
+                        "msg.unsaved_quit",
+                        "Há documentos não salvos. Sair mesmo assim?",
+                    )
                 )
-                if reply == QMessageBox.StandardButton.No:
+                box.setStandardButtons(
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                self._msg_buttons(box)
+                if box.exec() == QMessageBox.StandardButton.No:
                     event.ignore()
                     return
                 break

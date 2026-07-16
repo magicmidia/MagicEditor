@@ -13,7 +13,7 @@ from PyQt6.QtCore import QByteArray, QSettings
 @dataclass
 class SessionState:
     theme: str = "luminous_void"
-    language: str = "en_US"
+    language: str = "pt_BR"
     word_wrap: bool = False
     line_numbers: bool = True
     workspace: str | None = None
@@ -170,7 +170,7 @@ class AppSettings:
         state = qs.value("window/state")
         return SessionState(
             theme=qs.value("ui/theme", "luminous_void", str) or "luminous_void",
-            language=qs.value("ui/language", "en_US", str) or "en_US",
+            language=qs.value("ui/language", "pt_BR", str) or "pt_BR",
             word_wrap=self._as_bool(qs.value("ui/word_wrap"), False),
             line_numbers=(
                 True
