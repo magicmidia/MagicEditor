@@ -1,4 +1,4 @@
-"""Single document tab: editor + optional preview split."""
+"""Single document tab: editor + syntax highlight + optional preview."""
 
 from __future__ import annotations
 
@@ -6,8 +6,10 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
 from magiceditor.core.piece_table import PieceTable
+from magiceditor.core.syntax.detect import detect_language
 from magiceditor.preview.web_preview import WebPreview
 from magiceditor.services.document import Document
+from magiceditor.ui.syntax_highlighter import MagicHighlighter
 from magiceditor.ui.text_editor import TextEditor
 
 
@@ -16,15 +18,18 @@ class EditorTab(QWidget):
 
     modification_changed = pyqtSignal()
     cursor_info_changed = pyqtSignal(int, int)  # line, column (1-based)
+    language_changed = pyqtSignal(str)
 
     def __init__(self, document: Document, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.document = document
         self._preview_visible = False
+        self._language = detect_language(document.path, document.title)
 
         self.editor = TextEditor(self)
         self.preview = WebPreview(self)
         self.preview.hide()
+        self._highlighter = MagicHighlighter(self.editor.document(), self._language)
 
         self._splitter = QSplitter(Qt.Orientation.Horizontal, self)
         self._splitter.addWidget(self.editor)
@@ -41,6 +46,18 @@ class EditorTab(QWidget):
         self.editor.document().setModified(False)
         self.editor.textChanged.connect(self._on_text_changed)
         self.editor.cursorPositionChanged.connect(self._on_cursor)
+
+    @property
+    def language(self) -> str:
+        return self._language
+
+    def set_language(self, language: str) -> None:
+        self._language = language
+        self._highlighter.set_language(language)
+        self.language_changed.emit(language)
+
+    def set_syntax_light_theme(self, light: bool) -> None:
+        self._highlighter.set_light_theme(light)
 
     def _on_text_changed(self) -> None:
         text = self.editor.toPlainText()
@@ -64,7 +81,7 @@ class EditorTab(QWidget):
     def refresh_preview(self) -> None:
         name = self.document.title.lower()
         text = self.editor.toPlainText()
-        if name.endswith((".html", ".htm")):
+        if name.endswith((".html", ".htm")) or self._language == "html":
             self.preview.set_html(text)
         else:
             self.preview.set_markdown(text)

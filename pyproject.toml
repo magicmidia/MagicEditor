@@ -69,6 +69,7 @@ ignore = [
   "PLR2004", # magic values — OK in parsers (0x0A etc.)
   "SIM105",  # contextlib.suppress optional style
   "SIM108",  # ternary style optional
+  "N802",    # Qt overrides use camelCase (highlightBlock, etc.)
 ]
 
 [tool.ruff.lint.per-file-ignores]

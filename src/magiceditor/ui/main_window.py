@@ -16,9 +16,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from magiceditor.core.syntax.detect import language_label, supported_languages
 from magiceditor.i18n.translator import TranslatorManager
 from magiceditor.services.document import Document
 from magiceditor.services.document_io import open_document, save_document
+from magiceditor.services.print_engine import export_pdf, print_plain_text
 from magiceditor.services.settings import AppSettings, SessionState
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.editor_tab import EditorTab
@@ -80,10 +82,13 @@ class MainWindow(QMainWindow):
         self._actions: dict[str, QAction] = {}
         self._theme_actions: dict[str, QAction] = {}
         self._lang_actions: dict[str, QAction] = {}
+        self._syntax_actions: dict[str, QAction] = {}
         self._theme_group = QActionGroup(self)
         self._theme_group.setExclusive(True)
         self._lang_group = QActionGroup(self)
         self._lang_group.setExclusive(True)
+        self._syntax_group = QActionGroup(self)
+        self._syntax_group.setExclusive(True)
 
         self._build_actions()
         self._build_menus()
@@ -148,6 +153,8 @@ class MainWindow(QMainWindow):
         act("action.open_folder", self.open_folder_dialog, "Ctrl+K")
         act("action.save", self.save_current, "Ctrl+S")
         act("action.save_as", self.save_current_as, "Ctrl+Shift+S")
+        act("action.print", self.print_current, "Ctrl+P")
+        act("action.export_pdf", self.export_pdf_current, "Ctrl+Shift+E")
         act("action.find", self.show_find, "Ctrl+F")
         act("action.replace", self.show_replace, "Ctrl+H")
         act("action.preview", self.toggle_preview, "Ctrl+Shift+P")
@@ -169,8 +176,9 @@ class MainWindow(QMainWindow):
         self._menu_file = mb.addMenu("File")
         self._menu_edit = mb.addMenu("Edit")
         self._menu_view = mb.addMenu("View")
+        self._menu_syntax = mb.addMenu("Syntax")
         self._menu_themes = mb.addMenu("Themes")
-        self._menu_lang = mb.addMenu("Language")
+        self._menu_lang = mb.addMenu("UI Language")
         self._menu_help = mb.addMenu("Help")
 
         for key in (
@@ -179,6 +187,8 @@ class MainWindow(QMainWindow):
             "action.open_folder",
             "action.save",
             "action.save_as",
+            "action.print",
+            "action.export_pdf",
         ):
             self._menu_file.addAction(self._actions[key])
         self._menu_file.addSeparator()
@@ -198,6 +208,17 @@ class MainWindow(QMainWindow):
             "action.fullscreen",
         ):
             self._menu_view.addAction(self._actions[key])
+
+        for lang_id, label in supported_languages():
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setData(lang_id)
+            action.triggered.connect(
+                lambda checked=False, lid=lang_id: self.set_syntax_language(lid)
+            )
+            self._syntax_group.addAction(action)
+            self._menu_syntax.addAction(action)
+            self._syntax_actions[lang_id] = action
 
         for theme_id, label in self._themes.list_themes():
             action = QAction(label, self)
@@ -259,6 +280,8 @@ class MainWindow(QMainWindow):
             "action.open_folder": "folder",
             "action.save": "save",
             "action.save_as": "save_as",
+            "action.print": "save",
+            "action.export_pdf": "save_as",
             "action.find": "find",
             "action.replace": "replace",
             "action.preview": "preview",
@@ -287,14 +310,22 @@ class MainWindow(QMainWindow):
         self._actions["action.word_wrap"].setChecked(self._word_wrap)
         self._actions["action.line_numbers"].setChecked(self._line_numbers)
         self._actions["action.fullscreen"].setChecked(self.isFullScreen())
+        self._sync_syntax_check()
+
+    def _sync_syntax_check(self) -> None:
+        tab = self.current_tab()
+        current = tab.language if tab is not None else "text"
+        for lid, action in self._syntax_actions.items():
+            action.setChecked(lid == current)
 
     def retranslate_ui(self) -> None:
         t = self._tr.t
         self._menu_file.setTitle(t("menu.file", "File"))
         self._menu_edit.setTitle(t("menu.edit", "Edit"))
         self._menu_view.setTitle(t("menu.view", "View"))
+        self._menu_syntax.setTitle(t("menu.syntax", "Syntax"))
         self._menu_themes.setTitle(t("menu.themes", "Themes"))
-        self._menu_lang.setTitle(t("menu.language", "Language"))
+        self._menu_lang.setTitle(t("menu.ui_language", "UI Language"))
         self._menu_help.setTitle(t("menu.help", "Help"))
         self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorer"))
         labels = {
@@ -303,6 +334,8 @@ class MainWindow(QMainWindow):
             "action.open_folder": t("action.open_folder", "Open Folder…"),
             "action.save": t("action.save", "Save"),
             "action.save_as": t("action.save_as", "Save As"),
+            "action.print": t("action.print", "Print…"),
+            "action.export_pdf": t("action.export_pdf", "Export PDF…"),
             "action.find": t("action.find", "Find"),
             "action.replace": t("action.replace", "Replace"),
             "action.preview": t("action.preview", "Preview"),
@@ -391,10 +424,24 @@ class MainWindow(QMainWindow):
             return
         self._icon_color = toolbar_icon_color(theme_id)
         self._apply_icons()
+        light = theme_id == "clean_light"
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if isinstance(w, EditorTab):
+                w.set_syntax_light_theme(light)
         self._sync_checkables()
         self._status.showMessage(f"Theme: {theme_id}", 2500)
         if persist:
             self._persist_session()
+
+    def set_syntax_language(self, lang_id: str) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        tab.set_language(lang_id)
+        self._sync_syntax_check()
+        self._update_status_for(tab)
+        self._status.showMessage(f"Syntax: {language_label(lang_id)}", 2000)
 
     def _set_language(self, lang: str, *, persist: bool = True) -> None:
         try:
@@ -477,13 +524,50 @@ class MainWindow(QMainWindow):
         tab = EditorTab(doc, self)
         tab.set_word_wrap(self._word_wrap)
         tab.set_line_numbers(self._line_numbers)
+        tab.set_syntax_light_theme(self._themes.current == "clean_light")
         tab.modification_changed.connect(self._refresh_tab_titles)
         tab.cursor_info_changed.connect(self._status.set_cursor)
+        tab.language_changed.connect(lambda _lang: self._sync_syntax_check())
         idx = self.tabs.addTab(tab, doc.display_name())
         if activate:
             self.tabs.setCurrentIndex(idx)
             self._update_status_for(tab)
+            self._sync_syntax_check()
         return tab
+
+    def print_current(self) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        tab.sync_document_from_editor()
+        ok = print_plain_text(
+            tab.editor.toPlainText(),
+            parent=self,
+            title=tab.document.title,
+        )
+        if ok:
+            self._status.showMessage("Sent to printer", 2500)
+
+    def export_pdf_current(self) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        tab.sync_document_from_editor()
+        default = Path.home() / f"{Path(tab.document.title).stem or 'document'}.pdf"
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            self._tr.t("action.export_pdf", "Export PDF…"),
+            str(default),
+            "PDF (*.pdf)",
+        )
+        if not path:
+            return
+        try:
+            export_pdf(tab.editor.toPlainText(), path, title=tab.document.title)
+        except OSError as exc:
+            QMessageBox.critical(self, "MagicEditor", str(exc))
+            return
+        self._status.showMessage(f"PDF saved: {Path(path).name}", 3500)
 
     def save_current(self) -> None:
         tab = self.current_tab()
@@ -642,9 +726,9 @@ class MainWindow(QMainWindow):
         doc = tab.document
         self._status.set_encoding(doc.encoding)
         self._status.set_eol(doc.eol)
-        suffix = Path(doc.title).suffix.lower().lstrip(".") or "text"
-        self._status.set_filetype(suffix.upper())
+        self._status.set_filetype(language_label(tab.language).upper())
         self.setWindowTitle(f"{doc.display_name()} — MagicEditor")
+        self._sync_syntax_check()
 
     def _about(self) -> None:
         QMessageBox.about(
