@@ -154,6 +154,13 @@ class VirtualEditor(QAbstractScrollArea):
             self._bookmarks.add(line)
         self.viewport().update()
 
+    def get_bookmarks(self) -> list[int]:
+        return sorted(self._bookmarks)
+
+    def set_bookmarks(self, lines: list[int] | set[int]) -> None:
+        self._bookmarks = {int(x) for x in lines if int(x) >= 0}
+        self.viewport().update()
+
     def next_bookmark(self) -> bool:
         if not self._bookmarks:
             return False

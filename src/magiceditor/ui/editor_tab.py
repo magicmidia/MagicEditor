@@ -197,8 +197,22 @@ class EditorTab(QWidget):
     def toggle_bookmark(self) -> None:
         self.editor.toggle_bookmark()
 
+    def get_bookmarks(self) -> list[int]:
+        return self.editor.get_bookmarks()
+
+    def set_bookmarks(self, lines: list[int] | set[int]) -> None:
+        self.editor.set_bookmarks(lines)
+
     def next_bookmark(self) -> bool:
         return self.editor.next_bookmark()
 
     def prev_bookmark(self) -> bool:
         return self.editor.prev_bookmark()
+
+    def cursor_line_col_1based(self) -> tuple[int, int]:
+        return self.current_line(), (
+            self.editor.cursor_line_col()[1]
+            if isinstance(self.editor, VirtualEditor)
+            else self.editor.textCursor().positionInBlock() + 1
+        )
+

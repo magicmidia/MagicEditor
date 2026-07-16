@@ -21,7 +21,7 @@ from magiceditor.i18n.translator import TranslatorManager
 from magiceditor.services.document import Document
 from magiceditor.services.document_io import open_document, save_document
 from magiceditor.services.print_engine import export_pdf, print_plain_text
-from magiceditor.services.settings import AppSettings, SessionState
+from magiceditor.services.settings import AppSettings, SessionState, normalize_path
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.find_dialog import FindDialog
@@ -397,6 +397,11 @@ class MainWindow(QMainWindow):
     def _restore_session_files(self) -> bool:
         opened = False
         active_index = 0
+        active_key = (
+            normalize_path(self._session.active_file)
+            if self._session.active_file
+            else None
+        )
         for path_str in self._session.open_files:
             path = Path(path_str)
             if not path.is_file():
@@ -406,7 +411,17 @@ class MainWindow(QMainWindow):
             except OSError:
                 continue
             tab = self._add_document(doc, activate=False)
-            if self._session.active_file and path_str == self._session.active_file:
+            key = normalize_path(path)
+            # Restore bookmarks (0-based lines)
+            marks = self._session.bookmarks.get(key) or self._session.bookmarks.get(path_str)
+            if marks:
+                tab.set_bookmarks(marks)
+            # Restore caret
+            cursor = self._session.cursors.get(key) or self._session.cursors.get(path_str)
+            if cursor:
+                line, col = cursor
+                tab.goto_line(line, col)
+            if active_key and key == active_key:
                 active_index = self.tabs.indexOf(tab)
             opened = True
         if opened:
@@ -418,23 +433,37 @@ class MainWindow(QMainWindow):
 
     def _collect_session(self) -> SessionState:
         open_files: list[str] = []
+        bookmarks: dict[str, list[int]] = {}
+        cursors: dict[str, tuple[int, int]] = {}
         active: str | None = None
         current = self.current_tab()
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
-            if isinstance(w, EditorTab) and w.document.path is not None:
-                p = str(w.document.path.resolve())
-                open_files.append(p)
-                if w is current:
-                    active = p
+            if not isinstance(w, EditorTab) or w.document.path is None:
+                continue
+            if not w.document.path.is_file():
+                continue
+            p = normalize_path(w.document.path)
+            open_files.append(p)
+            marks = w.get_bookmarks()
+            if marks:
+                bookmarks[p] = marks
+            cursors[p] = w.cursor_line_col_1based()
+            if w is current:
+                active = p
+        workspace = None
+        if self._workspace is not None and self._workspace.is_dir():
+            workspace = normalize_path(self._workspace)
         return SessionState(
             theme=self._themes.current,
             language=self._tr.language,
             word_wrap=self._word_wrap,
             line_numbers=self._line_numbers,
-            workspace=str(self._workspace) if self._workspace else None,
+            workspace=workspace,
             open_files=open_files,
             active_file=active,
+            bookmarks=bookmarks,
+            cursors=cursors,
             geometry=self.saveGeometry(),
             window_state=self.saveState(),
         )
@@ -699,16 +728,19 @@ class MainWindow(QMainWindow):
         tab = self.current_tab()
         if tab is not None:
             tab.toggle_bookmark()
+            self._persist_session()
 
     def next_bookmark(self) -> None:
         tab = self.current_tab()
         if tab is not None and tab.next_bookmark():
             self._update_status_for(tab)
+            self._persist_session()
 
     def prev_bookmark(self) -> None:
         tab = self.current_tab()
         if tab is not None and tab.prev_bookmark():
             self._update_status_for(tab)
+            self._persist_session()
 
     def undo_current(self) -> None:
         tab = self.current_tab()
