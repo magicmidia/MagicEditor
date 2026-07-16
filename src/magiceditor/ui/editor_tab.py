@@ -193,3 +193,12 @@ class EditorTab(QWidget):
             return line
         assert isinstance(self.editor, TextEditor)
         return self.editor.textCursor().blockNumber() + 1
+
+    def toggle_bookmark(self) -> None:
+        self.editor.toggle_bookmark()
+
+    def next_bookmark(self) -> bool:
+        return self.editor.next_bookmark()
+
+    def prev_bookmark(self) -> bool:
+        return self.editor.prev_bookmark()

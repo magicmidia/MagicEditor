@@ -9,6 +9,7 @@ from PyQt6.QtCore import QPoint, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QKeyEvent, QPainter, QPaintEvent, QWheelEvent
 from PyQt6.QtWidgets import QAbstractScrollArea, QWidget
 
+from magiceditor.core.line_wrap import expand_tabs, wrap_ranges
 from magiceditor.core.syntax.rules import tokenize_line
 from magiceditor.core.text_match import (
     PatternError,
@@ -61,11 +62,13 @@ class VirtualEditor(QAbstractScrollArea):
         super().__init__(parent)
         self._doc = document
         self._show_line_numbers = True
+        self._word_wrap = False
+        self._bookmarks: set[int] = set()
         self._cursor_line = 0
         self._cursor_col = 0
         self._modified = False
         self._line_height = 18
-        self._gutter_width = 48
+        self._gutter_width = 56
         self._pad_x = 8
         self._language = "text"
         self._find_needle = ""
@@ -135,12 +138,40 @@ class VirtualEditor(QAbstractScrollArea):
 
     def set_line_numbers_visible(self, visible: bool) -> None:
         self._show_line_numbers = visible
-        self._gutter_width = 48 if visible else 0
+        self._gutter_width = 56 if visible else 0
         self.viewport().update()
 
-    def set_word_wrap(self, _enabled: bool) -> None:
-        # Soft wrap not implemented in virtual mode (horizontal scroll only).
-        pass
+    def set_word_wrap(self, enabled: bool) -> None:
+        self._word_wrap = enabled
+        self._update_scrollbars()
+        self.viewport().update()
+
+    def toggle_bookmark(self) -> None:
+        line = self._cursor_line
+        if line in self._bookmarks:
+            self._bookmarks.discard(line)
+        else:
+            self._bookmarks.add(line)
+        self.viewport().update()
+
+    def next_bookmark(self) -> bool:
+        if not self._bookmarks:
+            return False
+        after = sorted(b for b in self._bookmarks if b > self._cursor_line)
+        target = after[0] if after else min(self._bookmarks)
+        self.goto_line(target, 0)
+        return True
+
+    def prev_bookmark(self) -> bool:
+        if not self._bookmarks:
+            return False
+        before = sorted(b for b in self._bookmarks if b < self._cursor_line)
+        target = before[-1] if before else max(self._bookmarks)
+        self.goto_line(target, 0)
+        return True
+
+    def has_bookmark(self, line: int) -> bool:
+        return line in self._bookmarks
 
     def zoom_in_one(self) -> None:
         f = self.font()
@@ -364,8 +395,25 @@ class VirtualEditor(QAbstractScrollArea):
         visible = max(1, self.viewport().height() // self._line_height)
         self.verticalScrollBar().setRange(0, max(0, lines - 1))
         self.verticalScrollBar().setPageStep(visible)
-        self.horizontalScrollBar().setRange(0, 200)
-        self.horizontalScrollBar().setPageStep(20)
+        if self._word_wrap:
+            self.horizontalScrollBar().setRange(0, 0)
+        else:
+            self.horizontalScrollBar().setRange(0, 200)
+            self.horizontalScrollBar().setPageStep(20)
+
+    def _text_area_width(self) -> int:
+        gutter = self._gutter_width if self._show_line_numbers else 0
+        return max(40, self.viewport().width() - gutter - self._pad_x * 2)
+
+    def _wrap_display_rows(self, text: str) -> list[tuple[int, int, str]]:
+        """Return (disp_start, disp_end, row_text) for expanded display string."""
+        display = expand_tabs(text)
+        if not self._word_wrap:
+            return [(0, len(display), display)]
+        fm = self.fontMetrics()
+        max_w = self._text_area_width()
+        ranges = wrap_ranges(display, max_w, fm.horizontalAdvance)
+        return [(a, b, display[a:b]) for a, b in ranges]
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -392,29 +440,38 @@ class VirtualEditor(QAbstractScrollArea):
         fm = self.fontMetrics()
         lh = self._line_height
         first = self.verticalScrollBar().value()
-        h_off = self.horizontalScrollBar().value() * fm.horizontalAdvance(" ")
-        visible = self.viewport().height() // lh + 2
+        space_w = fm.horizontalAdvance(" ")
+        h_off = 0 if self._word_wrap else self.horizontalScrollBar().value() * space_w
         gutter = self._gutter_width if self._show_line_numbers else 0
         total = self._line_count()
-        do_syntax = self._language not in {"", "text"}
+        do_syntax = self._language not in {"", "text"} and not self._word_wrap
+        view_h = self.viewport().height()
 
         if gutter:
-            painter.fillRect(0, 0, gutter, self.viewport().height(), QColor(127, 127, 127, 18))
+            painter.fillRect(0, 0, gutter, view_h, QColor(127, 127, 127, 18))
 
-        for i in range(visible):
-            line = first + i
-            if line >= total:
-                break
-            y = i * lh
+        y = 0
+        line = first
+        while y < view_h and line < total:
+            try:
+                text = self._doc.line_text(line)
+            except IndexError:
+                text = ""
+            rows = self._wrap_display_rows(text)
+            row_h = lh * len(rows)
             if line == self._cursor_line:
                 painter.fillRect(
                     gutter,
                     y,
                     self.viewport().width() - gutter,
-                    lh,
+                    row_h,
                     QColor(56, 189, 248, 28),
                 )
             if gutter:
+                if line in self._bookmarks:
+                    painter.setBrush(QColor(56, 189, 248, 200))
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    painter.drawEllipse(4, y + lh // 2 - 4, 8, 8)
                 num = str(line + 1)
                 painter.setPen(QColor(148, 163, 184, 230 if line == self._cursor_line else 140))
                 painter.drawText(
@@ -425,33 +482,38 @@ class VirtualEditor(QAbstractScrollArea):
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                     num,
                 )
-            try:
-                text = self._doc.line_text(line)
-            except IndexError:
-                text = ""
-            display = text.replace("\t", "    ")
+
             base_x = gutter + self._pad_x - h_off
-            baseline = y + fm.ascent() + 1
+            for ri, (d0, d1, row) in enumerate(rows):
+                ry = y + ri * lh
+                if ry > view_h:
+                    break
+                baseline = ry + fm.ascent() + 1
+                if self._find_needle:
+                    self._paint_find_hits_row(painter, text, d0, d1, base_x, ry, lh, fm)
+                if do_syntax and text and len(text) <= 8000 and not self._word_wrap:
+                    self._paint_syntax_line(painter, text, row, base_x, baseline, fm)
+                else:
+                    painter.setPen(QColor(226, 232, 240))
+                    painter.drawText(base_x, baseline, row)
 
-            if self._find_needle:
-                self._paint_find_hits(painter, text, base_x, y, lh, fm)
+                if line == self._cursor_line:
+                    caret_disp = len(expand_tabs(text[: self._cursor_col]))
+                    if d0 <= caret_disp <= d1:
+                        prefix = row[: caret_disp - d0]
+                        cx = base_x + fm.horizontalAdvance(prefix)
+                        painter.setPen(QColor(56, 189, 248))
+                        painter.drawLine(cx, ry + 1, cx, ry + lh - 2)
 
-            if do_syntax and text and len(text) <= 8000:
-                self._paint_syntax_line(painter, text, display, base_x, baseline, fm)
-            else:
-                painter.setPen(QColor(226, 232, 240))
-                painter.drawText(base_x, baseline, display)
+            y += row_h
+            line += 1
 
-            if line == self._cursor_line:
-                prefix = text[: self._cursor_col].replace("\t", "    ")
-                cx = gutter + self._pad_x - h_off + fm.horizontalAdvance(prefix)
-                painter.setPen(QColor(56, 189, 248))
-                painter.drawLine(cx, y + 1, cx, y + lh - 2)
-
-    def _paint_find_hits(
+    def _paint_find_hits_row(
         self,
         painter: QPainter,
         text: str,
+        d0: int,
+        d1: int,
         base_x: int,
         y: int,
         lh: int,
@@ -469,11 +531,16 @@ class VirtualEditor(QAbstractScrollArea):
         except PatternError:
             return
         for m in find_all_matches(text, pattern):
-            prefix = text[: m.start()].replace("\t", "    ")
-            match = text[m.start() : m.end()].replace("\t", "    ")
-            x0 = base_x + fm.horizontalAdvance(prefix)
-            w = fm.horizontalAdvance(match)
-            painter.fillRect(x0, y + 1, w, lh - 2, _FIND_BG)
+            md0 = len(expand_tabs(text[: m.start()]))
+            md1 = len(expand_tabs(text[: m.end()]))
+            if md1 <= d0 or md0 >= d1:
+                continue
+            a = max(md0, d0) - d0
+            b = min(md1, d1) - d0
+            row = expand_tabs(text)[d0:d1]
+            x0 = base_x + fm.horizontalAdvance(row[:a])
+            w = fm.horizontalAdvance(row[a:b])
+            painter.fillRect(x0, y + 1, max(1, w), lh - 2, _FIND_BG)
 
     def _paint_syntax_line(
         self,
@@ -590,27 +657,56 @@ class VirtualEditor(QAbstractScrollArea):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             pos: QPoint = event.position().toPoint()
-            first = self.verticalScrollBar().value()
-            line = first + pos.y() // self._line_height
-            line = max(0, min(self._line_count() - 1, line))
-            gutter = self._gutter_width if self._show_line_numbers else 0
-            x = pos.x() - gutter - self._pad_x
-            text = self._doc.line_text(line)
-            fm = self.fontMetrics()
-            col = 0
-            acc = 0
-            for ch in text:
-                w = fm.horizontalAdvance(ch if ch != "\t" else "    ")
-                if acc + w / 2 >= x:
-                    break
-                acc += w
-                col += 1
+            line, col = self._hit_test(pos)
             self._cursor_line = line
             self._cursor_col = col
             self.cursorPositionChanged.emit()
             self.viewport().update()
             self.setFocus()
         super().mousePressEvent(event)
+
+    def _hit_test(self, pos: QPoint) -> tuple[int, int]:
+        """Map viewport point to (doc_line, char_col)."""
+        first = self.verticalScrollBar().value()
+        lh = self._line_height
+        gutter = self._gutter_width if self._show_line_numbers else 0
+        fm = self.fontMetrics()
+        space_w = fm.horizontalAdvance(" ")
+        h_off = 0 if self._word_wrap else self.horizontalScrollBar().value() * space_w
+        x = pos.x() - gutter - self._pad_x + h_off
+        y = 0
+        total = self._line_count()
+        line = first
+        while line < total:
+            try:
+                text = self._doc.line_text(line)
+            except IndexError:
+                text = ""
+            rows = self._wrap_display_rows(text)
+            for d0, _d1, row in rows:
+                if y <= pos.y() < y + lh:
+                    col_disp = 0
+                    acc = 0
+                    for ch in row:
+                        w = fm.horizontalAdvance(ch)
+                        if acc + w / 2 >= x:
+                            break
+                        acc += w
+                        col_disp += 1
+                    target_disp = d0 + col_disp
+                    # Map expanded display index back to text column
+                    col = 0
+                    disp = 0
+                    for ch in text:
+                        step = 4 if ch == "\t" else 1
+                        if disp + step > target_disp:
+                            break
+                        disp += step
+                        col += 1
+                    return line, col
+                y += lh
+            line += 1
+        return max(0, total - 1), 0
 
     # --- edits (piece table + incremental line index + undo) ----------
 

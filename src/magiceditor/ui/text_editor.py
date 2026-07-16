@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QRect, QSize, Qt
-from PyQt6.QtGui import QColor, QPainter, QTextCharFormat, QTextFormat
+from PyQt6.QtGui import QColor, QPainter, QTextCharFormat, QTextCursor, QTextFormat
 from PyQt6.QtWidgets import QPlainTextEdit, QTextEdit, QWidget
 
 from magiceditor.ui.fonts import editor_font
@@ -29,6 +29,7 @@ class TextEditor(QPlainTextEdit):
         self._line_numbers = _LineNumberArea(self)
         self._show_line_numbers = True
         self._highlight_current = True
+        self._bookmarks: set[int] = set()
 
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setCenterOnScroll(False)
@@ -46,7 +47,7 @@ class TextEditor(QPlainTextEdit):
         if not self._show_line_numbers:
             return 0
         digits = max(2, len(str(max(1, self.blockCount()))))
-        return 12 + self.fontMetrics().horizontalAdvance("9") * digits
+        return 18 + self.fontMetrics().horizontalAdvance("9") * digits
 
     def set_line_numbers_visible(self, visible: bool) -> None:
         self._show_line_numbers = visible
@@ -60,6 +61,40 @@ class TextEditor(QPlainTextEdit):
             else QPlainTextEdit.LineWrapMode.NoWrap
         )
         self.setLineWrapMode(mode)
+
+    def toggle_bookmark(self) -> None:
+        bn = self.textCursor().blockNumber()
+        if bn in self._bookmarks:
+            self._bookmarks.discard(bn)
+        else:
+            self._bookmarks.add(bn)
+        self._line_numbers.update()
+
+    def next_bookmark(self) -> bool:
+        if not self._bookmarks:
+            return False
+        cur = self.textCursor().blockNumber()
+        after = sorted(b for b in self._bookmarks if b > cur)
+        target = after[0] if after else min(self._bookmarks)
+        return self._goto_block(target)
+
+    def prev_bookmark(self) -> bool:
+        if not self._bookmarks:
+            return False
+        cur = self.textCursor().blockNumber()
+        before = sorted(b for b in self._bookmarks if b < cur)
+        target = before[-1] if before else max(self._bookmarks)
+        return self._goto_block(target)
+
+    def _goto_block(self, block_number: int) -> bool:
+        block = self.document().findBlockByNumber(block_number)
+        if not block.isValid():
+            return False
+        cursor = QTextCursor(block)
+        self.setTextCursor(cursor)
+        self.centerCursor()
+        self.setFocus()
+        return True
 
     def zoom_in_one(self) -> None:
         self.zoomIn(1)
@@ -90,6 +125,11 @@ class TextEditor(QPlainTextEdit):
 
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
+                if block_number in self._bookmarks:
+                    painter.setBrush(QColor(56, 189, 248, 200))
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    cy = top + self.fontMetrics().height() // 2 - 4
+                    painter.drawEllipse(3, cy, 8, 8)
                 number = str(block_number + 1)
                 if block_number == current:
                     painter.setPen(QColor(148, 163, 184, 230))

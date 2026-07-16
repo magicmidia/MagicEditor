@@ -163,6 +163,9 @@ class MainWindow(QMainWindow):
         act("action.replace", self.show_replace, "Ctrl+H")
         act("action.find_in_files", self.show_find_in_files, "Ctrl+Shift+F")
         act("action.goto_line", self.show_goto_line, "Ctrl+G")
+        act("action.toggle_bookmark", self.toggle_bookmark, "Ctrl+F2")
+        act("action.next_bookmark", self.next_bookmark, "F2")
+        act("action.prev_bookmark", self.prev_bookmark, "Shift+F2")
         act("action.preview", self.toggle_preview, "Ctrl+Shift+P")
         act("action.toggle_sidebar", self.toggle_sidebar, "Ctrl+B", checkable=True)
         act("action.word_wrap", self.toggle_word_wrap, "Alt+Z", checkable=True)
@@ -208,6 +211,13 @@ class MainWindow(QMainWindow):
             "action.replace",
             "action.find_in_files",
             "action.goto_line",
+        ):
+            self._menu_edit.addAction(self._actions[key])
+        self._menu_edit.addSeparator()
+        for key in (
+            "action.toggle_bookmark",
+            "action.next_bookmark",
+            "action.prev_bookmark",
         ):
             self._menu_edit.addAction(self._actions[key])
 
@@ -358,6 +368,9 @@ class MainWindow(QMainWindow):
             "action.replace": t("action.replace", "Replace"),
             "action.find_in_files": t("action.find_in_files", "Find in Files"),
             "action.goto_line": t("action.goto_line", "Go to Line…"),
+            "action.toggle_bookmark": t("action.toggle_bookmark", "Toggle Bookmark"),
+            "action.next_bookmark": t("action.next_bookmark", "Next Bookmark"),
+            "action.prev_bookmark": t("action.prev_bookmark", "Previous Bookmark"),
             "action.preview": t("action.preview", "Preview"),
             "action.toggle_sidebar": t("action.toggle_sidebar", "Toggle Explorer"),
             "action.word_wrap": t("action.word_wrap", "Word Wrap"),
@@ -680,6 +693,21 @@ class MainWindow(QMainWindow):
         dlg = GoToLineDialog(tab.line_count(), tab.current_line(), self)
         if dlg.exec() == GoToLineDialog.DialogCode.Accepted:
             tab.goto_line(dlg.line_number(), 1)
+            self._update_status_for(tab)
+
+    def toggle_bookmark(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.toggle_bookmark()
+
+    def next_bookmark(self) -> None:
+        tab = self.current_tab()
+        if tab is not None and tab.next_bookmark():
+            self._update_status_for(tab)
+
+    def prev_bookmark(self) -> None:
+        tab = self.current_tab()
+        if tab is not None and tab.prev_bookmark():
             self._update_status_for(tab)
 
     def undo_current(self) -> None:
