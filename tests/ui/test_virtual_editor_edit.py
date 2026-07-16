@@ -47,3 +47,18 @@ def test_virtual_replace_one(qtbot) -> None:
     ed.goto_line(0, 0)
     assert ed.replace_text("one", "1")
     assert doc.buffer.get_text().startswith(b"1 ")
+
+
+@pytest.mark.ui
+def test_virtual_regex_find_replace(qtbot) -> None:
+    doc = Document.from_text("x12 y34 z")
+    doc.huge_mode = True
+    ed = VirtualEditor(doc)
+    qtbot.addWidget(ed)
+    ed.goto_line(0, 0)
+    assert ed.find_text(r"\d+", use_regex=True)
+    line, col = ed.cursor_line_col()
+    assert line == 1
+    assert col == 2  # 1-based, at '1' of 12
+    assert ed.replace_text(r"\d+", "N", use_regex=True)
+    assert b"xN" in doc.buffer.get_text()

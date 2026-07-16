@@ -10,6 +10,14 @@ from PyQt6.QtGui import QColor, QFont, QKeyEvent, QPainter, QPaintEvent, QWheelE
 from PyQt6.QtWidgets import QAbstractScrollArea, QWidget
 
 from magiceditor.core.syntax.rules import tokenize_line
+from magiceditor.core.text_match import (
+    PatternError,
+    compile_pattern,
+    expand_replacement,
+    find_all_matches,
+    find_first,
+    find_last_before,
+)
 from magiceditor.services.document import Document
 from magiceditor.ui.fonts import editor_font
 
@@ -62,6 +70,9 @@ class VirtualEditor(QAbstractScrollArea):
         self._language = "text"
         self._find_needle = ""
         self._find_case = False
+        self._find_regex = False
+        self._last_match_start_col = -1
+        self._last_match_end_col = 0
         self._undo: list[_EditOp] = []
         self._redo: list[_EditOp] = []
         self._applying_history = False
@@ -90,9 +101,16 @@ class VirtualEditor(QAbstractScrollArea):
     def language(self) -> str:
         return self._language
 
-    def set_find_highlight(self, needle: str, *, case_sensitive: bool = False) -> None:
+    def set_find_highlight(
+        self,
+        needle: str,
+        *,
+        case_sensitive: bool = False,
+        use_regex: bool = False,
+    ) -> None:
         self._find_needle = needle
         self._find_case = case_sensitive
+        self._find_regex = use_regex
         self.viewport().update()
 
     def goto_line(self, line: int, column: int = 0) -> None:
@@ -150,14 +168,17 @@ class VirtualEditor(QAbstractScrollArea):
         case_sensitive: bool = False,
         backward: bool = False,
         wrap: bool = True,
+        use_regex: bool = False,
     ) -> bool:
         if not needle:
             return False
-        self.set_find_highlight(needle, case_sensitive=case_sensitive)
-        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
-        needle_b = needle.encode(enc, errors="replace")
-        if not case_sensitive:
-            needle_b = needle_b.lower()
+        try:
+            pattern = compile_pattern(
+                needle, case_sensitive=case_sensitive, use_regex=use_regex
+            )
+        except PatternError:
+            return False
+        self.set_find_highlight(needle, case_sensitive=case_sensitive, use_regex=use_regex)
 
         idx = self._doc.line_index()
         n_lines = idx.line_count
@@ -174,20 +195,26 @@ class VirtualEditor(QAbstractScrollArea):
 
         for line in order:
             try:
-                raw = self._doc.buffer.get_text(idx.line_start(line), idx.line_length(line))
+                text = self._doc.line_text(line)
             except IndexError:
                 continue
-            hay = raw if case_sensitive else raw.lower()
-            pos = hay.find(needle_b)
-            if pos < 0:
+            if backward:
+                before = self._cursor_col if line == start_line else len(text) + 1
+                m = find_last_before(text, pattern, before=before)
+            else:
+                start_col = 0
+                if line == start_line:
+                    if self._cursor_col == self._last_match_start_col:
+                        start_col = self._last_match_end_col
+                    else:
+                        start_col = self._cursor_col
+                m = find_first(text, pattern, start=start_col)
+            if m is None:
                 continue
-            if line == start_line and not backward:
-                col_bytes = self._col_to_byte(line, self._cursor_col)
-                pos = hay.find(needle_b, col_bytes + (1 if col_bytes < len(hay) else 0))
-                if pos < 0:
-                    continue
             self._cursor_line = line
-            self._cursor_col = self._byte_to_col(line, pos)
+            self._cursor_col = m.start()
+            self._last_match_start_col = m.start()
+            self._last_match_end_col = m.end()
             self._ensure_visible(line)
             self.cursorPositionChanged.emit()
             self.viewport().update()
@@ -200,27 +227,35 @@ class VirtualEditor(QAbstractScrollArea):
         replacement: str,
         *,
         case_sensitive: bool = False,
+        use_regex: bool = False,
     ) -> bool:
-        """Replace match at caret if it equals ``needle``, else find next and replace."""
+        """Replace match at caret if it matches ``needle``, else find next and replace."""
         if not needle:
             return False
-        self.set_find_highlight(needle, case_sensitive=case_sensitive)
-        if not self._match_at_cursor(needle, case_sensitive=case_sensitive):
-            if not self.find_text(needle, case_sensitive=case_sensitive, backward=False, wrap=True):
+        try:
+            pattern = compile_pattern(
+                needle, case_sensitive=case_sensitive, use_regex=use_regex
+            )
+        except PatternError:
+            return False
+        self.set_find_highlight(needle, case_sensitive=case_sensitive, use_regex=use_regex)
+
+        m = self._match_at_cursor_re(pattern)
+        if m is None:
+            if not self.find_text(
+                needle,
+                case_sensitive=case_sensitive,
+                backward=False,
+                wrap=True,
+                use_regex=use_regex,
+            ):
                 return False
-            if not self._match_at_cursor(needle, case_sensitive=case_sensitive):
+            m = self._match_at_cursor_re(pattern)
+            if m is None:
                 return False
-        off = self._byte_offset_at_cursor()
-        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
-        needle_b = needle.encode(enc, errors="replace")
-        repl_b = replacement.encode(enc, errors="replace")
-        self._delete_bytes_tracked(off, len(needle_b))
-        if repl_b:
-            self._insert_bytes_tracked(off, repl_b)
-        self._cursor_line = self._doc.line_index().offset_to_line(off + len(repl_b))
-        line_start = self._doc.line_index().line_start(self._cursor_line)
-        self._cursor_col = self._byte_to_col(self._cursor_line, off + len(repl_b) - line_start)
-        self._emit_edit()
+
+        repl_text = expand_replacement(m, replacement) if use_regex else replacement
+        self._replace_char_span(self._cursor_line, m.start(), m.end(), repl_text)
         return True
 
     def replace_all_text(
@@ -229,51 +264,45 @@ class VirtualEditor(QAbstractScrollArea):
         replacement: str,
         *,
         case_sensitive: bool = False,
+        use_regex: bool = False,
         max_replacements: int = _MAX_REPLACE_ALL,
     ) -> int:
         """Replace all non-overlapping matches (line scan, reverse order)."""
         if not needle:
             return 0
-        self.set_find_highlight(needle, case_sensitive=case_sensitive)
-        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
-        needle_b = needle.encode(enc, errors="replace")
-        repl_b = replacement.encode(enc, errors="replace")
-        needle_cmp = needle_b if case_sensitive else needle_b.lower()
+        try:
+            pattern = compile_pattern(
+                needle, case_sensitive=case_sensitive, use_regex=use_regex
+            )
+        except PatternError:
+            return 0
+        self.set_find_highlight(needle, case_sensitive=case_sensitive, use_regex=use_regex)
 
-        # Collect (byte_offset, length) from end so earlier offsets stay valid.
-        matches: list[tuple[int, int]] = []
+        # (line, start_col, end_col, expanded_repl) from end of file
+        jobs: list[tuple[int, int, int, str]] = []
         idx = self._doc.line_index()
         for line in range(idx.line_count - 1, -1, -1):
-            start = idx.line_start(line)
-            length = idx.line_length(line)
             try:
-                raw = self._doc.buffer.get_text(start, length)
+                text = self._doc.line_text(line)
             except IndexError:
                 continue
-            hay = raw if case_sensitive else raw.lower()
-            pos = 0
-            line_hits: list[tuple[int, int]] = []
-            nlen = len(needle_cmp)
-            if nlen == 0:
-                break
-            while True:
-                found = hay.find(needle_cmp, pos)
-                if found < 0:
+            matches = find_all_matches(text, pattern)
+            for m in reversed(matches):
+                repl = expand_replacement(m, replacement) if use_regex else replacement
+                jobs.append((line, m.start(), m.end(), repl))
+                if len(jobs) >= max_replacements:
                     break
-                line_hits.append((start + found, len(needle_b)))
-                pos = found + nlen
-            matches.extend(reversed(line_hits))
-            if len(matches) >= max_replacements:
-                matches = matches[:max_replacements]
+            if len(jobs) >= max_replacements:
                 break
 
-        # Apply from highest offset first
-        matches.sort(key=lambda m: m[0], reverse=True)
         count = 0
-        for off, nlen in matches:
-            self._delete_bytes_tracked(off, nlen)
-            if repl_b:
-                self._insert_bytes_tracked(off, repl_b)
+        # Apply high line first, high col first (already reverse)
+        for line, start_col, end_col, repl in jobs:
+            # Re-fetch line text after prior edits on same line
+            try:
+                self._replace_char_span(line, start_col, end_col, repl, emit=False)
+            except (IndexError, ValueError):
+                continue
             count += 1
         if count:
             self._cursor_line = min(self._cursor_line, self._line_count() - 1)
@@ -431,19 +460,20 @@ class VirtualEditor(QAbstractScrollArea):
         needle = self._find_needle
         if not needle or not text:
             return
-        hay = text if self._find_case else text.lower()
-        n = needle if self._find_case else needle.lower()
-        pos = 0
-        while True:
-            found = hay.find(n, pos)
-            if found < 0:
-                break
-            prefix = text[:found].replace("\t", "    ")
-            match = text[found : found + len(needle)].replace("\t", "    ")
+        try:
+            pattern = compile_pattern(
+                needle,
+                case_sensitive=self._find_case,
+                use_regex=self._find_regex,
+            )
+        except PatternError:
+            return
+        for m in find_all_matches(text, pattern):
+            prefix = text[: m.start()].replace("\t", "    ")
+            match = text[m.start() : m.end()].replace("\t", "    ")
             x0 = base_x + fm.horizontalAdvance(prefix)
             w = fm.horizontalAdvance(match)
             painter.fillRect(x0, y + 1, w, lh - 2, _FIND_BG)
-            pos = found + max(1, len(n))
 
     def _paint_syntax_line(
         self,
@@ -611,15 +641,36 @@ class VirtualEditor(QAbstractScrollArea):
                 break
         return col
 
-    def _match_at_cursor(self, needle: str, *, case_sensitive: bool) -> bool:
+    def _match_at_cursor_re(self, pattern) -> object | None:
+        """Return re.Match if a match starts at the caret column."""
         text = self._doc.line_text(self._cursor_line)
-        end = self._cursor_col + len(needle)
-        if end > len(text):
-            return False
-        frag = text[self._cursor_col : end]
-        if case_sensitive:
-            return frag == needle
-        return frag.lower() == needle.lower()
+        m = pattern.match(text, self._cursor_col)
+        return m
+
+    def _replace_char_span(
+        self,
+        line: int,
+        start_col: int,
+        end_col: int,
+        replacement: str,
+        *,
+        emit: bool = True,
+    ) -> None:
+        """Replace character range on a line via byte offsets."""
+        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
+        line_start = self._doc.line_index().line_start(line)
+        off = line_start + self._col_to_byte(line, start_col)
+        end_off = line_start + self._col_to_byte(line, end_col)
+        if end_off > off:
+            self._delete_bytes_tracked(off, end_off - off)
+        repl_b = replacement.encode(enc, errors="replace")
+        if repl_b:
+            self._insert_bytes_tracked(off, repl_b)
+        if emit:
+            self._place_cursor_at(off + len(repl_b))
+            self._last_match_start_col = -1
+            self._last_match_end_col = 0
+            self._emit_edit()
 
     def _push_undo(self, op: _EditOp) -> None:
         if self._applying_history:

@@ -41,3 +41,22 @@ def test_search_skips_binaries(tmp_path: Path) -> None:
 def test_search_empty_needle(tmp_path: Path) -> None:
     (tmp_path / "a.txt").write_text("x", encoding="utf-8")
     assert search_folder(tmp_path, "") == []
+
+
+def test_search_regex(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("id=42\nid=7\nplain\n", encoding="utf-8")
+    hits = search_folder(tmp_path, r"id=\d+", use_regex=True)
+    assert len(hits) == 2
+    assert hits[0].column == 1
+
+
+def test_search_texts_open_tabs() -> None:
+    from magiceditor.services.folder_search import search_texts
+
+    sources = [
+        ("tab:0", "Untitled-1", "alpha beta\n"),
+        ("tab:1", "notes.md", "beta gamma\n"),
+    ]
+    hits = search_texts(sources, "beta")
+    assert len(hits) == 2
+    assert {h.source_key for h in hits} == {"tab:0", "tab:1"}

@@ -18,6 +18,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from magiceditor.core.text_match import PatternError, compile_pattern, expand_replacement
+
 
 class FindDialog(QDialog):
     """Centered modal for search (and optional replace).
@@ -39,18 +41,19 @@ class FindDialog(QDialog):
         self._virtual = hasattr(editor, "find_text")
         self.setModal(True)
         self.setWindowTitle("Find and Replace" if replace_mode else "Find")
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(440)
         self.setObjectName("findDialog")
 
         self.find_input = QLineEdit(self)
         self.find_input.setPlaceholderText("Find…")
         self.replace_input = QLineEdit(self)
-        self.replace_input.setPlaceholderText("Replace with…")
+        self.replace_input.setPlaceholderText("Replace with… (\\1 groups if regex)")
         self.replace_input.setVisible(replace_mode)
 
         self.case_box = QCheckBox("Match case", self)
         self.wrap_box = QCheckBox("Wrap around", self)
         self.wrap_box.setChecked(True)
+        self.regex_box = QCheckBox("Regex", self)
 
         self._status = QLabel("", self)
         self._status.setObjectName("findDialogStatus")
@@ -70,6 +73,7 @@ class FindDialog(QDialog):
         options.setSpacing(16)
         options.addWidget(self.case_box)
         options.addWidget(self.wrap_box)
+        options.addWidget(self.regex_box)
         options.addStretch(1)
 
         btn_prev = QPushButton("Find Previous", self)
@@ -122,7 +126,27 @@ class FindDialog(QDialog):
         flags = QTextDocument.FindFlag(0)
         if self.case_box.isChecked():
             flags |= QTextDocument.FindFlag.FindCaseSensitively
+        if self.regex_box.isChecked():
+            flags |= QTextDocument.FindFlag.FindRegularExpression
         return flags
+
+    def _validate_pattern(self) -> bool:
+        needle = self.find_input.text()
+        if not needle:
+            self._status.setText("Enter text to find.")
+            return False
+        if not self.regex_box.isChecked():
+            return True
+        try:
+            compile_pattern(
+                needle,
+                case_sensitive=self.case_box.isChecked(),
+                use_regex=True,
+            )
+        except PatternError as exc:
+            self._status.setText(f"Invalid regex: {exc}")
+            return False
+        return True
 
     def find_next(self) -> None:
         self._find(backward=False)
@@ -131,10 +155,9 @@ class FindDialog(QDialog):
         self._find(backward=True)
 
     def _find(self, *, backward: bool) -> None:
-        text = self.find_input.text()
-        if not text:
-            self._status.setText("Enter text to find.")
+        if not self._validate_pattern():
             return
+        text = self.find_input.text()
 
         if self._virtual:
             found = self._editor.find_text(
@@ -142,6 +165,7 @@ class FindDialog(QDialog):
                 case_sensitive=self.case_box.isChecked(),
                 backward=backward,
                 wrap=self.wrap_box.isChecked(),
+                use_regex=self.regex_box.isChecked(),
             )
             if found:
                 self._status.setText("Match found.")
@@ -168,12 +192,9 @@ class FindDialog(QDialog):
             self._status.setText("No matches.")
 
     def replace_one(self) -> None:
-        if not self._replace_mode:
+        if not self._replace_mode or not self._validate_pattern():
             return
         needle = self.find_input.text()
-        if not needle:
-            self._status.setText("Enter text to find.")
-            return
         repl = self.replace_input.text()
 
         if self._virtual and hasattr(self._editor, "replace_text"):
@@ -181,23 +202,35 @@ class FindDialog(QDialog):
                 needle,
                 repl,
                 case_sensitive=self.case_box.isChecked(),
+                use_regex=self.regex_box.isChecked(),
             )
             self._status.setText("Replaced 1 match." if ok else "No matches.")
             return
 
         cursor = self._editor.textCursor()
         if cursor.hasSelection() and self._selection_matches(cursor, needle):
-            cursor.insertText(repl)
+            selected = cursor.selectedText().replace("\u2029", "\n")
+            if self.regex_box.isChecked():
+                try:
+                    pat = compile_pattern(
+                        needle,
+                        case_sensitive=self.case_box.isChecked(),
+                        use_regex=True,
+                    )
+                    m = pat.fullmatch(selected) or pat.match(selected)
+                    text = expand_replacement(m, repl) if m else repl
+                except PatternError:
+                    text = repl
+            else:
+                text = repl
+            cursor.insertText(text)
             self._status.setText("Replaced 1 match.")
         self.find_next()
 
     def replace_all(self) -> None:
-        if not self._replace_mode:
+        if not self._replace_mode or not self._validate_pattern():
             return
         needle = self.find_input.text()
-        if not needle:
-            self._status.setText("Enter text to find.")
-            return
         repl = self.replace_input.text()
 
         if self._virtual and hasattr(self._editor, "replace_all_text"):
@@ -205,9 +238,31 @@ class FindDialog(QDialog):
                 needle,
                 repl,
                 case_sensitive=self.case_box.isChecked(),
+                use_regex=self.regex_box.isChecked(),
             )
             extra = " (capped)" if count >= 50_000 else ""
             self._status.setText(f"Replaced {count} match(es){extra}.")
+            return
+
+        if self.regex_box.isChecked():
+            try:
+                pat = compile_pattern(
+                    needle,
+                    case_sensitive=self.case_box.isChecked(),
+                    use_regex=True,
+                )
+            except PatternError as exc:
+                self._status.setText(f"Invalid regex: {exc}")
+                return
+            plain = self._editor.toPlainText()
+            new_text, count = pat.subn(repl, plain)
+            if count:
+                cursor = self._editor.textCursor()
+                cursor.beginEditBlock()
+                cursor.select(QTextCursor.SelectionType.Document)
+                cursor.insertText(new_text)
+                cursor.endEditBlock()
+            self._status.setText(f"Replaced {count} match(es).")
             return
 
         doc = self._editor.document()
@@ -226,6 +281,16 @@ class FindDialog(QDialog):
 
     def _selection_matches(self, cursor: QTextCursor, needle: str) -> bool:
         selected = cursor.selectedText().replace("\u2029", "\n")
+        if self.regex_box.isChecked():
+            try:
+                pat = compile_pattern(
+                    needle,
+                    case_sensitive=self.case_box.isChecked(),
+                    use_regex=True,
+                )
+            except PatternError:
+                return False
+            return pat.fullmatch(selected) is not None or pat.match(selected) is not None
         if self.case_box.isChecked():
             return selected == needle
         return selected.lower() == needle.lower()

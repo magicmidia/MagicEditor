@@ -1,11 +1,14 @@
-"""Recursive text search across a directory (pure I/O, no Qt)."""
+"""Recursive text search across a directory or in-memory sources (pure I/O)."""
 
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+import re
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+from magiceditor.core.text_match import PatternError, compile_pattern
 
 # Skip obvious binaries / huge blobs
 _SKIP_SUFFIXES = {
@@ -47,6 +50,8 @@ class SearchHit:
     line: int  # 1-based
     column: int  # 1-based
     text: str  # line content (trimmed)
+    source_key: str | None = None  # e.g. "tab:0" for open-tab hits
+    label: str | None = None  # display name override
 
 
 def search_folder(
@@ -54,19 +59,24 @@ def search_folder(
     needle: str,
     *,
     case_sensitive: bool = False,
+    use_regex: bool = False,
     max_hits: int = 200,
     max_files: int = 2000,
 ) -> list[SearchHit]:
-    """Scan text files under ``root`` for ``needle`` (literal substring)."""
+    """Scan text files under ``root`` for ``needle`` (literal or regex)."""
     if not needle:
         return []
     root = Path(root)
     if not root.is_dir():
         return []
 
+    try:
+        pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
+    except PatternError:
+        return []
+
     hits: list[SearchHit] = []
     files_seen = 0
-    needle_cmp = needle if case_sensitive else needle.lower()
 
     for path in _iter_files(root):
         if files_seen >= max_files or len(hits) >= max_hits:
@@ -88,22 +98,71 @@ def search_folder(
             except UnicodeDecodeError:
                 continue
 
-        for i, line in enumerate(text.splitlines(), start=1):
-            hay = line if case_sensitive else line.lower()
-            col = hay.find(needle_cmp)
-            if col < 0:
-                continue
-            hits.append(
-                SearchHit(
-                    path=path,
-                    line=i,
-                    column=col + 1,
-                    text=line.strip()[:200],
-                )
-            )
-            if len(hits) >= max_hits:
-                return hits
+        _collect_line_hits(hits, path, text, pattern, max_hits)
+        if len(hits) >= max_hits:
+            return hits
     return hits
+
+
+def search_texts(
+    sources: Sequence[tuple[str, str, str]],
+    needle: str,
+    *,
+    case_sensitive: bool = False,
+    use_regex: bool = False,
+    max_hits: int = 200,
+) -> list[SearchHit]:
+    """Search in-memory sources: each item is ``(source_key, label, content)``."""
+    if not needle or not sources:
+        return []
+    try:
+        pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
+    except PatternError:
+        return []
+
+    hits: list[SearchHit] = []
+    for key, label, content in sources:
+        path = Path(label)
+        _collect_line_hits(
+            hits,
+            path,
+            content,
+            pattern,
+            max_hits,
+            source_key=key,
+            label=label,
+        )
+        if len(hits) >= max_hits:
+            break
+    return hits
+
+
+def _collect_line_hits(
+    hits: list[SearchHit],
+    path: Path,
+    text: str,
+    pattern: re.Pattern[str],
+    max_hits: int,
+    *,
+    source_key: str | None = None,
+    label: str | None = None,
+) -> None:
+    for i, line in enumerate(text.splitlines(), start=1):
+        m = pattern.search(line)
+        if m is None:
+            continue
+        hits.append(
+            SearchHit(
+                path=path,
+                line=i,
+                column=m.start() + 1,
+                text=line.strip()[:200],
+                source_key=source_key,
+                label=label,
+            )
+        )
+        if len(hits) >= max_hits:
+            return
 
 
 def _iter_files(root: Path) -> Iterator[Path]:

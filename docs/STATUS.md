@@ -19,6 +19,8 @@
 - [x] Go to Line (Ctrl+G)
 - [x] Replace in virtual mode + find match highlight
 - [x] Undo/Redo on virtual editor (Ctrl+Z / Ctrl+Y)
+- [x] **Regex** find/replace (classic + virtual) and folder search
+- [x] **Find in open tabs** (scope in Find in Files dialog)
 - [x] `MagicEditor.exe` pipeline at repo root
 
 ## Delivery rule
@@ -29,13 +31,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ```
 
 ## Next
-1. [ ] Regex find / folder search
-2. [ ] Search across all open tabs
-3. [ ] Soft wrap for virtual editor (optional)
-4. [ ] REVIEW before merge to `main`
+1. [ ] Soft wrap for virtual editor (optional)
+2. [ ] Bookmarks / multi-cursor (stretch)
+3. [ ] REVIEW before merge to `main`
 
 ## Handoff
-- `core/` stays Qt-free (syntax rules pure)
+- `core/` stays Qt-free (`text_match`, syntax rules pure)
 - Architecture: `docs/magiceditor-architecture.md`
 - Design tokens: `docs/DESIGN.md`
 - UI smoke tests must inject isolated `AppSettings` and clear modified flags

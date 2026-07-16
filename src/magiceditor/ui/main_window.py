@@ -651,9 +651,27 @@ class MainWindow(QMainWindow):
         dlg.exec()
 
     def show_find_in_files(self) -> None:
-        dlg = FindInFilesDialog(self._workspace, self)
+        dlg = FindInFilesDialog(
+            self._workspace,
+            self,
+            open_sources=self._collect_open_sources(),
+        )
         dlg.hit_activated.connect(self._open_search_hit)
         dlg.exec()
+
+    def _collect_open_sources(self) -> list[tuple[str, str, str]]:
+        """Return ``(source_key, label, content)`` for each open tab."""
+        sources: list[tuple[str, str, str]] = []
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if not isinstance(w, EditorTab):
+                continue
+            key = f"tab:{i}"
+            label = w.document.display_name()
+            if w.document.path is not None:
+                label = str(w.document.path)
+            sources.append((key, label, w.export_text()))
+        return sources
 
     def show_goto_line(self) -> None:
         tab = self.current_tab()
@@ -678,8 +696,22 @@ class MainWindow(QMainWindow):
             self._refresh_tab_titles()
             self._update_status_for(tab)
 
-    def _open_search_hit(self, path: str, line: int, column: int) -> None:
-        tab = self.open_path(path)
+    def _open_search_hit(self, path: str, line: int, column: int, source_key: str = "") -> None:
+        tab: EditorTab | None = None
+        if source_key.startswith("tab:"):
+            try:
+                idx = int(source_key.split(":", 1)[1])
+            except ValueError:
+                idx = -1
+            if 0 <= idx < self.tabs.count():
+                w = self.tabs.widget(idx)
+                if isinstance(w, EditorTab):
+                    self.tabs.setCurrentIndex(idx)
+                    tab = w
+        if tab is None and path:
+            p = Path(path)
+            if p.is_file():
+                tab = self.open_path(p)
         if tab is not None:
             tab.goto_line(line, column)
             self._update_status_for(tab)
