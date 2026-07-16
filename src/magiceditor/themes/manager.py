@@ -1,26 +1,44 @@
-"""QSS theme manager (five native themes planned)."""
+"""QSS theme manager for native chrome themes."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-NATIVE_THEMES = (
-    "clean_light",
-    "midnight_dark",
-    "darcula",
-    "cobalt_blue",
-    "monokai_pro",
-)
+from magiceditor.paths import themes_dir
+
+NATIVE_THEMES: dict[str, str] = {
+    "clean_light": "Clean Light",
+    "midnight_dark": "Midnight Dark",
+    "darcula": "Darcula Mode",
+    "cobalt_blue": "Cobalt Blue",
+    "monokai_pro": "Monokai Pro",
+}
 
 
 class ThemeManager:
-    def __init__(self, themes_dir: Path | None = None) -> None:
-        self._themes_dir = themes_dir
+    def __init__(self, themes_path: Path | None = None) -> None:
+        self._themes_dir = themes_path or themes_dir()
         self._current = "midnight_dark"
 
     @property
     def current(self) -> str:
         return self._current
 
-    def list_themes(self) -> tuple[str, ...]:
-        return NATIVE_THEMES
+    def list_themes(self) -> list[tuple[str, str]]:
+        """Return (id, label) pairs."""
+        return list(NATIVE_THEMES.items())
+
+    def load_qss(self, theme_id: str) -> str:
+        path = self._themes_dir / f"{theme_id}.qss"
+        if not path.is_file():
+            raise FileNotFoundError(f"Theme not found: {path}")
+        return path.read_text(encoding="utf-8")
+
+    def apply(self, app: object, theme_id: str) -> None:
+        """Apply theme QSS to a QApplication-like object with setStyleSheet."""
+        qss = self.load_qss(theme_id)
+        set_style = getattr(app, "setStyleSheet", None)
+        if set_style is None:
+            raise TypeError("app does not support setStyleSheet")
+        set_style(qss)
+        self._current = theme_id

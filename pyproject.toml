@@ -13,7 +13,6 @@ authors = [{ name = "MagicEditor Contributors" }]
 keywords = ["editor", "pyqt6", "text", "code"]
 dependencies = [
   "PyQt6>=6.6",
-  "PyQt6-WebEngine>=6.6",
   "markdown>=3.5",
 ]
 
@@ -24,9 +23,13 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.8",
   "mypy>=1.13",
+  "pyinstaller>=6.0",
 ]
 scintilla = [
   "PyQt6-QScintilla>=2.14",
+]
+webengine = [
+  "PyQt6-WebEngine>=6.6",
 ]
 
 [project.scripts]
@@ -61,6 +64,10 @@ select = [
 ]
 ignore = [
   "PLR0913", # too many arguments — Qt constructors often need many params
+  "PLR0911", # too many returns — fine for small pure helpers
+  "PLR2004", # magic values — OK in parsers (0x0A etc.)
+  "SIM105",  # contextlib.suppress optional style
+  "SIM108",  # ternary style optional
 ]
 
 [tool.ruff.lint.per-file-ignores]

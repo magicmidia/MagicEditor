@@ -1,7 +1,33 @@
-/* Monokai Pro — scaffold */
-QMainWindow, QWidget { background-color: #2D2A2E; color: #FCFCFA; }
-QPlainTextEdit, QTextEdit {
-  background-color: #2D2A2E;
-  color: #FCFCFA;
+/* Monokai Pro — warm dark neon accents */
+* { font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+QMainWindow, QDialog, QWidget { background-color: #2D2A2E; color: #FCFCFA; }
+QMenuBar, QToolBar, QStatusBar, QDockWidget::title {
+  background: #221F22; color: #FCFCFA; border-color: #403E41;
+}
+QMenuBar::item:selected, QToolBar QToolButton:hover {
+  background: #403E41; border-radius: 6px;
+}
+QMenu { background: #221F22; border: 1px solid #5B595C; border-radius: 8px; }
+QMenu::item:selected { background: #FF6188; color: #2D2A2E; }
+QTabBar::tab {
+  background: #221F22; color: #939293; padding: 8px 14px;
+  border-top-left-radius: 6px; border-top-right-radius: 6px;
+}
+QTabBar::tab:selected {
+  background: #2D2A2E; color: #FCFCFA; border-bottom: 2px solid #A9DC76;
+}
+QPlainTextEdit, QTextEdit, QTextBrowser, QTreeView {
+  background: #2D2A2E; color: #FCFCFA; border: none;
   selection-background-color: #5B595C;
 }
+QTreeView::item:selected { background: #FF6188; color: #2D2A2E; }
+QLineEdit {
+  background: #221F22; border: 1px solid #5B595C; border-radius: 6px;
+  padding: 6px 10px; color: #FCFCFA;
+}
+QPushButton {
+  background: #403E41; border: 1px solid #5B595C; border-radius: 6px;
+  padding: 6px 12px; color: #FCFCFA;
+}
+QPushButton:hover { background: #5B595C; }
+#findBar { background: #221F22; border-bottom: 1px solid #403E41; }

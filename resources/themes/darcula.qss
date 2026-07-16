@@ -1,7 +1,32 @@
-/* Darcula Mode — scaffold */
-QMainWindow, QWidget { background-color: #2B2B2B; color: #A9B7C6; }
-QPlainTextEdit, QTextEdit {
-  background-color: #2B2B2B;
-  color: #A9B7C6;
+/* Darcula Mode — JetBrains-inspired */
+* { font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+QMainWindow, QDialog, QWidget { background-color: #2B2B2B; color: #A9B7C6; }
+QMenuBar, QToolBar, QStatusBar, QDockWidget::title {
+  background: #3C3F41; border-color: #323232; color: #BBBBBB;
+}
+QMenuBar::item:selected, QToolBar QToolButton:hover { background: #4B4F51; border-radius: 6px; }
+QMenu { background: #3C3F41; border: 1px solid #555; border-radius: 8px; }
+QMenu::item:selected { background: #2F65CA; color: #fff; }
+QTabBar::tab {
+  background: #3C3F41; color: #878787; padding: 8px 14px;
+  border-top-left-radius: 6px; border-top-right-radius: 6px; margin-right: 1px;
+}
+QTabBar::tab:selected { background: #2B2B2B; color: #A9B7C6; border-bottom: 2px solid #6897BB; }
+QPlainTextEdit, QTextEdit, QTextBrowser, QTreeView {
+  background: #2B2B2B; color: #A9B7C6; border: none;
   selection-background-color: #214283;
 }
+QTreeView::item:selected { background: #2F65CA; }
+QLineEdit {
+  background: #45494A; border: 1px solid #646464; border-radius: 6px;
+  padding: 6px 10px; color: #A9B7C6;
+}
+QPushButton {
+  background: #4C5052; border: 1px solid #5E6060; border-radius: 6px;
+  padding: 6px 12px; color: #BBBBBB;
+}
+QPushButton:hover { background: #5C6164; }
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+  background: #5A5D5E; border-radius: 5px; min-height: 24px; margin: 2px;
+}
+#findBar { background: #3C3F41; border-bottom: 1px solid #323232; }

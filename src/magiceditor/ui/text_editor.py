@@ -1,16 +1,136 @@
-"""Virtual viewport text widget (placeholder)."""
+"""Modern text editor with line-number gutter and current-line highlight."""
 
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QPlainTextEdit, QWidget
+from PyQt6.QtCore import QRect, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QPainter, QTextCharFormat, QTextFormat
+from PyQt6.QtWidgets import QPlainTextEdit, QTextEdit, QWidget
+
+
+class _LineNumberArea(QWidget):
+    def __init__(self, editor: TextEditor) -> None:
+        super().__init__(editor)
+        self._editor = editor
+
+    def sizeHint(self) -> QSize:
+        return QSize(self._editor.line_number_area_width(), 0)
+
+    def paintEvent(self, event) -> None:
+        self._editor.paint_line_numbers(event)
 
 
 class TextEditor(QPlainTextEdit):
-    """Temporary editor surface.
-
-    Replace with virtual viewport bound to ``PieceTable`` for huge files.
-    """
+    """Primary editing surface with gutter, highlight, and zoom."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._line_numbers = _LineNumberArea(self)
+        self._show_line_numbers = True
+        self._highlight_current = True
+
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.setCenterOnScroll(False)
+        self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
+        font = QFont("Cascadia Code")
+        if not font.exactMatch():
+            font = QFont("Consolas")
+        if not font.exactMatch():
+            font = QFont("Courier New")
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setPointSize(12)
+        self.setFont(font)
+
+        self.blockCountChanged.connect(self._update_line_number_width)
+        self.updateRequest.connect(self._update_line_number_area)
+        self.cursorPositionChanged.connect(self._highlight_current_line)
+
+        self._update_line_number_width(0)
+        self._highlight_current_line()
+
+    def line_number_area_width(self) -> int:
+        if not self._show_line_numbers:
+            return 0
+        digits = max(2, len(str(max(1, self.blockCount()))))
+        return 12 + self.fontMetrics().horizontalAdvance("9") * digits
+
+    def set_line_numbers_visible(self, visible: bool) -> None:
+        self._show_line_numbers = visible
+        self._update_line_number_width(0)
+        self._line_numbers.setVisible(visible)
+
+    def set_word_wrap(self, enabled: bool) -> None:
+        mode = (
+            QPlainTextEdit.LineWrapMode.WidgetWidth
+            if enabled
+            else QPlainTextEdit.LineWrapMode.NoWrap
+        )
+        self.setLineWrapMode(mode)
+
+    def zoom_in_one(self) -> None:
+        self.zoomIn(1)
+
+    def zoom_out_one(self) -> None:
+        self.zoomOut(1)
+
+    def reset_zoom(self) -> None:
+        font = self.font()
+        font.setPointSize(12)
+        self.setFont(font)
+        self._update_line_number_width(0)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        cr = self.contentsRect()
+        self._line_numbers.setGeometry(
+            QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height())
+        )
+
+    def paint_line_numbers(self, event) -> None:
+        painter = QPainter(self._line_numbers)
+        painter.fillRect(event.rect(), QColor(0, 0, 0, 40))
+
+        block = self.firstVisibleBlock()
+        block_number = block.blockNumber()
+        top = round(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
+        bottom = top + round(self.blockBoundingRect(block).height())
+
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                number = str(block_number + 1)
+                painter.setPen(QColor(148, 163, 184))
+                painter.drawText(
+                    0,
+                    top,
+                    self._line_numbers.width() - 6,
+                    self.fontMetrics().height(),
+                    Qt.AlignmentFlag.AlignRight,
+                    number,
+                )
+            block = block.next()
+            top = bottom
+            bottom = top + round(self.blockBoundingRect(block).height())
+            block_number += 1
+
+    def _update_line_number_width(self, _count: int) -> None:
+        self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
+
+    def _update_line_number_area(self, rect: QRect, dy: int) -> None:
+        if dy:
+            self._line_numbers.scroll(0, dy)
+        else:
+            self._line_numbers.update(0, rect.y(), self._line_numbers.width(), rect.height())
+        if rect.contains(self.viewport().rect()):
+            self._update_line_number_width(0)
+
+    def _highlight_current_line(self) -> None:
+        if not self._highlight_current or self.isReadOnly():
+            self.setExtraSelections([])
+            return
+        selection = QTextEdit.ExtraSelection()
+        fmt = QTextCharFormat()
+        fmt.setBackground(QColor(56, 189, 248, 28))
+        fmt.setProperty(QTextFormat.Property.FullWidthSelection, True)
+        selection.format = fmt
+        selection.cursor = self.textCursor()
+        selection.cursor.clearSelection()
+        self.setExtraSelections([selection])

@@ -1,7 +1,33 @@
-/* Cobalt Blue — scaffold */
-QMainWindow, QWidget { background-color: #002240; color: #FFFFFF; }
-QPlainTextEdit, QTextEdit {
-  background-color: #002240;
-  color: #FFFFFF;
+/* Cobalt Blue — classic SQL / retro IDE */
+* { font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+QMainWindow, QDialog, QWidget { background-color: #002240; color: #FFFFFF; }
+QMenuBar, QToolBar, QStatusBar, QDockWidget::title {
+  background: #001B33; color: #FFFFFF; border-color: #003366;
+}
+QMenuBar::item:selected, QToolBar QToolButton:hover {
+  background: #004080; border-radius: 6px;
+}
+QMenu { background: #001B33; border: 1px solid #0050A4; border-radius: 8px; }
+QMenu::item:selected { background: #0088FF; }
+QTabBar::tab {
+  background: #001B33; color: #80BFFF; padding: 8px 14px;
+  border-top-left-radius: 6px; border-top-right-radius: 6px;
+}
+QTabBar::tab:selected {
+  background: #002240; color: #FFFFFF; border-bottom: 2px solid #FFCC66;
+}
+QPlainTextEdit, QTextEdit, QTextBrowser, QTreeView {
+  background: #002240; color: #FFFFFF; border: none;
   selection-background-color: #0050A4;
 }
+QTreeView::item:selected { background: #0088FF; }
+QLineEdit {
+  background: #001B33; border: 1px solid #0050A4; border-radius: 6px;
+  padding: 6px 10px; color: #FFFFFF;
+}
+QPushButton {
+  background: #003366; border: 1px solid #0050A4; border-radius: 6px;
+  padding: 6px 12px; color: #FFFFFF;
+}
+QPushButton:hover { background: #004080; }
+#findBar { background: #001B33; border-bottom: 1px solid #003366; }

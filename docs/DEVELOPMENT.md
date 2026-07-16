@@ -43,5 +43,19 @@ cd .worktrees/feature-foo
 uv sync --all-extras
 ```
 
+## Ship Windows exe (each delivery)
+
+Produce `MagicEditor.exe` at the **repository root**:
+
+```powershell
+pwsh -File scripts/build_exe.ps1
+# or
+scripts\build_exe.bat
+```
+
+Requirements: Python 3.12+, PyQt6, PyInstaller (`pip install -e ".[dev]"`).
+
+The binary is windowed (no console), onefile, with `locales/` and `resources/` bundled.
+
 ## Project map
 See root `AGENTS.md` and `docs/magiceditor-architecture.md`.

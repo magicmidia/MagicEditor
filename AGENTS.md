@@ -22,6 +22,7 @@ Use **uv** when available, else **pip**:
 - `uv sync --all-extras` or `pip install -e ".[dev]"`
 - Run: `uv run magiceditor` / `python -m magiceditor`
 - Prefer `uv run <cmd>` for tool isolation
+- **Each delivery:** build root `MagicEditor.exe` via `pwsh -File scripts/build_exe.ps1`
 
 ## File-Scoped Commands
 | Task | Command |

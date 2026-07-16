@@ -41,3 +41,9 @@ coverage.xml
 # Host-local agent/MCP secrets (keep examples)
 .mcp.json
 *.local.md
+
+# Packaging (exe generated each delivery at repo root — not versioned)
+build/
+dist/
+*.spec.bak
+MagicEditor.exe
