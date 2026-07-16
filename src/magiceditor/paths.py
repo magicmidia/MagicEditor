@@ -40,3 +40,7 @@ def locales_dir() -> Path:
 
 def themes_dir() -> Path:
     return resource_root() / "resources" / "themes"
+
+
+def fonts_dir() -> Path:
+    return resource_root() / "resources" / "fonts"

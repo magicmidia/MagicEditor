@@ -33,8 +33,11 @@ Product UI for a **daily-driver code/text editor**. Design serves the product: c
 | `select` | Text selection |
 
 ## Typography
-- UI: Segoe UI 10pt (system)
-- Editor: Cascadia Code / Consolas 12pt
+- **UI + Editor:** Cascadia Code (bundled under `resources/fonts/`)
+  - UI chrome: 10pt
+  - Editor buffer: 12pt
+  - Fallback: Consolas → Courier New → monospace
+- Loaded at startup via `QFontDatabase` (`magiceditor.ui.fonts`)
 
 ## Density
 Visual density ~5/10 (daily app): tighter than marketing UI, looser than IDE “cockpit”.

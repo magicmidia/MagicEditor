@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QRect, QSize, Qt
-from PyQt6.QtGui import QColor, QFont, QPainter, QTextCharFormat, QTextFormat
+from PyQt6.QtGui import QColor, QPainter, QTextCharFormat, QTextFormat
 from PyQt6.QtWidgets import QPlainTextEdit, QTextEdit, QWidget
+
+from magiceditor.ui.fonts import editor_font
 
 
 class _LineNumberArea(QWidget):
@@ -30,15 +32,8 @@ class TextEditor(QPlainTextEdit):
 
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
         self.setCenterOnScroll(False)
+        self.setFont(editor_font(12))
         self.setTabStopDistance(4 * self.fontMetrics().horizontalAdvance(" "))
-        font = QFont("Cascadia Code")
-        if not font.exactMatch():
-            font = QFont("Consolas")
-        if not font.exactMatch():
-            font = QFont("Courier New")
-        font.setStyleHint(QFont.StyleHint.Monospace)
-        font.setPointSize(12)
-        self.setFont(font)
 
         self.blockCountChanged.connect(self._update_line_number_width)
         self.updateRequest.connect(self._update_line_number_area)
@@ -73,9 +68,7 @@ class TextEditor(QPlainTextEdit):
         self.zoomOut(1)
 
     def reset_zoom(self) -> None:
-        font = self.font()
-        font.setPointSize(12)
-        self.setFont(font)
+        self.setFont(editor_font(12))
         self._update_line_number_width(0)
 
     def resizeEvent(self, event) -> None:

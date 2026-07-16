@@ -16,9 +16,9 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = list(argv if argv is not None else sys.argv)
 
     from PyQt6.QtCore import Qt
-    from PyQt6.QtGui import QFont
     from PyQt6.QtWidgets import QApplication
 
+    from magiceditor.ui.fonts import load_bundled_fonts, ui_font
     from magiceditor.ui.main_window import MainWindow
 
     # High-DPI before QApplication
@@ -33,9 +33,8 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     # Fusion gives consistent metrics; QSS layers the look.
     app.setStyle("Fusion")
-    font = QFont("Segoe UI", 10)
-    font.setStyleHint(QFont.StyleHint.SansSerif)
-    app.setFont(font)
+    load_bundled_fonts()
+    app.setFont(ui_font(10))
 
     settings = AppSettings()
     session = settings.load()
