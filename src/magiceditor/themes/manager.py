@@ -8,6 +8,7 @@ from magiceditor.paths import themes_dir
 from magiceditor.ui.fonts import qss_font_family
 
 NATIVE_THEMES: dict[str, str] = {
+    "luminous_void": "Luminous Void",
     "clean_light": "Clean Light",
     "midnight_dark": "Midnight Dark",
     "darcula": "Darcula Mode",
@@ -19,7 +20,7 @@ NATIVE_THEMES: dict[str, str] = {
 class ThemeManager:
     def __init__(self, themes_path: Path | None = None) -> None:
         self._themes_dir = themes_path or themes_dir()
-        self._current = "midnight_dark"
+        self._current = "luminous_void"
 
     @property
     def current(self) -> str:
@@ -38,7 +39,7 @@ class ThemeManager:
     def apply(self, app: object, theme_id: str) -> None:
         """Apply theme QSS to a QApplication-like object with setStyleSheet."""
         if theme_id not in NATIVE_THEMES:
-            theme_id = "midnight_dark"
+            theme_id = "luminous_void"
         qss = self.load_qss(theme_id)
         # Inject Cascadia Code for chrome + editor (family only — never font-size on *).
         fam = qss_font_family()

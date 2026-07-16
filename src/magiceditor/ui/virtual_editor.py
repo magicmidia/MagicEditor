@@ -79,6 +79,15 @@ class VirtualEditor(QAbstractScrollArea):
         self._undo: list[_EditOp] = []
         self._redo: list[_EditOp] = []
         self._applying_history = False
+        # Palette (Luminous Void defaults — yellow caret like mockup)
+        self._bg = QColor(14, 14, 14)
+        self._fg = QColor(229, 226, 225)
+        self._gutter_bg = QColor(127, 127, 127, 18)
+        self._line_hl = QColor(255, 215, 0, 22)
+        self._caret = QColor(255, 215, 0)
+        self._gutter_fg = QColor(153, 144, 119)
+        self._gutter_fg_active = QColor(255, 246, 223)
+        self._bookmark_color = QColor(255, 215, 0, 220)
 
         self.setFont(editor_font(12))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -179,6 +188,34 @@ class VirtualEditor(QAbstractScrollArea):
 
     def has_bookmark(self, line: int) -> bool:
         return line in self._bookmarks
+
+    def apply_theme_palette(self, theme_id: str) -> None:
+        """Update canvas colors to match chrome theme (esp. Luminous Void)."""
+        if theme_id == "luminous_void":
+            self._bg = QColor(14, 14, 14)
+            self._fg = QColor(229, 226, 225)
+            self._line_hl = QColor(255, 215, 0, 22)
+            self._caret = QColor(255, 215, 0)
+            self._gutter_fg = QColor(153, 144, 119)
+            self._gutter_fg_active = QColor(255, 246, 223)
+            self._bookmark_color = QColor(255, 215, 0, 220)
+        elif theme_id == "clean_light":
+            self._bg = QColor(255, 255, 255)
+            self._fg = QColor(30, 30, 30)
+            self._line_hl = QColor(37, 99, 235, 28)
+            self._caret = QColor(37, 99, 235)
+            self._gutter_fg = QColor(100, 116, 139)
+            self._gutter_fg_active = QColor(51, 65, 85)
+            self._bookmark_color = QColor(37, 99, 235, 200)
+        else:
+            self._bg = QColor(15, 23, 42)
+            self._fg = QColor(226, 232, 240)
+            self._line_hl = QColor(56, 189, 248, 28)
+            self._caret = QColor(56, 189, 248)
+            self._gutter_fg = QColor(148, 163, 184, 140)
+            self._gutter_fg_active = QColor(148, 163, 184, 230)
+            self._bookmark_color = QColor(56, 189, 248, 200)
+        self.viewport().update()
 
     def zoom_in_one(self) -> None:
         f = self.font()
@@ -442,7 +479,9 @@ class VirtualEditor(QAbstractScrollArea):
 
     def paintEvent(self, event: QPaintEvent | None) -> None:
         painter = QPainter(self.viewport())
-        painter.fillRect(self.viewport().rect(), QColor(15, 23, 42))
+        painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.fillRect(self.viewport().rect(), self._bg)
         painter.setFont(self.font())
         fm = self.fontMetrics()
         lh = self._line_height
@@ -455,7 +494,7 @@ class VirtualEditor(QAbstractScrollArea):
         view_h = self.viewport().height()
 
         if gutter:
-            painter.fillRect(0, 0, gutter, view_h, QColor(127, 127, 127, 18))
+            painter.fillRect(0, 0, gutter, view_h, self._gutter_bg)
 
         y = 0
         line = first
@@ -472,15 +511,17 @@ class VirtualEditor(QAbstractScrollArea):
                     y,
                     self.viewport().width() - gutter,
                     row_h,
-                    QColor(56, 189, 248, 28),
+                    self._line_hl,
                 )
             if gutter:
                 if line in self._bookmarks:
-                    painter.setBrush(QColor(56, 189, 248, 200))
+                    painter.setBrush(self._bookmark_color)
                     painter.setPen(Qt.PenStyle.NoPen)
                     painter.drawEllipse(4, y + lh // 2 - 4, 8, 8)
                 num = str(line + 1)
-                painter.setPen(QColor(148, 163, 184, 230 if line == self._cursor_line else 140))
+                painter.setPen(
+                    self._gutter_fg_active if line == self._cursor_line else self._gutter_fg
+                )
                 painter.drawText(
                     0,
                     y,
@@ -501,7 +542,7 @@ class VirtualEditor(QAbstractScrollArea):
                 if do_syntax and text and len(text) <= 8000 and not self._word_wrap:
                     self._paint_syntax_line(painter, text, row, base_x, baseline, fm)
                 else:
-                    painter.setPen(QColor(226, 232, 240))
+                    painter.setPen(self._fg)
                     painter.drawText(base_x, baseline, row)
 
                 if line == self._cursor_line:
@@ -509,7 +550,7 @@ class VirtualEditor(QAbstractScrollArea):
                     if d0 <= caret_disp <= d1:
                         prefix = row[: caret_disp - d0]
                         cx = base_x + fm.horizontalAdvance(prefix)
-                        painter.setPen(QColor(56, 189, 248))
+                        painter.setPen(self._caret)
                         painter.drawLine(cx, ry + 1, cx, ry + lh - 2)
 
             y += row_h

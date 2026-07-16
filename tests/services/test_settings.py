@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from PyQt6.QtCore import QSettings
 
 from magiceditor.services.settings import AppSettings, SessionState, normalize_path
@@ -60,6 +61,27 @@ def test_open_files_and_bookmarks_roundtrip(tmp_path: Path) -> None:
     assert loaded.cursors[p2] == (2, 5)
     assert loaded.workspace is not None
     assert Path(loaded.workspace).resolve() == tmp_path.resolve()
+
+
+def test_graphics_prefs_roundtrip(tmp_path: Path) -> None:
+    s = _isolated(tmp_path)
+    state = SessionState(
+        gpu_acceleration=False,
+        gpu_multisample=False,
+        antialiasing=True,
+        window_opacity=0.85,
+        chrome_transparency=True,
+        editor_transparency=True,
+        theme="luminous_void",
+    )
+    s.save(state)
+    loaded = s.load()
+    assert loaded.gpu_acceleration is False
+    assert loaded.gpu_multisample is False
+    assert loaded.window_opacity == pytest.approx(0.85)
+    assert loaded.chrome_transparency is True
+    assert loaded.editor_transparency is True
+    assert loaded.theme == "luminous_void"
 
 
 def test_missing_files_dropped_on_load(tmp_path: Path) -> None:

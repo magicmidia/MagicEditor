@@ -43,6 +43,7 @@ def icon(name: str, color: str = "#94A3B8") -> QIcon:
 def toolbar_icon_color(theme_id: str) -> str:
     """Muted ink that blends with chrome (not pure white / pure black)."""
     return {
+        "luminous_void": "#C8C6C5",
         "clean_light": "#475569",
         "midnight_dark": "#94A3B8",
         "darcula": "#9AA7B5",

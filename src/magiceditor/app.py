@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from contextlib import suppress
 
 from magiceditor.i18n.translator import TranslatorManager
+from magiceditor.services.graphics import configure_surface_before_app
 from magiceditor.services.settings import AppSettings
 from magiceditor.themes.manager import ThemeManager
 
@@ -20,6 +21,14 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     from magiceditor.ui.fonts import load_bundled_fonts, ui_font
     from magiceditor.ui.main_window import MainWindow
+
+    # Peek graphics prefs before QApplication (GPU surface format).
+    pre_settings = AppSettings()
+    pre_session = pre_settings.load()
+    configure_surface_before_app(
+        gpu=pre_session.gpu_acceleration,
+        multisample=pre_session.gpu_multisample,
+    )
 
     # High-DPI before QApplication
     QApplication.setHighDpiScaleFactorRoundingPolicy(
@@ -36,8 +45,8 @@ def run(argv: Sequence[str] | None = None) -> int:
     load_bundled_fonts()
     app.setFont(ui_font(10))
 
-    settings = AppSettings()
-    session = settings.load()
+    settings = pre_settings
+    session = pre_session
 
     themes = ThemeManager()
     with suppress(OSError, FileNotFoundError):
@@ -48,6 +57,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         translator.load(session.language)
 
     window = MainWindow(translator=translator, themes=themes, settings=settings)
+    window.apply_graphics_preferences()
     window.show()
 
     # CLI files override / append to session

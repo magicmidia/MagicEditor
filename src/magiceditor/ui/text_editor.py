@@ -172,7 +172,8 @@ class TextEditor(QPlainTextEdit):
             return
         selection = QTextEdit.ExtraSelection()
         fmt = QTextCharFormat()
-        fmt.setBackground(QColor(56, 189, 248, 28))
+        # Gold line highlight (Luminous Void); still readable on other themes
+        fmt.setBackground(QColor(255, 215, 0, 28))
         fmt.setProperty(QTextFormat.Property.FullWidthSelection, True)
         selection.format = fmt
         selection.cursor = self.textCursor()

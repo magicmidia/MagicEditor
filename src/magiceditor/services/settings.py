@@ -12,7 +12,7 @@ from PyQt6.QtCore import QByteArray, QSettings
 
 @dataclass
 class SessionState:
-    theme: str = "midnight_dark"
+    theme: str = "luminous_void"
     language: str = "en_US"
     word_wrap: bool = False
     line_numbers: bool = True
@@ -23,6 +23,13 @@ class SessionState:
     bookmarks: dict[str, list[int]] = field(default_factory=dict)
     # path -> (line 1-based, column 1-based)
     cursors: dict[str, tuple[int, int]] = field(default_factory=dict)
+    # Graphics / appearance
+    gpu_acceleration: bool = True
+    gpu_multisample: bool = True
+    antialiasing: bool = True
+    window_opacity: float = 1.0  # 0.55-1.0
+    chrome_transparency: bool = False
+    editor_transparency: bool = False
     geometry: QByteArray | None = None
     window_state: QByteArray | None = None
 
@@ -152,10 +159,17 @@ class AppSettings:
             nkey = normalize_path(key) if Path(key).exists() else key
             cursors[nkey] = (line, col)
 
+        opacity = qs.value("graphics/window_opacity", 1.0)
+        try:
+            opacity_f = float(opacity)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            opacity_f = 1.0
+        opacity_f = max(0.55, min(1.0, opacity_f))
+
         geom = qs.value("window/geometry")
         state = qs.value("window/state")
         return SessionState(
-            theme=qs.value("ui/theme", "midnight_dark", str) or "midnight_dark",
+            theme=qs.value("ui/theme", "luminous_void", str) or "luminous_void",
             language=qs.value("ui/language", "en_US", str) or "en_US",
             word_wrap=self._as_bool(qs.value("ui/word_wrap"), False),
             line_numbers=(
@@ -168,6 +182,12 @@ class AppSettings:
             active_file=active,
             bookmarks=bookmarks,
             cursors=cursors,
+            gpu_acceleration=self._as_bool(qs.value("graphics/gpu_acceleration"), True),
+            gpu_multisample=self._as_bool(qs.value("graphics/gpu_multisample"), True),
+            antialiasing=self._as_bool(qs.value("graphics/antialiasing"), True),
+            window_opacity=opacity_f,
+            chrome_transparency=self._as_bool(qs.value("graphics/chrome_transparency"), False),
+            editor_transparency=self._as_bool(qs.value("graphics/editor_transparency"), False),
             geometry=geom if isinstance(geom, QByteArray) else None,
             window_state=state if isinstance(state, QByteArray) else None,
         )
@@ -178,6 +198,12 @@ class AppSettings:
         qs.setValue("ui/language", state.language)
         qs.setValue("ui/word_wrap", state.word_wrap)
         qs.setValue("ui/line_numbers", state.line_numbers)
+        qs.setValue("graphics/gpu_acceleration", state.gpu_acceleration)
+        qs.setValue("graphics/gpu_multisample", state.gpu_multisample)
+        qs.setValue("graphics/antialiasing", state.antialiasing)
+        qs.setValue("graphics/window_opacity", float(state.window_opacity))
+        qs.setValue("graphics/chrome_transparency", state.chrome_transparency)
+        qs.setValue("graphics/editor_transparency", state.editor_transparency)
         qs.setValue("session/workspace", state.workspace or "")
         # Store absolute paths only; drop missing files at save time too
         files: list[str] = []

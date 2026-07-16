@@ -26,6 +26,10 @@ Every feature delivery: rebuild root exe:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ```
 
+## Done (this pass)
+- [x] Theme **Luminous Void** (mockup-aligned: void black + #FFD700)
+- [x] Settings: GPU acceleration, MSAA, AA, window opacity, glass chrome, translucent editor
+
 ## Next
 1. [ ] Multi-cursor / column selection (stretch)
 2. [ ] Untitled buffer recovery (optional temp drafts)

@@ -1,12 +1,13 @@
 # MagicEditor — Design System (desktop)
 
-Product UI for a **daily-driver code/text editor**. Design serves the product: calm, legible, dense-enough, not “marketing flashy”.
+Product UI for a **daily-driver code/text editor**. Primary look: **Luminous Void** (see `tmp/DESIGN.md` + `tmp/screen.png` mockup).
 
 ## Principles
-- **Restrained palette:** neutrals + one accent (≤10% of chrome).
-- **Spacing scale:** 4 / 8 / 12 / 16 (px). No random gaps.
-- **Chrome vs canvas:** menubar/toolbar/status = slightly elevated surface; editor = deepest canvas.
-- **Icons:** monochrome stroke on 24×24 grid, 1.75–2px stroke, round caps; same color as secondary text.
+- **Void canvas + glass chrome:** deep `#0E0E0E` / `#131313` with translucent surfaces.
+- **Flat yellow accent (`#FFD700`):** active tabs, caret, primary buttons, status accents (≤10% of chrome).
+- **Spacing scale:** 4 / 8 / 12 / 16 (px). Toolbar ~36–40px.
+- **Icons:** monochrome stroke on 24×24 grid; hover → light, active → yellow.
+- **Settings:** View → Settings — GPU/OpenGL, MSAA, window opacity, glass chrome, translucent editor.
 
 ## Spacing (Qt chrome)
 | Element | Spec |

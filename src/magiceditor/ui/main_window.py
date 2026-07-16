@@ -20,6 +20,11 @@ from magiceditor.core.syntax.detect import language_label, supported_languages
 from magiceditor.i18n.translator import TranslatorManager
 from magiceditor.services.document import Document
 from magiceditor.services.document_io import open_document, save_document
+from magiceditor.services.graphics import (
+    apply_translucent_chrome,
+    apply_window_opacity,
+    graphics_status_summary,
+)
 from magiceditor.services.print_engine import export_pdf, print_plain_text
 from magiceditor.services.settings import AppSettings, SessionState, normalize_path
 from magiceditor.themes.manager import ThemeManager
@@ -28,9 +33,11 @@ from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
+from magiceditor.ui.settings_dialog import SettingsDialog
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
 from magiceditor.ui.tab_manager import TabManager
+from magiceditor.ui.virtual_editor import VirtualEditor
 
 
 class MainWindow(QMainWindow):
@@ -174,6 +181,7 @@ class MainWindow(QMainWindow):
         act("action.zoom_out", self.zoom_out, "Ctrl+-")
         act("action.zoom_reset", self.zoom_reset, "Ctrl+0")
         act("action.fullscreen", self.toggle_fullscreen, "F11", checkable=True)
+        act("action.settings", self.show_settings, "Ctrl+,")
         act("action.exit", self.close, "Ctrl+Q")
 
         self._actions["action.word_wrap"].setChecked(self._word_wrap)
@@ -230,6 +238,7 @@ class MainWindow(QMainWindow):
             "action.zoom_out",
             "action.zoom_reset",
             "action.fullscreen",
+            "action.settings",
         ):
             self._menu_view.addAction(self._actions[key])
 
@@ -379,6 +388,7 @@ class MainWindow(QMainWindow):
             "action.zoom_out": t("action.zoom_out", "Zoom Out"),
             "action.zoom_reset": t("action.zoom_reset", "Reset Zoom"),
             "action.fullscreen": t("action.fullscreen", "Full Screen"),
+            "action.settings": t("action.settings", "Settings…"),
             "action.exit": t("action.exit", "Exit"),
             "action.about": t("action.about", "About"),
         }
@@ -454,6 +464,8 @@ class MainWindow(QMainWindow):
         workspace = None
         if self._workspace is not None and self._workspace.is_dir():
             workspace = normalize_path(self._workspace)
+        # Preserve graphics prefs already loaded (updated via Settings dialog).
+        gfx = self._session
         return SessionState(
             theme=self._themes.current,
             language=self._tr.language,
@@ -464,9 +476,73 @@ class MainWindow(QMainWindow):
             active_file=active,
             bookmarks=bookmarks,
             cursors=cursors,
+            gpu_acceleration=gfx.gpu_acceleration,
+            gpu_multisample=gfx.gpu_multisample,
+            antialiasing=gfx.antialiasing,
+            window_opacity=gfx.window_opacity,
+            chrome_transparency=gfx.chrome_transparency,
+            editor_transparency=gfx.editor_transparency,
             geometry=self.saveGeometry(),
             window_state=self.saveState(),
         )
+
+    def apply_graphics_preferences(self) -> None:
+        """Apply opacity / glass / editor translucency from session."""
+        s = self._session
+        apply_window_opacity(self, s.window_opacity)
+        apply_translucent_chrome(self, s.chrome_transparency)
+        self._apply_editor_transparency(s.editor_transparency)
+        self._apply_virtual_palette()
+        self._status.showMessage(
+            graphics_status_summary(
+                gpu=s.gpu_acceleration,
+                multisample=s.gpu_multisample,
+                opacity=s.window_opacity,
+                chrome_transparency=s.chrome_transparency,
+            ),
+            4000,
+        )
+
+    def _apply_editor_transparency(self, enabled: bool) -> None:
+        name = "translucentEditor" if enabled else ""
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if not isinstance(w, EditorTab):
+                continue
+            w.editor.setObjectName(name)
+            style = w.editor.style()
+            if style is not None:
+                style.unpolish(w.editor)
+                style.polish(w.editor)
+            w.editor.update()
+
+    def _apply_virtual_palette(self) -> None:
+        """Theme-aware colors for VirtualEditor canvas."""
+        theme = self._themes.current
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if isinstance(w, EditorTab) and isinstance(w.editor, VirtualEditor):
+                w.editor.apply_theme_palette(theme)
+
+    def show_settings(self) -> None:
+        dlg = SettingsDialog(self._session, self)
+        if dlg.exec() != SettingsDialog.DialogCode.Accepted:
+            return
+        old_gpu = self._session.gpu_acceleration
+        old_msaa = self._session.gpu_multisample
+        dlg.apply_to_state(self._session)
+        self._persist_session()
+        self.apply_graphics_preferences()
+        if (
+            self._session.gpu_acceleration != old_gpu
+            or self._session.gpu_multisample != old_msaa
+        ):
+            QMessageBox.information(
+                self,
+                "MagicEditor",
+                "GPU / MSAA settings are applied on the next launch.\n"
+                "Restart MagicEditor to enable the new rendering path.",
+            )
 
     def _persist_session(self) -> None:
         if self._restoring:
@@ -491,6 +567,7 @@ class MainWindow(QMainWindow):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab):
                 w.set_syntax_light_theme(light)
+        self._apply_virtual_palette()
         self._sync_checkables()
         self._status.showMessage(f"Theme: {theme_id}", 2500)
         if persist:
@@ -588,6 +665,10 @@ class MainWindow(QMainWindow):
         tab.set_word_wrap(self._word_wrap)
         tab.set_line_numbers(self._line_numbers)
         tab.set_syntax_light_theme(self._themes.current == "clean_light")
+        if isinstance(tab.editor, VirtualEditor):
+            tab.editor.apply_theme_palette(self._themes.current)
+        if self._session.editor_transparency:
+            tab.editor.setObjectName("translucentEditor")
         tab.modification_changed.connect(self._refresh_tab_titles)
         tab.cursor_info_changed.connect(self._status.set_cursor)
         tab.language_changed.connect(lambda _lang: self._sync_syntax_check())
