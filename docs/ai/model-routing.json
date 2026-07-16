@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "project": "magiceditor",
+  "default_pipeline": ["plan", "build", "verify", "review"],
+  "tiers": {
+    "HIGH": {
+      "effort": ["xhigh", "high"],
+      "preferred_effort": "xhigh",
+      "fallback_effort": "high",
+      "phases": ["plan", "review"],
+      "claude_equiv": "opus",
+      "description": "Planning, architecture, adversarial review"
+    },
+    "MEDIUM": {
+      "effort": ["medium"],
+      "preferred_effort": "medium",
+      "phases": ["build"],
+      "claude_equiv": "sonnet",
+      "description": "Implementation and multi-file coding"
+    },
+    "LOW": {
+      "effort": ["low"],
+      "preferred_effort": "low",
+      "phases": ["verify", "mechanical"],
+      "claude_equiv": "haiku",
+      "description": "Tests, lint, format, small execution tasks"
+    }
+  },
+  "roles": {
+    "me-plan": {
+      "tier": "HIGH",
+      "reasoning_effort": "xhigh",
+      "capability_mode": "read-only",
+      "subagent_type": "me-plan"
+    },
+    "me-build": {
+      "tier": "MEDIUM",
+      "reasoning_effort": "medium",
+      "capability_mode": "all",
+      "subagent_type": "me-build"
+    },
+    "me-verify": {
+      "tier": "LOW",
+      "reasoning_effort": "low",
+      "capability_mode": "execute",
+      "subagent_type": "me-verify"
+    },
+    "me-review": {
+      "tier": "HIGH",
+      "reasoning_effort": "high",
+      "capability_mode": "read-only",
+      "subagent_type": "me-review"
+    }
+  },
+  "cost_caps": {
+    "max_spawn_depth": 2,
+    "no_nested_high": true,
+    "one_plan_per_feature": true,
+    "batch_verify": true
+  }
+}

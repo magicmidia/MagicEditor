@@ -1,0 +1,50 @@
+# MagicEditor — Grok project config (model routing + subagents)
+
+[models]
+# Parent sessions: prefer starting at medium for day-to-day coding.
+# Raise effort via /effort for plan/review turns.
+default = "grok-4.5"
+
+[subagents]
+enabled = true
+
+# Optional type model pins (inherit parent model; effort comes from roles).
+[subagents.models]
+explore = "grok-4.5"
+plan = "grok-4.5"
+
+# --- Cost-optimized roles (also defined as files under .grok/roles/) ---
+
+[subagents.roles.me-plan]
+description = "HIGH tier — architecture & implementation plans (no product code edits)"
+default_capability_mode = "read-only"
+reasoning_effort = "xhigh"
+
+[subagents.roles.me-build]
+description = "MEDIUM tier — implement features following an existing plan"
+default_capability_mode = "all"
+reasoning_effort = "medium"
+
+[subagents.roles.me-verify]
+description = "LOW tier — run tests/lint and report results; trivial fixes only"
+default_capability_mode = "execute"
+reasoning_effort = "low"
+
+[subagents.roles.me-review]
+description = "HIGH tier — code review for correctness, SRP, huge-file policy"
+default_capability_mode = "read-only"
+reasoning_effort = "high"
+
+# Built-in role effort overrides for this project (cheaper defaults)
+[subagents.roles.plan]
+reasoning_effort = "xhigh"
+default_capability_mode = "read-only"
+
+[subagents.roles.implementer]
+reasoning_effort = "medium"
+
+[subagents.roles.reviewer]
+reasoning_effort = "high"
+
+[subagents.roles.test-writer]
+reasoning_effort = "low"

@@ -1,8 +1,16 @@
-# MagicEditor — Claude entry
+# MagicEditor — Claude / multi-host entry
 
 Follow **`AGENTS.md`** as the single source of agent instructions.
 
-Token hygiene: use hierarchical routing in `AGENTS.md` (load only the scoped files for the task).  
-Optional RTK/token tooling: see global `@RTK.md` if available.
+## Model routing (mandatory)
+See `docs/ai/model-routing.md`.
 
-Skill catalog (do not dump into context unless needed): `docs/ai/skills-and-tools.md`.
+| Phase | Grok effort | Claude equiv |
+|-------|-------------|--------------|
+| Plan / Review | `xhigh` / `high` | Opus / strongest |
+| Build | `medium` | Sonnet |
+| Verify / mechanical | `low` | Haiku |
+
+Token hygiene: hierarchical routing in `AGENTS.md` — load only scoped files.  
+Optional RTK: global `@RTK.md` if available.  
+Skills catalog: `docs/ai/skills-and-tools.md` (load selectively).

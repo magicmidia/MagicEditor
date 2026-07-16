@@ -1,0 +1,4 @@
+# HIGH — review
+description = "Review MagicEditor changes for bugs, layering, and huge-file policy"
+default_capability_mode = "read-only"
+reasoning_effort = "high"

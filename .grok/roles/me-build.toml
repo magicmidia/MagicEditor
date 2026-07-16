@@ -1,0 +1,4 @@
+# MEDIUM — implementation
+description = "Implement MagicEditor features from a plan; write code, keep modules small"
+default_capability_mode = "all"
+reasoning_effort = "medium"

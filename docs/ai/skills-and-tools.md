@@ -2,14 +2,26 @@
 
 Use this catalog when starting a task. Load **only** the skills that match the current work (token hygiene).
 
+## Model routing first
+Before picking skills, pick **phase/effort**: `docs/ai/model-routing.md`.
+
+| Phase | Effort | Skills OK to load |
+|-------|--------|-------------------|
+| PLAN (HIGH) | xhigh/high | `brainstorming`, `writing-plans`, `architecture*` |
+| BUILD (MEDIUM) | medium | `test-driven-development`, `python-pro`, `clean-code` |
+| VERIFY (LOW) | low | `lint-and-validate`, `verification-before-completion` (run cmds) |
+| REVIEW (HIGH) | high | `requesting-code-review`, `find-bugs`, `code-review-checklist` |
+
+Grok agents/roles: `me-plan`, `me-build`, `me-verify`, `me-review` under `.grok/`.
+
 ## Always-on mindset
 | Concern | Prefer |
 |---------|--------|
 | Isolation | `using-git-worktrees` for feature branches under `.worktrees/` |
-| Spec before code | `brainstorming` → `writing-plans` → implement |
-| Core correctness | `test-driven-development`, `verification-before-completion` |
-| Token cost | Root `AGENTS.md` routing; hierarchical `.memory/`; avoid re-reading full architecture |
-| Code quality | `clean-code`, `lint-and-validate`, `requesting-code-review` |
+| Spec before code | PLAN (HIGH) → `writing-plans` → BUILD (MEDIUM) |
+| Core correctness | `test-driven-development` on BUILD; VERIFY on LOW |
+| Token cost | Model routing + `AGENTS.md` file routing + `.memory/`; no full architecture re-read |
+| Code quality | REVIEW on HIGH; `clean-code` on BUILD |
 | Anti-bloat | `moyu`, `andrej-karpathy`, `code-simplifier` |
 
 ## Superpowers / delivery loop

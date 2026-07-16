@@ -10,11 +10,15 @@ alwaysApply: true
 - Follow root `AGENTS.md` as the source of truth for agent behavior.
 - Architecture: `docs/magiceditor-architecture.md`.
 - Standards: `docs/ai/coding-standards.md`.
+- **Model routing (mandatory):** `docs/ai/model-routing.md`
+  - Plan/Review → strongest (HIGH)
+  - Build → default coding (MEDIUM)
+  - Tests/lint/mechanical → fast (LOW)
 - Skills catalog (load selectively): `docs/ai/skills-and-tools.md`.
 
 ## Hard rules
 - `src/magiceditor/core/**` must not import PyQt6.
 - Files >50MB: mmap + piece table + virtual viewport — never full `str` load.
 - Prefer modules ≤300 LOC; one responsibility per file.
-- After edits: ruff on touched files + relevant pytest nodes.
+- After edits: VERIFY phase (LOW) — ruff + relevant pytest.
 - AI commits need `Co-Authored-By` trailer.

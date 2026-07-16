@@ -5,7 +5,7 @@
 **Active worktree (optional):** `.worktrees/feature-bootstrap` → `feature/bootstrap`
 
 ## Current phase
-**AI harness + scaffolding** — agent docs, tooling, empty package layout. Product features not implemented yet.
+**Editor MVP in progress** on `feature/editor-mvp` + **model-routing harness**.
 
 ## Done
 - [x] Git repo + `.worktrees/` ignore
@@ -14,15 +14,16 @@
 - [x] `pyproject.toml` (ruff, mypy, pytest, deps)
 - [x] Package skeleton `src/magiceditor/**` by responsibility
 - [x] Skills/MCP catalog → `docs/ai/skills-and-tools.md`
+- [x] **Model routing** HIGH/MEDIUM/LOW → `docs/ai/model-routing.md`, `.grok/{roles,agents,personas,rules}`
+- [x] Piece table insert/delete, line index, encoding, document I/O (partial commit pending)
+- [x] MainWindow shell with tabs/sidebar/themes/i18n/preview (partial commit pending)
 
 ## Next (suggested order)
-1. [ ] `uv sync --all-extras` / install dev deps locally
-2. [ ] Implement `core/piece_table.py` + tests (TDD)
-3. [ ] `core/mmap_source.py` + threshold policy (>50MB)
-4. [ ] Minimal `MainWindow` + tab shell (no huge-file path yet)
-5. [ ] Virtual viewport binding to piece table
-6. [ ] Themes QSS (5 nativos) + i18n JSON
-7. [ ] Preview MD/HTML; print engine; search worker
+1. [ ] VERIFY (LOW): ruff + pytest on pending MVP files; commit
+2. [ ] Virtual viewport bound to piece table (BUILD medium)
+3. [ ] Find/replace + search worker (BUILD medium)
+4. [ ] Huge-file path without full decode to QTextEdit (PLAN high → BUILD)
+5. [ ] REVIEW (HIGH) before merge to main
 
 ## Blockers
 - None (environment setup only)

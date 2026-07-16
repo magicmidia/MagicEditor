@@ -1,0 +1,4 @@
+# HIGH / xhigh — planning only
+description = "Architecture and implementation planning for MagicEditor (no product code edits)"
+default_capability_mode = "read-only"
+reasoning_effort = "xhigh"

@@ -20,3 +20,10 @@
 ## Worker search
 - `QThread` or `QObject` + `moveToThread`  
 - Cancel token; emit match batches; never touch widgets from worker (signals only)
+
+## Model routing pipeline
+1. PLAN on HIGH (`me-plan` / `/effort xhigh|high`) — no product code  
+2. BUILD on MEDIUM (`me-build` / `/effort medium`) — implement  
+3. VERIFY on LOW (`me-verify` / `/effort low`) — file-scoped ruff/pytest  
+4. REVIEW on HIGH (`me-review` / `/effort high`) — findings only  
+One plan + one review per feature unit; batch tests.

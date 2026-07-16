@@ -33,6 +33,8 @@ uv run magiceditor
 ## AI-assisted development
 
 - Follow `AGENTS.md` context routing (token-efficient).
+- **Model routing (cost):** Plan/Review → HIGH (`xhigh`/`high`); Build → MEDIUM; Tests → LOW.  
+  Details: [`docs/ai/model-routing.md`](docs/ai/model-routing.md). Grok roles: `me-plan` / `me-build` / `me-verify` / `me-review`.
 - Skills/MCP catalog: `docs/ai/skills-and-tools.md`.
 - Cursor rules: `.cursor/rules/magiceditor.mdc`.
 - Example MCP config: `.mcp.example.json`.

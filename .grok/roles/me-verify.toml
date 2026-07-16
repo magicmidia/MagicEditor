@@ -1,0 +1,4 @@
+# LOW — tests and mechanical checks
+description = "Run file-scoped ruff/pytest; report pass/fail; only trivial fixes"
+default_capability_mode = "execute"
+reasoning_effort = "low"

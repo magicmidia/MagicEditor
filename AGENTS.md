@@ -3,6 +3,20 @@
 High-performance desktop text/code editor (Python 3.12+, PyQt6).
 Canonical product/architecture: `docs/magiceditor-architecture.md`.
 
+## Model Routing (cost control — mandatory)
+Match **phase → effort**. Full protocol: `docs/ai/model-routing.md` (+ JSON).
+
+| Phase | Effort | Spawn / role | Use |
+|-------|--------|--------------|-----|
+| **PLAN** | `xhigh` or `high` | `me-plan` | Architecture, ambiguous design |
+| **BUILD** | `medium` | `me-build` | Implement code from a plan |
+| **VERIFY** | `low` | `me-verify` | pytest, ruff, mechanical fixes |
+| **REVIEW** | `high` | `me-review` | Pre-merge / quality review |
+
+Pipeline: `PLAN → BUILD → VERIFY → REVIEW`.  
+Single session: `/effort <level>` when switching phases.  
+Caps: one HIGH plan per feature; batch VERIFY; max spawn depth 2; no nested HIGH.
+
 ## Package Manager
 Use **uv** when available, else **pip**:
 - `uv sync --all-extras` or `pip install -e ".[dev]"`
@@ -47,6 +61,7 @@ resources/  # themes/*.qss, icons
 |------|------------|
 | Product/UX/themes | `docs/magiceditor-architecture.md` |
 | AI tooling/skills | `docs/ai/skills-and-tools.md` |
+| Model routing | `docs/ai/model-routing.md` |
 | Coding standards | `docs/ai/coding-standards.md` |
 | Decisions | `.memory/decisions.md` |
 | Patterns | `.memory/patterns.md` |
@@ -56,11 +71,12 @@ resources/  # themes/*.qss, icons
 | UI | `src/magiceditor/ui/AGENTS.md` |
 
 ## Workflow
-1. Read root `AGENTS.md` → route table → only scoped files for the task
-2. Prefer TDD for `core/` (pytest, no display)
-3. UI changes: `pytest-qt` + `QT_QPA_PLATFORM=offscreen` when headless
-4. After edits: ruff check/format on touched files, then relevant tests
-5. New ADRs → `.memory/decisions.md`; reusable patterns → `.memory/patterns.md`
+1. Classify phase → set effort/role (`HIGH`/`MEDIUM`/`LOW`) before heavy work
+2. Read root `AGENTS.md` → route table → only scoped files for the task
+3. Prefer TDD for `core/` (pytest, no display) — tests run on **LOW**
+4. UI changes: `pytest-qt` + `QT_QPA_PLATFORM=offscreen` when headless
+5. After BUILD: VERIFY with file-scoped ruff/pytest; REVIEW large units on HIGH
+6. New ADRs → `.memory/decisions.md`; reusable patterns → `.memory/patterns.md`
 
 ## Commit Attribution
 AI commits MUST include:
