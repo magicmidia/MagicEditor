@@ -5,24 +5,24 @@
 **Active worktree (optional):** `.worktrees/feature-bootstrap` → `feature/bootstrap`
 
 ## Current phase
-**Editor MVP in progress** on `feature/editor-mvp` + **model-routing harness**.
+**Editor MVP delivered** on `feature/editor-mvp` — modern UI + `MagicEditor.exe` pipeline.
 
 ## Done
 - [x] Git repo + `.worktrees/` ignore
-- [x] Architecture master doc → `docs/magiceditor-architecture.md`
-- [x] `AGENTS.md` / `CLAUDE.md` / hierarchical `.memory/`
-- [x] `pyproject.toml` (ruff, mypy, pytest, deps)
-- [x] Package skeleton `src/magiceditor/**` by responsibility
-- [x] Skills/MCP catalog → `docs/ai/skills-and-tools.md`
-- [x] **Model routing** HIGH/MEDIUM/LOW → `docs/ai/model-routing.md`, `.grok/{roles,agents,personas,rules}`
-- [x] Piece table insert/delete, line index, encoding, document I/O (partial commit pending)
-- [x] MainWindow shell with tabs/sidebar/themes/i18n/preview (partial commit pending)
+- [x] Architecture + AI harness + model routing
+- [x] Piece table insert/delete, line index, encoding, document I/O
+- [x] Modern MainWindow: tabs, sidebar, find/replace, gutter, zoom, preview, 5 themes, i18n
+- [x] PyInstaller → root `MagicEditor.exe` via `scripts/build_exe.ps1`
+- [x] Core tests green; ruff clean
+
+## Delivery rule
+Every feature delivery: run `pwsh -File scripts/build_exe.ps1` so `MagicEditor.exe` exists at repo root (~38–45 MB onefile).
 
 ## Next (suggested order)
-1. [ ] VERIFY (LOW): ruff + pytest on pending MVP files; commit
-2. [ ] Virtual viewport bound to piece table (BUILD medium)
-3. [ ] Find/replace + search worker (BUILD medium)
-4. [ ] Huge-file path without full decode to QTextEdit (PLAN high → BUILD)
+1. [ ] Virtual viewport bound to piece table (huge files without full load)
+2. [ ] Syntax highlighting (on-demand / visible range)
+3. [ ] Search in files / directory
+4. [ ] Clean print / PDF engine wiring
 5. [ ] REVIEW (HIGH) before merge to main
 
 ## Blockers
