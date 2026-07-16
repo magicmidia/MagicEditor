@@ -24,8 +24,15 @@ class SessionState:
 class AppSettings:
     """Load/save preferences under org MagicEditor / app MagicEditor."""
 
-    def __init__(self) -> None:
-        self._qs = QSettings("MagicEditor", "MagicEditor")
+    def __init__(
+        self,
+        *,
+        settings: QSettings | None = None,
+        organization: str = "MagicEditor",
+        application: str = "MagicEditor",
+    ) -> None:
+        # ``settings`` allows tests to inject an isolated QSettings (e.g. IniFormat + temp path).
+        self._qs = settings if settings is not None else QSettings(organization, application)
 
     @staticmethod
     def _as_bool(value: object, default: bool = False) -> bool:
