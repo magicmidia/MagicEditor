@@ -1,0 +1,7 @@
+/* Monokai Pro — scaffold */
+QMainWindow, QWidget { background-color: #2D2A2E; color: #FCFCFA; }
+QPlainTextEdit, QTextEdit {
+  background-color: #2D2A2E;
+  color: #FCFCFA;
+  selection-background-color: #5B595C;
+}

@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"],
+      "description": "Scope file tools to this repo only"
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git", "--repository", "${workspaceFolder}"],
+      "description": "Git status, diff, log helpers"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "description": "Optional cross-session memory; prefer .memory/ for ADRs"
+    }
+  },
+  "_comment": "Copy entries into your host MCP config (Claude/Cursor/etc). Do not commit real tokens."
+}

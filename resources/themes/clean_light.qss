@@ -1,0 +1,14 @@
+/* Clean Light — scaffold chrome styles */
+QMainWindow, QWidget {
+  background-color: #FFFFFF;
+  color: #1E1E1E;
+}
+QMenuBar, QMenu, QStatusBar, QToolBar {
+  background-color: #F3F3F3;
+  color: #1E1E1E;
+}
+QPlainTextEdit, QTextEdit {
+  background-color: #FFFFFF;
+  color: #1E1E1E;
+  selection-background-color: #CDE8FF;
+}

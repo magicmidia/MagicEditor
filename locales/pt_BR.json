@@ -1,0 +1,18 @@
+{
+  "app.name": "MagicEditor",
+  "menu.file": "Arquivo",
+  "menu.edit": "Editar",
+  "menu.find": "Localizar",
+  "menu.view": "Visualizar",
+  "menu.format": "Formatar",
+  "menu.language": "Idioma",
+  "menu.tools": "Ferramentas",
+  "menu.themes": "Temas",
+  "menu.help": "Ajuda",
+  "action.new": "Novo",
+  "action.open": "Abrir",
+  "action.save": "Salvar",
+  "action.preview": "Pré-visualizar",
+  "action.toggle_sidebar": "Alternar painel lateral",
+  "status.ready": "Pronto"
+}

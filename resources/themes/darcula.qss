@@ -1,0 +1,7 @@
+/* Darcula Mode — scaffold */
+QMainWindow, QWidget { background-color: #2B2B2B; color: #A9B7C6; }
+QPlainTextEdit, QTextEdit {
+  background-color: #2B2B2B;
+  color: #A9B7C6;
+  selection-background-color: #214283;
+}

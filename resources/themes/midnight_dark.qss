@@ -1,0 +1,14 @@
+/* Midnight Dark — scaffold chrome styles */
+QMainWindow, QWidget {
+  background-color: #0F172A;
+  color: #E2E8F0;
+}
+QMenuBar, QMenu, QStatusBar, QToolBar {
+  background-color: #0F172A;
+  color: #E2E8F0;
+}
+QPlainTextEdit, QTextEdit {
+  background-color: #0F172A;
+  color: #E2E8F0;
+  selection-background-color: #164E63;
+}

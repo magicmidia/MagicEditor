@@ -1,0 +1,20 @@
+---
+description: MagicEditor agent rules — high-performance PyQt6 editor
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# MagicEditor
+
+- Follow root `AGENTS.md` as the source of truth for agent behavior.
+- Architecture: `docs/magiceditor-architecture.md`.
+- Standards: `docs/ai/coding-standards.md`.
+- Skills catalog (load selectively): `docs/ai/skills-and-tools.md`.
+
+## Hard rules
+- `src/magiceditor/core/**` must not import PyQt6.
+- Files >50MB: mmap + piece table + virtual viewport — never full `str` load.
+- Prefer modules ≤300 LOC; one responsibility per file.
+- After edits: ruff on touched files + relevant pytest nodes.
+- AI commits need `Co-Authored-By` trailer.

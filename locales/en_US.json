@@ -1,0 +1,18 @@
+{
+  "app.name": "MagicEditor",
+  "menu.file": "File",
+  "menu.edit": "Edit",
+  "menu.find": "Find",
+  "menu.view": "View",
+  "menu.format": "Format",
+  "menu.language": "Language",
+  "menu.tools": "Tools",
+  "menu.themes": "Themes",
+  "menu.help": "Help",
+  "action.new": "New",
+  "action.open": "Open",
+  "action.save": "Save",
+  "action.preview": "Preview",
+  "action.toggle_sidebar": "Toggle Sidebar",
+  "status.ready": "Ready"
+}

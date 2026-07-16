@@ -35,3 +35,9 @@ Thumbs.db
 # Local / temp
 tmp/
 *.log
+.coverage.*
+coverage.xml
+
+# Host-local agent/MCP secrets (keep examples)
+.mcp.json
+*.local.md
