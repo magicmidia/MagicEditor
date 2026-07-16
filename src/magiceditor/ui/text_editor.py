@@ -87,23 +87,27 @@ class TextEditor(QPlainTextEdit):
 
     def paint_line_numbers(self, event) -> None:
         painter = QPainter(self._line_numbers)
-        painter.fillRect(event.rect(), QColor(0, 0, 0, 40))
+        painter.fillRect(event.rect(), QColor(127, 127, 127, 18))
 
         block = self.firstVisibleBlock()
         block_number = block.blockNumber()
         top = round(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
         bottom = top + round(self.blockBoundingRect(block).height())
+        current = self.textCursor().blockNumber()
 
         while block.isValid() and top <= event.rect().bottom():
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
-                painter.setPen(QColor(148, 163, 184))
+                if block_number == current:
+                    painter.setPen(QColor(148, 163, 184, 230))
+                else:
+                    painter.setPen(QColor(148, 163, 184, 140))
                 painter.drawText(
                     0,
                     top,
-                    self._line_numbers.width() - 6,
+                    self._line_numbers.width() - 8,
                     self.fontMetrics().height(),
-                    Qt.AlignmentFlag.AlignRight,
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
                     number,
                 )
             block = block.next()

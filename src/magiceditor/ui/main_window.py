@@ -22,6 +22,7 @@ from magiceditor.services.document_io import open_document, save_document
 from magiceditor.services.settings import AppSettings, SessionState
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.editor_tab import EditorTab
+from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         self._session = self._settings.load()
         self._untitled_seq = 1
         self._word_wrap = self._session.word_wrap
+        # Default ON via AppSettings when key is absent; session can still turn off.
         self._line_numbers = self._session.line_numbers
         self._workspace: Path | None = (
             Path(self._session.workspace) if self._session.workspace else None
@@ -229,7 +231,7 @@ class MainWindow(QMainWindow):
         tb = QToolBar("Main", self)
         tb.setObjectName("mainToolbar")
         tb.setMovable(False)
-        tb.setIconSize(QSize(20, 20))
+        tb.setIconSize(QSize(18, 18))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.addToolBar(tb)
         for key in (
@@ -529,13 +531,17 @@ class MainWindow(QMainWindow):
 
     def show_find(self) -> None:
         tab = self.current_tab()
-        if tab is not None:
-            tab.show_find(replace=False)
+        if tab is None:
+            return
+        dlg = FindDialog(tab.editor, self, replace_mode=False)
+        dlg.exec()
 
     def show_replace(self) -> None:
         tab = self.current_tab()
-        if tab is not None:
-            tab.show_find(replace=True)
+        if tab is None:
+            return
+        dlg = FindDialog(tab.editor, self, replace_mode=True)
+        dlg.exec()
 
     def toggle_preview(self) -> None:
         tab = self.current_tab()

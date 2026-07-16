@@ -60,7 +60,12 @@ class AppSettings:
             theme=qs.value("ui/theme", "midnight_dark", str) or "midnight_dark",
             language=qs.value("ui/language", "en_US", str) or "en_US",
             word_wrap=self._as_bool(qs.value("ui/word_wrap"), False),
-            line_numbers=self._as_bool(qs.value("ui/line_numbers"), True),
+            # Default ON when key is missing (first run / reset).
+            line_numbers=(
+                True
+                if "ui/line_numbers" not in qs.allKeys()
+                else self._as_bool(qs.value("ui/line_numbers"), True)
+            ),
             workspace=workspace,
             open_files=open_files,
             active_file=active,
