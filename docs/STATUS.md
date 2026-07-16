@@ -26,9 +26,12 @@ Every feature delivery: rebuild root exe:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ```
 
-## Done (this pass)
+## Done (recent)
 - [x] Theme **Luminous Void** (mockup-aligned: void black + #FFD700)
 - [x] Settings: GPU acceleration, MSAA, AA, window opacity, glass chrome, translucent editor
+- [x] Sidebar mockup: Workspace header, Explorer/Search/Settings nav, Open Editors, Project Files
+- [x] Quick Open (Ctrl+P) + toolbar search field
+- [x] Status accent "Sync Active: MagicCloud"
 
 ## Next
 1. [ ] Multi-cursor / column selection (stretch)

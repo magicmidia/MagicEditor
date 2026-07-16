@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QEvent, QSize, Qt
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
     QFileDialog,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
     QToolBar,
@@ -33,6 +34,7 @@ from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
+from magiceditor.ui.quick_open import QuickOpenDialog
 from magiceditor.ui.settings_dialog import SettingsDialog
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
@@ -86,7 +88,10 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._sidebar_dock)
         # Explorer is optional — hidden until a folder/workspace is opened.
         self._sidebar_dock.hide()
-        self._sidebar.file_activated.connect(self.open_path)
+        self._sidebar.file_activated.connect(self._on_sidebar_file)
+        self._sidebar.search_requested.connect(self.show_find_in_files)
+        self._sidebar.settings_requested.connect(self.show_settings)
+        self._quick_search: QLineEdit | None = None
 
         self._actions: dict[str, QAction] = {}
         self._theme_actions: dict[str, QAction] = {}
@@ -182,6 +187,7 @@ class MainWindow(QMainWindow):
         act("action.zoom_reset", self.zoom_reset, "Ctrl+0")
         act("action.fullscreen", self.toggle_fullscreen, "F11", checkable=True)
         act("action.settings", self.show_settings, "Ctrl+,")
+        act("action.quick_open", self.show_quick_open, "Ctrl+P")
         act("action.exit", self.close, "Ctrl+Q")
 
         self._actions["action.word_wrap"].setChecked(self._word_wrap)
@@ -232,6 +238,7 @@ class MainWindow(QMainWindow):
         for key in (
             "action.preview",
             "action.toggle_sidebar",
+            "action.quick_open",
             "action.word_wrap",
             "action.line_numbers",
             "action.zoom_in",
@@ -304,7 +311,26 @@ class MainWindow(QMainWindow):
             "action.toggle_sidebar",
         ):
             tb.addAction(self._actions[key])
+        tb.addSeparator()
+        # Mockup-style command search (Ctrl+P)
+        search = QLineEdit(self)
+        search.setObjectName("toolbarSearch")
+        search.setPlaceholderText("Search files (Ctrl+P)")
+        search.setClearButtonEnabled(True)
+        search.setMinimumWidth(200)
+        search.setMaximumWidth(320)
+        search.setReadOnly(True)
+        search.setCursor(Qt.CursorShape.PointingHandCursor)
+        search.installEventFilter(self)
+        tb.addWidget(search)
+        self._quick_search = search
         self._toolbar = tb
+
+    def eventFilter(self, obj, event):
+        if obj is self._quick_search and event.type() == QEvent.Type.MouseButtonPress:
+            self.show_quick_open()
+            return True
+        return super().eventFilter(obj, event)
 
     def _apply_icons(self) -> None:
         c = self._icon_color
@@ -389,6 +415,7 @@ class MainWindow(QMainWindow):
             "action.zoom_reset": t("action.zoom_reset", "Reset Zoom"),
             "action.fullscreen": t("action.fullscreen", "Full Screen"),
             "action.settings": t("action.settings", "Settings…"),
+            "action.quick_open": t("action.quick_open", "Quick Open"),
             "action.exit": t("action.exit", "Exit"),
             "action.about": t("action.about", "About"),
         }
@@ -544,6 +571,48 @@ class MainWindow(QMainWindow):
                 "Restart MagicEditor to enable the new rendering path.",
             )
 
+    def show_quick_open(self) -> None:
+        open_paths: list[str] = []
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if isinstance(w, EditorTab) and w.document.path is not None:
+                open_paths.append(str(w.document.path))
+        dlg = QuickOpenDialog(self._workspace, self, open_paths=open_paths)
+        dlg.path_chosen.connect(self.open_path)
+        dlg.exec()
+
+    def _on_sidebar_file(self, path: str) -> None:
+        # Open editors may emit path or path string key
+        p = Path(path)
+        if p.is_file():
+            self.open_path(p)
+            return
+        # Try match open tab by path string
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if (
+                isinstance(w, EditorTab)
+                and w.document.path is not None
+                and normalize_path(w.document.path) == path
+            ):
+                self.tabs.setCurrentIndex(i)
+                return
+
+    def _refresh_open_editors_sidebar(self) -> None:
+        items: list[tuple[str, str]] = []
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if not isinstance(w, EditorTab):
+                continue
+            label = w.document.display_name()
+            key = (
+                normalize_path(w.document.path)
+                if w.document.path is not None
+                else f"tab:{i}"
+            )
+            items.append((label, key))
+        self._sidebar.set_open_editors(items)
+
     def _persist_session(self) -> None:
         if self._restoring:
             return
@@ -633,8 +702,10 @@ class MainWindow(QMainWindow):
     def _show_workspace(self, path: Path, *, persist: bool) -> None:
         self._workspace = path
         self._sidebar.set_root_path(path)
+        self._sidebar.set_workspace_label(path.name)
         self._sidebar_dock.show()
         self._actions["action.toggle_sidebar"].setChecked(True)
+        self._status.set_sync_message(f"Workspace: {path.name}")
         if persist:
             self._persist_session()
 
@@ -673,6 +744,7 @@ class MainWindow(QMainWindow):
         tab.cursor_info_changed.connect(self._status.set_cursor)
         tab.language_changed.connect(lambda _lang: self._sync_syntax_check())
         idx = self.tabs.addTab(tab, doc.display_name())
+        self._refresh_open_editors_sidebar()
         if activate:
             self.tabs.setCurrentIndex(idx)
             self._update_status_for(tab)
@@ -936,6 +1008,7 @@ class MainWindow(QMainWindow):
         self.tabs.removeTab(index)
         if widget is not None:
             widget.deleteLater()
+        self._refresh_open_editors_sidebar()
         if self.tabs.count() == 0:
             self.new_document()
         else:
@@ -948,11 +1021,13 @@ class MainWindow(QMainWindow):
                 self.tabs.setTabText(i, w.document.display_name())
                 if w is self.current_tab():
                     self.setWindowTitle(f"{w.document.display_name()} — MagicEditor")
+        self._refresh_open_editors_sidebar()
 
     def _on_tab_changed(self, index: int) -> None:
         w = self.tabs.widget(index)
         if isinstance(w, EditorTab):
             self._update_status_for(w)
+            self._refresh_open_editors_sidebar()
             if not self._restoring:
                 self._persist_session()
 

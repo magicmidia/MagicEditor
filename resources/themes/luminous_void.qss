@@ -139,6 +139,117 @@ QDockWidget::title {
   font-weight: 600;
 }
 
+/* --- Workspace sidebar (mockup) --- */
+QWidget#workspaceSidebar {
+  background-color: #201F1F;
+  border-right: 1px solid rgba(255, 255, 255, 26);
+}
+QFrame#sidebarHeader {
+  background-color: #1C1B1B;
+  border-bottom: 1px solid rgba(255, 255, 255, 14);
+}
+QLabel#sidebarWorkspaceTitle {
+  color: #E5E2E1;
+  font-weight: 600;
+  font-size: 12px;
+}
+QLabel#sidebarWorkspaceSub {
+  color: #999077;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+QLabel#sidebarWorkspaceBadge {
+  background-color: rgba(255, 215, 0, 40);
+  color: #FFD700;
+  border: 1px solid rgba(255, 215, 0, 90);
+  border-radius: 12px;
+  font-size: 11px;
+}
+QFrame#sidebarNav {
+  background-color: #201F1F;
+  border-bottom: 1px solid rgba(255, 255, 255, 14);
+}
+QPushButton#sidebarNavButton {
+  text-align: left;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  color: #B7B5B4;
+  background: transparent;
+}
+QPushButton#sidebarNavButton:hover {
+  background-color: rgba(255, 255, 255, 12);
+  color: #FFF6DF;
+}
+QPushButton#sidebarNavButton:checked {
+  background-color: rgba(255, 255, 255, 14);
+  color: #FFD700;
+  border: 1px solid rgba(255, 215, 0, 50);
+}
+QLabel#sidebarSectionLabel {
+  color: #999077;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 6px 4px 2px 4px;
+}
+QListWidget#sidebarOpenEditors {
+  background-color: transparent;
+  border: none;
+  outline: none;
+  color: #E5E2E1;
+}
+QListWidget#sidebarOpenEditors::item {
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: #C8C6C5;
+}
+QListWidget#sidebarOpenEditors::item:selected,
+QListWidget#sidebarOpenEditors::item:hover {
+  background-color: rgba(255, 215, 0, 28);
+  color: #FFD700;
+}
+QTreeView#sidebarTree {
+  background-color: transparent;
+  border: none;
+  outline: none;
+}
+QLineEdit#toolbarSearch {
+  background-color: #2A2A2A;
+  color: #E5E2E1;
+  border: 1px solid rgba(255, 255, 255, 14);
+  border-radius: 4px;
+  padding: 4px 10px;
+  min-height: 18px;
+  margin: 0 8px;
+}
+QLineEdit#toolbarSearch:hover {
+  border: 1px solid rgba(255, 215, 0, 80);
+  color: #FFF6DF;
+}
+QDialog#quickOpenDialog {
+  background-color: #201F1F;
+}
+QLineEdit#quickOpenInput {
+  background-color: #2A2A2A;
+  border: 1px solid #FFD700;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+QListWidget#quickOpenList {
+  background-color: #1C1B1B;
+  border: 1px solid rgba(255, 255, 255, 14);
+  border-radius: 4px;
+}
+QListWidget#quickOpenList::item {
+  padding: 6px 10px;
+}
+QListWidget#quickOpenList::item:selected {
+  background-color: rgba(255, 215, 0, 40);
+  color: #FFF6DF;
+}
+
 /* --- Tabs --- */
 QTabWidget::pane {
   border: none;
