@@ -25,6 +25,7 @@ from magiceditor.services.settings import AppSettings, SessionState
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.find_dialog import FindDialog
+from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
@@ -157,6 +158,7 @@ class MainWindow(QMainWindow):
         act("action.export_pdf", self.export_pdf_current, "Ctrl+Shift+E")
         act("action.find", self.show_find, "Ctrl+F")
         act("action.replace", self.show_replace, "Ctrl+H")
+        act("action.find_in_files", self.show_find_in_files, "Ctrl+Shift+F")
         act("action.preview", self.toggle_preview, "Ctrl+Shift+P")
         act("action.toggle_sidebar", self.toggle_sidebar, "Ctrl+B", checkable=True)
         act("action.word_wrap", self.toggle_word_wrap, "Alt+Z", checkable=True)
@@ -194,7 +196,7 @@ class MainWindow(QMainWindow):
         self._menu_file.addSeparator()
         self._menu_file.addAction(self._actions["action.exit"])
 
-        for key in ("action.find", "action.replace"):
+        for key in ("action.find", "action.replace", "action.find_in_files"):
             self._menu_edit.addAction(self._actions[key])
 
         for key in (
@@ -266,6 +268,7 @@ class MainWindow(QMainWindow):
         for key in (
             "action.find",
             "action.replace",
+            "action.find_in_files",
             "action.preview",
             "action.toggle_sidebar",
         ):
@@ -284,6 +287,7 @@ class MainWindow(QMainWindow):
             "action.export_pdf": "save_as",
             "action.find": "find",
             "action.replace": "replace",
+            "action.find_in_files": "find",
             "action.preview": "preview",
             "action.toggle_sidebar": "sidebar",
             "action.word_wrap": "wrap",
@@ -338,6 +342,7 @@ class MainWindow(QMainWindow):
             "action.export_pdf": t("action.export_pdf", "Export PDF…"),
             "action.find": t("action.find", "Find"),
             "action.replace": t("action.replace", "Replace"),
+            "action.find_in_files": t("action.find_in_files", "Find in Files"),
             "action.preview": t("action.preview", "Preview"),
             "action.toggle_sidebar": t("action.toggle_sidebar", "Toggle Explorer"),
             "action.word_wrap": t("action.word_wrap", "Word Wrap"),
@@ -499,7 +504,7 @@ class MainWindow(QMainWindow):
         if persist:
             self._persist_session()
 
-    def open_path(self, path: str | Path) -> None:
+    def open_path(self, path: str | Path) -> EditorTab | None:
         path = Path(path)
         # Reuse existing tab if already open
         for i in range(self.tabs.count()):
@@ -510,15 +515,16 @@ class MainWindow(QMainWindow):
                 and w.document.path.resolve() == path.resolve()
             ):
                 self.tabs.setCurrentIndex(i)
-                return
+                return w
         try:
             doc = open_document(path)
         except OSError as exc:
             QMessageBox.critical(self, "MagicEditor", str(exc))
-            return
-        self._add_document(doc)
+            return None
+        tab = self._add_document(doc)
         self._status.showMessage(f"Opened {path.name}", 3000)
         self._persist_session()
+        return tab
 
     def _add_document(self, doc: Document, *, activate: bool = True) -> EditorTab:
         tab = EditorTab(doc, self)
@@ -628,6 +634,17 @@ class MainWindow(QMainWindow):
             return
         dlg = FindDialog(tab.editor, self, replace_mode=True)
         dlg.exec()
+
+    def show_find_in_files(self) -> None:
+        dlg = FindInFilesDialog(self._workspace, self)
+        dlg.hit_activated.connect(self._open_search_hit)
+        dlg.exec()
+
+    def _open_search_hit(self, path: str, line: int, column: int) -> None:
+        tab = self.open_path(path)
+        if tab is not None:
+            tab.goto_line(line, column)
+            self._update_status_for(tab)
 
     def toggle_preview(self) -> None:
         tab = self.current_tab()

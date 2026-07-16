@@ -53,6 +53,8 @@ class Document:
 
     def mark_modified(self) -> None:
         self.modified = True
+
+    def invalidate_line_index(self) -> None:
         self._line_index = None
 
     def text(self) -> str:
@@ -73,6 +75,34 @@ class Document:
         raw = self.buffer.get_text(start, length)
         enc = self.encoding if self.encoding != "utf-8-sig" else "utf-8"
         return raw.decode(enc, errors="replace")
+
+    def insert_bytes(self, offset: int, data: bytes) -> None:
+        """Insert bytes and update the line index incrementally when possible."""
+        if not data:
+            return
+        idx = self.line_index()
+        line = idx.offset_to_line(min(offset, len(self.buffer)))
+        self.buffer.insert(offset, data)
+        self.modified = True
+        if b"\n" not in data and b"\r" not in data:
+            idx.apply_insert_plain(offset, len(data))
+        else:
+            idx.rebuild_suffix(self.buffer, line)
+
+    def delete_bytes(self, offset: int, length: int) -> None:
+        """Delete bytes and update the line index incrementally when possible."""
+        if length <= 0:
+            return
+        idx = self.line_index()
+        # Peek deleted region for newlines before mutating
+        deleted = self.buffer.get_text(offset, length)
+        line = idx.offset_to_line(min(offset, len(self.buffer)))
+        self.buffer.delete(offset, length)
+        self.modified = True
+        if b"\n" not in deleted and b"\r" not in deleted:
+            idx.apply_delete_plain(offset, length)
+        else:
+            idx.rebuild_suffix(self.buffer, line)
 
     def display_name(self) -> str:
         mark = " *" if self.modified else ""

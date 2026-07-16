@@ -3,19 +3,33 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QKeyEvent, QPainter, QPaintEvent, QWheelEvent
+from PyQt6.QtGui import QColor, QFont, QKeyEvent, QPainter, QPaintEvent, QWheelEvent
 from PyQt6.QtWidgets import QAbstractScrollArea, QWidget
 
+from magiceditor.core.syntax.rules import tokenize_line
 from magiceditor.services.document import Document
 from magiceditor.ui.fonts import editor_font
+
+# kind -> (fg hex, bold) — match MagicHighlighter dark palette
+_SYNTAX_PALETTE: dict[str, tuple[str, bool]] = {
+    "keyword": ("#C792EA", True),
+    "string": ("#C3E88D", False),
+    "comment": ("#546E7A", False),
+    "number": ("#F78C6C", False),
+    "decorator": ("#82AAFF", False),
+    "heading": ("#82AAFF", True),
+    "code": ("#89DDFF", False),
+    "link": ("#80CBC4", False),
+}
+_DEFAULT_FG = "#E2E8F0"
 
 
 class VirtualEditor(QAbstractScrollArea):
     """Huge-file viewer/editor surface.
 
     Does **not** load the full document into a ``QTextDocument``. Lines are
-    fetched from the document piece table on paint. Editing is limited
-    (navigation + find); typing inserts into the piece table at the caret.
+    fetched from the document piece table on paint. Editing mutates the
+    piece table and keeps the line index incremental.
     """
 
     cursorPositionChanged = pyqtSignal()
@@ -32,6 +46,7 @@ class VirtualEditor(QAbstractScrollArea):
         self._line_height = 18
         self._gutter_width = 48
         self._pad_x = 8
+        self._language = "text"
 
         self.setFont(editor_font(12))
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -47,6 +62,25 @@ class VirtualEditor(QAbstractScrollArea):
 
     def is_huge_mode(self) -> bool:
         return True
+
+    def set_language(self, language: str) -> None:
+        if language == self._language:
+            return
+        self._language = language
+        self.viewport().update()
+
+    def language(self) -> str:
+        return self._language
+
+    def goto_line(self, line: int, column: int = 0) -> None:
+        """Move caret to 0-based line/column and scroll into view."""
+        total = self._line_count()
+        self._cursor_line = max(0, min(total - 1, line))
+        text = self._doc.line_text(self._cursor_line)
+        self._cursor_col = max(0, min(len(text), column))
+        self._ensure_visible(self._cursor_line)
+        self.cursorPositionChanged.emit()
+        self.viewport().update()
 
     def toPlainText(self) -> str:
         # Avoid materializing multi-GB strings casually.
@@ -126,7 +160,6 @@ class VirtualEditor(QAbstractScrollArea):
                 continue
             # Skip current caret match when searching forward from same line
             if line == start_line and not backward:
-                # find next occurrence after caret
                 col_bytes = self._col_to_byte(line, self._cursor_col)
                 pos = hay.find(needle_b, col_bytes + (1 if col_bytes < len(hay) else 0))
                 if pos < 0:
@@ -188,6 +221,7 @@ class VirtualEditor(QAbstractScrollArea):
         visible = self.viewport().height() // lh + 2
         gutter = self._gutter_width if self._show_line_numbers else 0
         total = self._line_count()
+        do_syntax = self._language not in {"", "text"}
 
         if gutter:
             painter.fillRect(0, 0, gutter, self.viewport().height(), QColor(127, 127, 127, 18))
@@ -220,17 +254,70 @@ class VirtualEditor(QAbstractScrollArea):
                 text = self._doc.line_text(line)
             except IndexError:
                 text = ""
-            painter.setPen(QColor(226, 232, 240))
-            painter.drawText(
-                gutter + self._pad_x - h_off,
-                y + fm.ascent() + 1,
-                text.replace("\t", "    "),
-            )
+            display = text.replace("\t", "    ")
+            base_x = gutter + self._pad_x - h_off
+            baseline = y + fm.ascent() + 1
+
+            if do_syntax and text and len(text) <= 8000:
+                self._paint_syntax_line(painter, text, display, base_x, baseline, fm)
+            else:
+                painter.setPen(QColor(226, 232, 240))
+                painter.drawText(base_x, baseline, display)
+
             if line == self._cursor_line:
                 prefix = text[: self._cursor_col].replace("\t", "    ")
                 cx = gutter + self._pad_x - h_off + fm.horizontalAdvance(prefix)
                 painter.setPen(QColor(56, 189, 248))
                 painter.drawLine(cx, y + 1, cx, y + lh - 2)
+
+    def _paint_syntax_line(
+        self,
+        painter: QPainter,
+        text: str,
+        display: str,
+        base_x: int,
+        baseline: int,
+        fm,
+    ) -> None:
+        """Paint a line with per-token colors (visible range only)."""
+        spans = tokenize_line(text, self._language)
+        # Map original char indices through tab expansion for x positions
+        # We draw on ``text`` widths with tabs as 4 spaces — expand positions.
+        claimed_end = 0
+        x = base_x
+        bold_font = QFont(self.font())
+        bold_font.setBold(True)
+        normal_font = self.font()
+
+        def expand_slice(start: int, end: int) -> str:
+            return text[start:end].replace("\t", "    ")
+
+        for start, length, kind in spans:
+            if start > claimed_end:
+                gap = expand_slice(claimed_end, start)
+                painter.setFont(normal_font)
+                painter.setPen(QColor(_DEFAULT_FG))
+                painter.drawText(x, baseline, gap)
+                x += fm.horizontalAdvance(gap)
+            chunk = expand_slice(start, start + length)
+            color, bold = _SYNTAX_PALETTE.get(kind, (_DEFAULT_FG, False))
+            painter.setFont(bold_font if bold else normal_font)
+            painter.setPen(QColor(color))
+            painter.drawText(x, baseline, chunk)
+            x += fm.horizontalAdvance(chunk)
+            claimed_end = start + length
+
+        if claimed_end < len(text):
+            tail = expand_slice(claimed_end, len(text))
+            painter.setFont(normal_font)
+            painter.setPen(QColor(_DEFAULT_FG))
+            painter.drawText(x, baseline, tail)
+        elif not spans:
+            painter.setFont(normal_font)
+            painter.setPen(QColor(_DEFAULT_FG))
+            painter.drawText(base_x, baseline, display)
+
+        painter.setFont(self.font())
 
     # --- input --------------------------------------------------------
 
@@ -311,7 +398,7 @@ class VirtualEditor(QAbstractScrollArea):
             self.setFocus()
         super().mousePressEvent(event)
 
-    # --- edits (piece table) ------------------------------------------
+    # --- edits (piece table + incremental line index) -----------------
 
     def _byte_offset_at_cursor(self) -> int:
         idx = self._doc.line_index()
@@ -328,7 +415,6 @@ class VirtualEditor(QAbstractScrollArea):
         text = self._doc.line_text(line)
         enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
         raw = text.encode(enc, errors="replace")
-        # walk chars until bytes consumed
         used = 0
         col = 0
         for ch in text:
@@ -345,12 +431,9 @@ class VirtualEditor(QAbstractScrollArea):
         enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
         data = text.encode(enc, errors="replace")
         off = self._byte_offset_at_cursor()
-        self._doc.buffer.insert(off, data)
-        self._doc.mark_modified()
+        self._doc.insert_bytes(off, data)
         self._modified = True
-        # rebuild line index (acceptable until incremental index lands)
-        self._doc._line_index = None
-        if "\n" in text or "\r" in text:
+        if b"\n" in data or b"\r" in data:
             self._cursor_line = self._doc.line_index().offset_to_line(off + len(data))
             line_start = self._doc.line_index().line_start(self._cursor_line)
             self._cursor_col = self._byte_to_col(self._cursor_line, off + len(data) - line_start)
@@ -365,9 +448,7 @@ class VirtualEditor(QAbstractScrollArea):
         off = self._byte_offset_at_cursor()
         if off <= 0:
             return
-        self._doc.buffer.delete(off - 1, 1)
-        self._doc.mark_modified()
-        self._doc._line_index = None
+        self._doc.delete_bytes(off - 1, 1)
         self._modified = True
         new_off = off - 1
         self._cursor_line = self._doc.line_index().offset_to_line(new_off)
@@ -382,9 +463,7 @@ class VirtualEditor(QAbstractScrollArea):
         off = self._byte_offset_at_cursor()
         if off >= len(self._doc.buffer):
             return
-        self._doc.buffer.delete(off, 1)
-        self._doc.mark_modified()
-        self._doc._line_index = None
+        self._doc.delete_bytes(off, 1)
         self._modified = True
         self._update_scrollbars()
         self.textChanged.emit()

@@ -12,6 +12,7 @@ class LineIndex:
     """Maps line numbers to byte offsets (LF, CR, CRLF).
 
     A trailing newline creates an empty final line (common editor behavior).
+    Supports incremental updates for plain inserts and suffix rebuilds.
     """
 
     __slots__ = ("_content_ends", "_length", "_starts")
@@ -34,11 +35,7 @@ class LineIndex:
 
     @classmethod
     def from_buffer(cls, data: Any) -> LineIndex:
-        """Build index from any buffer supporting ``len`` and int indexing.
-
-        Works with ``bytes``, ``bytearray``, ``memoryview``, and mmap views
-        without requiring an intermediate full ``bytes`` copy of the file.
-        """
+        """Build index from any buffer supporting ``len`` and int indexing."""
         starts: list[int] = []
         content_ends: list[int] = []
         start = 0
@@ -74,7 +71,6 @@ class LineIndex:
 
     @classmethod
     def from_piece_table(cls, table: PieceTable) -> LineIndex:
-        # Prefer buffer scan without materializing when table is a single original piece.
         return cls.from_bytes(table.get_text())
 
     @property
@@ -104,6 +100,59 @@ class LineIndex:
             else:
                 hi = mid - 1
         return ans
+
+    def apply_insert_plain(self, offset: int, delta: int) -> None:
+        """Shift index for an insert that contains **no** CR/LF bytes."""
+        if delta == 0:
+            return
+        if offset < 0 or offset > self._length:
+            raise IndexError("insert offset out of range")
+        for i in range(len(self._starts)):
+            if self._starts[i] > offset:
+                self._starts[i] += delta
+            if self._content_ends[i] >= offset:
+                self._content_ends[i] += delta
+        self._length += delta
+
+    def apply_delete_plain(self, offset: int, delta: int) -> None:
+        """Shift index for a delete that does not remove any CR/LF bytes."""
+        if delta == 0:
+            return
+        if offset < 0 or delta < 0 or offset + delta > self._length:
+            raise IndexError("delete range out of range")
+        end = offset + delta
+        for i in range(len(self._starts)):
+            if self._starts[i] >= end:
+                self._starts[i] -= delta
+            elif self._starts[i] > offset:
+                self._starts[i] = offset
+            if self._content_ends[i] >= end:
+                self._content_ends[i] -= delta
+            elif self._content_ends[i] > offset:
+                self._content_ends[i] = offset
+        self._length -= delta
+
+    def rebuild_suffix(self, table: PieceTable, from_line: int) -> None:
+        """Rebuild line boundaries from ``from_line`` to EOF using table bytes.
+
+        Lines before ``from_line`` are kept. Cost is proportional to the
+        suffix size — cheap when editing near the end of a huge file.
+        """
+        from_line = max(from_line, 0)
+        if from_line >= len(self._starts):
+            from_line = max(0, len(self._starts) - 1)
+
+        start = self._starts[from_line]
+        total = len(table)
+        start = min(start, total)
+        suffix = table.get_text(start, total - start) if total > start else b""
+        sub = LineIndex.from_bytes(suffix)
+
+        head_starts = self._starts[:from_line]
+        head_ends = self._content_ends[:from_line]
+        self._starts = head_starts + [s + start for s in sub._starts]
+        self._content_ends = head_ends + [e + start for e in sub._content_ends]
+        self._length = total
 
 
 def is_byte_sequence(data: Sequence[int]) -> bool:

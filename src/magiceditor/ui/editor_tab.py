@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QTextCursor
 from PyQt6.QtWidgets import QSplitter, QVBoxLayout, QWidget
 
 from magiceditor.core.piece_table import PieceTable
@@ -30,7 +31,9 @@ class EditorTab(QWidget):
         self._highlighter: MagicHighlighter | None = None
 
         if self._huge:
-            self.editor: TextEditor | VirtualEditor = VirtualEditor(document, self)
+            virtual = VirtualEditor(document, self)
+            virtual.set_language(self._language)
+            self.editor: TextEditor | VirtualEditor = virtual
             self.editor.cursorPositionChanged.connect(self._on_virtual_cursor)
             self.editor.textChanged.connect(self._on_virtual_text)
             self.editor.modificationChanged.connect(self._on_virtual_mod)
@@ -69,7 +72,30 @@ class EditorTab(QWidget):
         self._language = language
         if self._highlighter is not None:
             self._highlighter.set_language(language)
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.set_language(language)
         self.language_changed.emit(language)
+
+    def goto_line(self, line: int, column: int = 0) -> None:
+        """Move caret to 1-based line/column."""
+        line0 = max(0, line - 1)
+        col0 = max(0, column - 1)
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.goto_line(line0, col0)
+            return
+        assert isinstance(self.editor, TextEditor)
+        block = self.editor.document().findBlockByNumber(line0)
+        if not block.isValid():
+            return
+        cursor = QTextCursor(block)
+        cursor.movePosition(
+            QTextCursor.MoveOperation.Right,
+            QTextCursor.MoveMode.MoveAnchor,
+            min(col0, block.length() - 1),
+        )
+        self.editor.setTextCursor(cursor)
+        self.editor.centerCursor()
+        self.editor.setFocus()
 
     def set_syntax_light_theme(self, light: bool) -> None:
         if self._highlighter is not None:
