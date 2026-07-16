@@ -55,7 +55,8 @@ class FindBar(QWidget):
         btn_all.clicked.connect(self.replace_all)
 
         row1 = QHBoxLayout()
-        row1.setContentsMargins(8, 6, 8, 2)
+        row1.setContentsMargins(12, 10, 12, 6)
+        row1.setSpacing(8)
         row1.addWidget(self.find_input, 1)
         row1.addWidget(btn_prev)
         row1.addWidget(btn_next)
@@ -65,7 +66,8 @@ class FindBar(QWidget):
         row1.addWidget(btn_close)
 
         row2 = QHBoxLayout()
-        row2.setContentsMargins(8, 2, 8, 6)
+        row2.setContentsMargins(12, 0, 12, 10)
+        row2.setSpacing(8)
         row2.addWidget(self.replace_input, 1)
         row2.addWidget(btn_replace)
         row2.addWidget(btn_all)

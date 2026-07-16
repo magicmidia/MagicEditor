@@ -65,6 +65,7 @@ select = [
 ignore = [
   "PLR0913", # too many arguments — Qt constructors often need many params
   "PLR0911", # too many returns — fine for small pure helpers
+  "PLR0915", # too many statements — UI constructors wire many widgets
   "PLR2004", # magic values — OK in parsers (0x0A etc.)
   "SIM105",  # contextlib.suppress optional style
   "SIM108",  # ternary style optional

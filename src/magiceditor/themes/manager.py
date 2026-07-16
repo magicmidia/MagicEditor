@@ -36,9 +36,13 @@ class ThemeManager:
 
     def apply(self, app: object, theme_id: str) -> None:
         """Apply theme QSS to a QApplication-like object with setStyleSheet."""
+        if theme_id not in NATIVE_THEMES:
+            theme_id = "midnight_dark"
         qss = self.load_qss(theme_id)
         set_style = getattr(app, "setStyleSheet", None)
         if set_style is None:
             raise TypeError("app does not support setStyleSheet")
+        # Clear first so residual rules from previous theme do not stack.
+        set_style("")
         set_style(qss)
         self._current = theme_id

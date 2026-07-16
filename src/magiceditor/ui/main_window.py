@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QCloseEvent, QKeySequence
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
     QFileDialog,
     QMainWindow,
     QMessageBox,
-    QStyle,
     QToolBar,
     QWidget,
 )
@@ -20,8 +19,10 @@ from PyQt6.QtWidgets import (
 from magiceditor.i18n.translator import TranslatorManager
 from magiceditor.services.document import Document
 from magiceditor.services.document_io import open_document, save_document
+from magiceditor.services.settings import AppSettings, SessionState
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.editor_tab import EditorTab
+from magiceditor.ui.icons import icon, toolbar_icon_color
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
 from magiceditor.ui.tab_manager import TabManager
@@ -32,14 +33,22 @@ class MainWindow(QMainWindow):
         self,
         translator: TranslatorManager | None = None,
         themes: ThemeManager | None = None,
+        settings: AppSettings | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._tr = translator or TranslatorManager()
         self._themes = themes or ThemeManager()
+        self._settings = settings or AppSettings()
+        self._session = self._settings.load()
         self._untitled_seq = 1
-        self._word_wrap = False
-        self._line_numbers = True
+        self._word_wrap = self._session.word_wrap
+        self._line_numbers = self._session.line_numbers
+        self._workspace: Path | None = (
+            Path(self._session.workspace) if self._session.workspace else None
+        )
+        self._restoring = False
+        self._icon_color = toolbar_icon_color(self._session.theme)
 
         self.setWindowTitle("MagicEditor")
         self.setMinimumSize(900, 560)
@@ -62,68 +71,96 @@ class MainWindow(QMainWindow):
             | QDockWidget.DockWidgetFeature.DockWidgetMovable
         )
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._sidebar_dock)
+        # Explorer is optional — hidden until a folder/workspace is opened.
+        self._sidebar_dock.hide()
         self._sidebar.file_activated.connect(self.open_path)
 
         self._actions: dict[str, QAction] = {}
+        self._theme_actions: dict[str, QAction] = {}
+        self._lang_actions: dict[str, QAction] = {}
+        self._theme_group = QActionGroup(self)
+        self._theme_group.setExclusive(True)
+        self._lang_group = QActionGroup(self)
+        self._lang_group.setExclusive(True)
+
         self._build_actions()
         self._build_menus()
         self._build_toolbar()
+        self._apply_icons()
 
         self._tr.language_changed.connect(self.retranslate_ui)
+
+        # Preferences from last session
         try:
-            if self._tr.language not in self._tr.available_languages():
-                self._tr.load("en_US")
-            elif not self._tr.available_languages():
-                pass
-            else:
-                self._tr.load(self._tr.language)
+            self._tr.load(self._session.language)
         except OSError:
             try:
                 self._tr.load("en_US")
             except OSError:
                 pass
 
-        self.new_document()
+        qapp = QApplication.instance()
+        if qapp is not None:
+            try:
+                self._themes.apply(qapp, self._session.theme)
+            except (OSError, FileNotFoundError):
+                pass
+
+        if self._session.geometry:
+            self.restoreGeometry(self._session.geometry)
+        if self._session.window_state:
+            self.restoreState(self._session.window_state)
+
+        self._restoring = True
+        restored = self._restore_session_files()
+        self._restoring = False
+        if not restored:
+            self.new_document()
+
+        if self._workspace and self._workspace.is_dir():
+            self._show_workspace(self._workspace, persist=False)
+
+        self._sync_checkables()
         self.retranslate_ui()
 
-    def _icon(self, standard: QStyle.StandardPixmap):
-        style = self.style()
-        return style.standardIcon(standard) if style else None
+    # --- chrome -------------------------------------------------------
 
     def _build_actions(self) -> None:
         def act(
             key: str,
             slot,
             shortcut: str | None = None,
-            icon: QStyle.StandardPixmap | None = None,
+            *,
+            checkable: bool = False,
         ) -> QAction:
             action = QAction(key, self)
             action.triggered.connect(slot)
             if shortcut:
                 action.setShortcut(QKeySequence(shortcut))
-            if icon is not None:
-                ic = self._icon(icon)
-                if ic is not None:
-                    action.setIcon(ic)
+            action.setCheckable(checkable)
             self._actions[key] = action
             return action
 
-        SP = QStyle.StandardPixmap
-        act("action.new", self.new_document, "Ctrl+N", SP.SP_FileIcon)
-        act("action.open", self.open_file_dialog, "Ctrl+O", SP.SP_DialogOpenButton)
-        act("action.save", self.save_current, "Ctrl+S", SP.SP_DialogSaveButton)
+        act("action.new", self.new_document, "Ctrl+N")
+        act("action.open", self.open_file_dialog, "Ctrl+O")
+        act("action.open_folder", self.open_folder_dialog, "Ctrl+K")
+        act("action.save", self.save_current, "Ctrl+S")
         act("action.save_as", self.save_current_as, "Ctrl+Shift+S")
-        act("action.find", self.show_find, "Ctrl+F", SP.SP_FileDialogContentsView)
+        act("action.find", self.show_find, "Ctrl+F")
         act("action.replace", self.show_replace, "Ctrl+H")
         act("action.preview", self.toggle_preview, "Ctrl+Shift+P")
-        act("action.toggle_sidebar", self.toggle_sidebar, "Ctrl+B")
-        act("action.word_wrap", self.toggle_word_wrap, "Alt+Z")
-        act("action.line_numbers", self.toggle_line_numbers)
+        act("action.toggle_sidebar", self.toggle_sidebar, "Ctrl+B", checkable=True)
+        act("action.word_wrap", self.toggle_word_wrap, "Alt+Z", checkable=True)
+        act("action.line_numbers", self.toggle_line_numbers, checkable=True)
         act("action.zoom_in", self.zoom_in, "Ctrl+=")
         act("action.zoom_out", self.zoom_out, "Ctrl+-")
         act("action.zoom_reset", self.zoom_reset, "Ctrl+0")
-        act("action.fullscreen", self.toggle_fullscreen, "F11")
+        act("action.fullscreen", self.toggle_fullscreen, "F11", checkable=True)
         act("action.exit", self.close, "Ctrl+Q")
+
+        self._actions["action.word_wrap"].setChecked(self._word_wrap)
+        self._actions["action.line_numbers"].setChecked(self._line_numbers)
+        self._actions["action.toggle_sidebar"].setChecked(False)
 
     def _build_menus(self) -> None:
         mb = self.menuBar()
@@ -134,7 +171,13 @@ class MainWindow(QMainWindow):
         self._menu_lang = mb.addMenu("Language")
         self._menu_help = mb.addMenu("Help")
 
-        for key in ("action.new", "action.open", "action.save", "action.save_as"):
+        for key in (
+            "action.new",
+            "action.open",
+            "action.open_folder",
+            "action.save",
+            "action.save_as",
+        ):
             self._menu_file.addAction(self._actions[key])
         self._menu_file.addSeparator()
         self._menu_file.addAction(self._actions["action.exit"])
@@ -156,35 +199,92 @@ class MainWindow(QMainWindow):
 
         for theme_id, label in self._themes.list_themes():
             action = QAction(label, self)
-            action.triggered.connect(lambda checked=False, t=theme_id: self.apply_theme(t))
+            action.setCheckable(True)
+            action.setData(theme_id)
+            action.triggered.connect(
+                lambda checked=False, t=theme_id: self.apply_theme(t, persist=True)
+            )
+            self._theme_group.addAction(action)
             self._menu_themes.addAction(action)
+            self._theme_actions[theme_id] = action
 
         for lang in self._tr.available_languages() or ["en_US", "pt_BR"]:
             action = QAction(lang, self)
+            action.setCheckable(True)
+            action.setData(lang)
             action.triggered.connect(
-                lambda checked=False, code=lang: self._set_language(code)
+                lambda checked=False, code=lang: self._set_language(code, persist=True)
             )
+            self._lang_group.addAction(action)
             self._menu_lang.addAction(action)
+            self._lang_actions[lang] = action
 
         about = QAction("About", self)
+        about.setObjectName("action.about")
         about.triggered.connect(self._about)
+        self._actions["action.about"] = about
         self._menu_help.addAction(about)
 
     def _build_toolbar(self) -> None:
         tb = QToolBar("Main", self)
         tb.setObjectName("mainToolbar")
         tb.setMovable(False)
-        tb.setIconSize(tb.iconSize())
+        tb.setIconSize(QSize(20, 20))
+        tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.addToolBar(tb)
         for key in (
             "action.new",
             "action.open",
+            "action.open_folder",
             "action.save",
+        ):
+            tb.addAction(self._actions[key])
+        tb.addSeparator()
+        for key in (
             "action.find",
+            "action.replace",
             "action.preview",
             "action.toggle_sidebar",
         ):
             tb.addAction(self._actions[key])
+        self._toolbar = tb
+
+    def _apply_icons(self) -> None:
+        c = self._icon_color
+        mapping = {
+            "action.new": "new",
+            "action.open": "open",
+            "action.open_folder": "folder",
+            "action.save": "save",
+            "action.save_as": "save_as",
+            "action.find": "find",
+            "action.replace": "replace",
+            "action.preview": "preview",
+            "action.toggle_sidebar": "sidebar",
+            "action.word_wrap": "wrap",
+            "action.line_numbers": "lines",
+            "action.zoom_in": "zoom_in",
+            "action.zoom_out": "zoom_out",
+            "action.zoom_reset": "zoom_reset",
+            "action.fullscreen": "fullscreen",
+            "action.exit": "exit",
+            "action.about": "about",
+        }
+        for key, name in mapping.items():
+            if key in self._actions:
+                self._actions[key].setIcon(icon(name, c))
+
+    def _sync_checkables(self) -> None:
+        theme = self._themes.current
+        for tid, action in self._theme_actions.items():
+            action.setChecked(tid == theme)
+        lang = self._tr.language
+        for code, action in self._lang_actions.items():
+            action.setChecked(code == lang)
+        self._actions["action.toggle_sidebar"].setChecked(self._sidebar_dock.isVisible())
+        self._actions["action.word_wrap"].setChecked(self._word_wrap)
+        self._actions["action.line_numbers"].setChecked(self._line_numbers)
+        self._actions["action.fullscreen"].setChecked(self.isFullScreen())
 
     def retranslate_ui(self) -> None:
         t = self._tr.t
@@ -198,12 +298,13 @@ class MainWindow(QMainWindow):
         labels = {
             "action.new": t("action.new", "New"),
             "action.open": t("action.open", "Open"),
+            "action.open_folder": t("action.open_folder", "Open Folder…"),
             "action.save": t("action.save", "Save"),
             "action.save_as": t("action.save_as", "Save As"),
             "action.find": t("action.find", "Find"),
             "action.replace": t("action.replace", "Replace"),
             "action.preview": t("action.preview", "Preview"),
-            "action.toggle_sidebar": t("action.toggle_sidebar", "Toggle Sidebar"),
+            "action.toggle_sidebar": t("action.toggle_sidebar", "Toggle Explorer"),
             "action.word_wrap": t("action.word_wrap", "Word Wrap"),
             "action.line_numbers": t("action.line_numbers", "Line Numbers"),
             "action.zoom_in": t("action.zoom_in", "Zoom In"),
@@ -211,24 +312,99 @@ class MainWindow(QMainWindow):
             "action.zoom_reset": t("action.zoom_reset", "Reset Zoom"),
             "action.fullscreen": t("action.fullscreen", "Full Screen"),
             "action.exit": t("action.exit", "Exit"),
+            "action.about": t("action.about", "About"),
         }
         for key, label in labels.items():
             if key in self._actions:
                 self._actions[key].setText(label)
+                self._actions[key].setToolTip(label)
         tab = self.current_tab()
         if tab is not None:
             self._update_status_for(tab)
         else:
             self.setWindowTitle(t("app.name", "MagicEditor"))
 
-    def apply_theme(self, theme_id: str) -> None:
-        qapp = QApplication.instance()
-        if qapp is not None:
-            self._themes.apply(qapp, theme_id)
-            self._status.showMessage(f"Theme: {theme_id}", 2500)
+    # --- session ------------------------------------------------------
 
-    def _set_language(self, lang: str) -> None:
-        self._tr.load(lang)
+    def _restore_session_files(self) -> bool:
+        opened = False
+        active_index = 0
+        for path_str in self._session.open_files:
+            path = Path(path_str)
+            if not path.is_file():
+                continue
+            try:
+                doc = open_document(path)
+            except OSError:
+                continue
+            tab = self._add_document(doc, activate=False)
+            if self._session.active_file and path_str == self._session.active_file:
+                active_index = self.tabs.indexOf(tab)
+            opened = True
+        if opened:
+            self.tabs.setCurrentIndex(max(0, active_index))
+            w = self.current_tab()
+            if w is not None:
+                self._update_status_for(w)
+        return opened
+
+    def _collect_session(self) -> SessionState:
+        open_files: list[str] = []
+        active: str | None = None
+        current = self.current_tab()
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if isinstance(w, EditorTab) and w.document.path is not None:
+                p = str(w.document.path.resolve())
+                open_files.append(p)
+                if w is current:
+                    active = p
+        return SessionState(
+            theme=self._themes.current,
+            language=self._tr.language,
+            word_wrap=self._word_wrap,
+            line_numbers=self._line_numbers,
+            workspace=str(self._workspace) if self._workspace else None,
+            open_files=open_files,
+            active_file=active,
+            geometry=self.saveGeometry(),
+            window_state=self.saveState(),
+        )
+
+    def _persist_session(self) -> None:
+        if self._restoring:
+            return
+        self._settings.save(self._collect_session())
+
+    # --- themes / language --------------------------------------------
+
+    def apply_theme(self, theme_id: str, *, persist: bool = True) -> None:
+        qapp = QApplication.instance()
+        if qapp is None:
+            return
+        try:
+            self._themes.apply(qapp, theme_id)
+        except (OSError, FileNotFoundError) as exc:
+            QMessageBox.warning(self, "MagicEditor", str(exc))
+            return
+        self._icon_color = toolbar_icon_color(theme_id)
+        self._apply_icons()
+        self._sync_checkables()
+        self._status.showMessage(f"Theme: {theme_id}", 2500)
+        if persist:
+            self._persist_session()
+
+    def _set_language(self, lang: str, *, persist: bool = True) -> None:
+        try:
+            self._tr.load(lang)
+        except OSError as exc:
+            QMessageBox.warning(self, "MagicEditor", str(exc))
+            return
+        self._sync_checkables()
+        if persist:
+            self._persist_session()
+
+    # --- documents ----------------------------------------------------
 
     def current_tab(self) -> EditorTab | None:
         w = self.tabs.currentWidget()
@@ -237,38 +413,74 @@ class MainWindow(QMainWindow):
     def new_document(self) -> EditorTab:
         title = f"Untitled-{self._untitled_seq}"
         self._untitled_seq += 1
-        return self._add_document(Document.blank(title=title))
+        tab = self._add_document(Document.blank(title=title))
+        self._persist_session()
+        return tab
 
     def open_file_dialog(self) -> None:
+        start = str(self._workspace or Path.home())
         path, _ = QFileDialog.getOpenFileName(
             self,
             self._tr.t("action.open", "Open"),
-            str(Path.home()),
+            start,
             "Text (*.txt *.md *.py *.json *.xml *.html *.css *.js *.sql *.log);;All (*.*)",
         )
         if path:
             self.open_path(path)
 
+    def open_folder_dialog(self) -> None:
+        start = str(self._workspace or Path.home())
+        path = QFileDialog.getExistingDirectory(
+            self,
+            self._tr.t("action.open_folder", "Open Folder…"),
+            start,
+        )
+        if path:
+            self.open_workspace(path)
+
+    def open_workspace(self, path: str | Path) -> None:
+        self._show_workspace(Path(path), persist=True)
+        self._status.showMessage(f"Workspace: {Path(path).name}", 3000)
+
+    def _show_workspace(self, path: Path, *, persist: bool) -> None:
+        self._workspace = path
+        self._sidebar.set_root_path(path)
+        self._sidebar_dock.show()
+        self._actions["action.toggle_sidebar"].setChecked(True)
+        if persist:
+            self._persist_session()
+
     def open_path(self, path: str | Path) -> None:
         path = Path(path)
+        # Reuse existing tab if already open
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if (
+                isinstance(w, EditorTab)
+                and w.document.path is not None
+                and w.document.path.resolve() == path.resolve()
+            ):
+                self.tabs.setCurrentIndex(i)
+                return
         try:
             doc = open_document(path)
         except OSError as exc:
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return
         self._add_document(doc)
-        self._sidebar.set_root_path(path.parent)
         self._status.showMessage(f"Opened {path.name}", 3000)
+        self._persist_session()
 
-    def _add_document(self, doc: Document) -> EditorTab:
+    def _add_document(self, doc: Document, *, activate: bool = True) -> EditorTab:
         tab = EditorTab(doc, self)
         tab.set_word_wrap(self._word_wrap)
         tab.set_line_numbers(self._line_numbers)
         tab.modification_changed.connect(self._refresh_tab_titles)
         tab.cursor_info_changed.connect(self._status.set_cursor)
         idx = self.tabs.addTab(tab, doc.display_name())
-        self.tabs.setCurrentIndex(idx)
-        self._update_status_for(tab)
+        if activate:
+            self.tabs.setCurrentIndex(idx)
+            self._update_status_for(tab)
         return tab
 
     def save_current(self) -> None:
@@ -285,9 +497,11 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return
         tab.editor.document().setModified(False)
+        tab.document.modified = False
         self._refresh_tab_titles()
         self._update_status_for(tab)
         self._status.showMessage("Saved", 2000)
+        self._persist_session()
 
     def save_current_as(self) -> None:
         tab = self.current_tab()
@@ -308,8 +522,10 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return
         tab.editor.document().setModified(False)
+        tab.document.modified = False
         self._refresh_tab_titles()
         self._update_status_for(tab)
+        self._persist_session()
 
     def show_find(self) -> None:
         tab = self.current_tab()
@@ -328,22 +544,30 @@ class MainWindow(QMainWindow):
             self._status.showMessage("Preview on" if on else "Preview off", 2000)
 
     def toggle_sidebar(self) -> None:
-        self._sidebar_dock.setVisible(not self._sidebar_dock.isVisible())
+        visible = not self._sidebar_dock.isVisible()
+        self._sidebar_dock.setVisible(visible)
+        self._actions["action.toggle_sidebar"].setChecked(visible)
+        # Opening explorer without workspace still shows home tree
+        if visible and self._workspace is None:
+            self._sidebar.set_root_path(Path.home())
 
     def toggle_word_wrap(self) -> None:
         self._word_wrap = not self._word_wrap
+        self._actions["action.word_wrap"].setChecked(self._word_wrap)
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab):
                 w.set_word_wrap(self._word_wrap)
-        self._status.showMessage("Word wrap on" if self._word_wrap else "Word wrap off", 2000)
+        self._persist_session()
 
     def toggle_line_numbers(self) -> None:
         self._line_numbers = not self._line_numbers
+        self._actions["action.line_numbers"].setChecked(self._line_numbers)
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab):
                 w.set_line_numbers(self._line_numbers)
+        self._persist_session()
 
     def zoom_in(self) -> None:
         tab = self.current_tab()
@@ -365,6 +589,7 @@ class MainWindow(QMainWindow):
             self.showNormal()
         else:
             self.showFullScreen()
+        self._actions["action.fullscreen"].setChecked(self.isFullScreen())
 
     def _close_tab(self, index: int) -> None:
         widget = self.tabs.widget(index)
@@ -389,6 +614,8 @@ class MainWindow(QMainWindow):
             widget.deleteLater()
         if self.tabs.count() == 0:
             self.new_document()
+        else:
+            self._persist_session()
 
     def _refresh_tab_titles(self) -> None:
         for i in range(self.tabs.count()):
@@ -402,6 +629,8 @@ class MainWindow(QMainWindow):
         w = self.tabs.widget(index)
         if isinstance(w, EditorTab):
             self._update_status_for(w)
+            if not self._restoring:
+                self._persist_session()
 
     def _update_status_for(self, tab: EditorTab) -> None:
         doc = tab.document
@@ -437,4 +666,5 @@ class MainWindow(QMainWindow):
                     event.ignore()
                     return
                 break
+        self._persist_session()
         event.accept()
