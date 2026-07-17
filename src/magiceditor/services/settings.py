@@ -33,6 +33,8 @@ class SessionState:
     drafts: list[dict[str, Any]] = field(default_factory=list)
     # Most-recent first absolute paths
     recent_files: list[str] = field(default_factory=list)
+    # Icon pack: "qlementine" (default) | "material"
+    icon_pack: str = "qlementine"
     # Graphics / appearance
     gpu_acceleration: bool = True
     gpu_multisample: bool = True
@@ -245,6 +247,7 @@ class AppSettings:
             cursors=cursors,
             drafts=drafts,
             recent_files=recent,
+            icon_pack=qs.value("ui/icon_pack", "qlementine", str) or "qlementine",
             gpu_acceleration=self._as_bool(qs.value("graphics/gpu_acceleration"), True),
             gpu_multisample=self._as_bool(qs.value("graphics/gpu_multisample"), True),
             antialiasing=self._as_bool(qs.value("graphics/antialiasing"), True),
@@ -261,6 +264,7 @@ class AppSettings:
         qs.setValue("ui/language", state.language)
         qs.setValue("ui/word_wrap", state.word_wrap)
         qs.setValue("ui/line_numbers", state.line_numbers)
+        qs.setValue("ui/icon_pack", state.icon_pack or "qlementine")
         qs.setValue("graphics/gpu_acceleration", state.gpu_acceleration)
         qs.setValue("graphics/gpu_multisample", state.gpu_multisample)
         qs.setValue("graphics/antialiasing", state.antialiasing)

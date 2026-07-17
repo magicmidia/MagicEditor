@@ -16,7 +16,7 @@
 - [x] Print/PDF clean engine, preview MD/HTML
 - [x] **Competitive ROADMAP** (`docs/ROADMAP.md`) — N++, Sublime, Brackets, VS Code, Notepad
 - [x] **Tab bar double-click** → new file (event on QTabBar)
-- [x] **Icons** via **QtAwesome + Material Design Icons 6** (market standard)
+- [x] **Icons:** default **Qlementine** (oclero, MIT SVGs) + optional **Material Design outline** (QtAwesome) — switch in Settings
 - [x] File-type / language icons on tabs + Syntax menu
 - [x] **60+ encodings** in Format → Encoding; smarter BOM detection
 - [x] **Expanded format catalog** (100+ extensions / basenames)

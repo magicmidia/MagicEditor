@@ -25,6 +25,7 @@ a = Analysis(
         "PyQt6.QtGui",
         "PyQt6.QtWidgets",
         "PyQt6.QtPrintSupport",
+        "PyQt6.QtSvg",
         "markdown",
         "qtawesome",
         "qtawesome.iconic_font",

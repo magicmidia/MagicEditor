@@ -1,19 +1,76 @@
-"""Application icons via QtAwesome + Material Design Icons (mdi6).
+"""Icon packs for MagicEditor chrome and file types.
 
-``qtawesome`` is the de-facto icon toolkit for Qt/Python apps (Font Awesome,
-Material Design Icons, etc.). We standardise on **Material Design Icons 6**
-(``mdi6.*``) for chrome actions and language/file-type glyphs — large set,
-active maintenance, familiar to VS Code / JetBrains users.
+Packs
+-----
+* **qlementine** — `oclero/qlementine-icons` (MIT), modern Qt desktop set
+  https://oclero.github.io/qlementine-icons/ — bundled as SVG under
+  ``resources/icons/qlementine/``.
+* **material** — Material Design Icons 6 via QtAwesome (``mdi6.*``), outline
+  style suitable for light & dark chrome (\"Material Light/outline\").
 
-Fallback: simple painted glyph if QtAwesome is unavailable (tests / broken env).
+Switch at runtime via :func:`set_icon_pack` (Settings → Appearance).
 """
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QPointF, QSize, Qt
+from functools import lru_cache
+from pathlib import Path
+
+from PyQt6.QtCore import QByteArray, QPointF, QRectF, Qt
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
 
-# Semantic action name -> Material Design Icons 6 id
+from magiceditor.paths import resource_root
+
+# Current pack: "qlementine" | "material"
+_icon_pack: str = "qlementine"
+
+ICON_PACKS: list[tuple[str, str]] = [
+    ("qlementine", "Qlementine (Qt)"),
+    ("material", "Material Design (outline)"),
+]
+
+# Semantic action → Qlementine SVG basename (no .svg)
+_ACTION_QLEMENTINE: dict[str, str] = {
+    "new": "add-file",
+    "open": "folder-open",
+    "folder": "folder",
+    "save": "save",
+    "save_as": "save-to-disk",
+    "print": "print",
+    "export_pdf": "pdf",
+    "cut": "cut",
+    "copy": "copy",
+    "paste": "paste",
+    "select_all": "check-multiple",
+    "find": "search",
+    "find_files": "file-manager",
+    "quick_open": "file",
+    "replace": "replace",
+    "preview": "eye",
+    "sidebar": "items-tree",
+    "wrap": "text",
+    "lines": "items-list",
+    "zoom_in": "zoom-in",
+    "zoom_out": "zoom-out",
+    "zoom_reset": "zoom-original",
+    "fullscreen": "fullscreen",
+    "exit": "log-out",
+    "about": "info",
+    "undo": "undo",
+    "redo": "redo",
+    "settings": "settings",
+    "bookmark": "bookmark",
+    "goto": "jump",
+    "tab_close": "close-small",
+    "outline": "items-list",
+    "indent": "indent-more",
+    "unindent": "indent-less",
+    "duplicate_line": "duplicate",
+    "close_tab": "close-single",
+    "close_all": "close-all",
+}
+
+# Semantic action → Material Design Icons 6
 _ACTION_MDI: dict[str, str] = {
     "new": "mdi6.file-plus-outline",
     "open": "mdi6.folder-open-outline",
@@ -51,9 +108,59 @@ _ACTION_MDI: dict[str, str] = {
     "unindent": "mdi6.format-indent-decrease",
     "duplicate_line": "mdi6.playlist-plus",
     "close_tab": "mdi6.close-box-outline",
+    "close_all": "mdi6.close-box-multiple-outline",
 }
 
-# Language / file-type -> mdi6 icon (editor market standard set)
+# Language → Qlementine (generic file kinds where specific lang glyphs missing)
+_LANG_QLEMENTINE: dict[str, str] = {
+    "python": "file-script",
+    "javascript": "file-script",
+    "typescript": "file-script",
+    "json": "code-markup",
+    "markdown": "file-markdown",
+    "html": "file-html",
+    "xml": "code-markup",
+    "css": "code-markup",
+    "sql": "database",
+    "c": "file-script",
+    "cpp": "file-script",
+    "csharp": "file-script",
+    "java": "file-script",
+    "go": "file-script",
+    "rust": "file-script",
+    "ruby": "file-script",
+    "php": "file-script",
+    "shell": "command-line",
+    "powershell": "command-line",
+    "yaml": "code-markup",
+    "toml": "code-markup",
+    "ini": "settings",
+    "text": "file-text",
+    "kotlin": "file-script",
+    "swift": "file-script",
+    "lua": "file-script",
+    "r": "file-script",
+    "dart": "file-script",
+    "vue": "file-html",
+    "svelte": "file-html",
+    "dockerfile": "file-script",
+    "makefile": "build",
+    "batch": "command-line",
+    "graphql": "code-markup",
+    "cmake": "build",
+    "pdf": "pdf",
+    "csv": "file-text",
+    "git": "file",
+    "lock": "lock",
+    "image": "media",
+    "archive": "archive",
+    "binary": "executable",
+    "font": "font",
+    "env": "settings",
+    "properties": "settings",
+    "diff": "items-list",
+}
+
 _LANG_MDI: dict[str, str] = {
     "python": "mdi6.language-python",
     "javascript": "mdi6.language-javascript",
@@ -90,39 +197,35 @@ _LANG_MDI: dict[str, str] = {
     "batch": "mdi6.console",
     "graphql": "mdi6.graphql",
     "cmake": "mdi6.file-code-outline",
-    "perl": "mdi6.script-text-outline",
-    "scala": "mdi6.language-java",
-    "haskell": "mdi6.language-haskell",
-    "elixir": "mdi6.file-code-outline",
-    "erlang": "mdi6.file-code-outline",
-    "clojure": "mdi6.file-code-outline",
-    "fsharp": "mdi6.language-csharp",
-    "vb": "mdi6.language-csharp",
-    "objectivec": "mdi6.language-c",
-    "matlab": "mdi6.file-code-outline",
-    "julia": "mdi6.language-julia",
-    "nim": "mdi6.file-code-outline",
-    "zig": "mdi6.file-code-outline",
-    "solidity": "mdi6.ethereum",
-    "terraform": "mdi6.terraform",
-    "nginx": "mdi6.nginx",
-    "apache": "mdi6.apache",
-    "diff": "mdi6.file-compare",
-    "git": "mdi6.git",
+    "pdf": "mdi6.file-pdf-box",
     "csv": "mdi6.file-delimited-outline",
-    "tsv": "mdi6.file-delimited-outline",
-    "properties": "mdi6.file-cog-outline",
-    "env": "mdi6.file-cog-outline",
+    "git": "mdi6.git",
     "lock": "mdi6.lock-outline",
     "image": "mdi6.file-image-outline",
-    "font": "mdi6.format-font",
-    "binary": "mdi6.file-outline",
     "archive": "mdi6.folder-zip-outline",
-    "pdf": "mdi6.file-pdf-box",
-    "react": "mdi6.react",
-    "angular": "mdi6.angular",
-    "nodejs": "mdi6.nodejs",
+    "binary": "mdi6.file-outline",
+    "font": "mdi6.format-font",
+    "env": "mdi6.file-cog-outline",
+    "properties": "mdi6.file-cog-outline",
+    "diff": "mdi6.file-compare",
 }
+
+
+def set_icon_pack(pack: str) -> None:
+    """Set active pack: ``qlementine`` or ``material``."""
+    global _icon_pack
+    pack = (pack or "qlementine").strip().lower()
+    if pack not in {"qlementine", "material"}:
+        pack = "qlementine"
+    if pack != _icon_pack:
+        _icon_pack = pack
+        icon.cache_clear()  # type: ignore[attr-defined]
+        language_icon.cache_clear()  # type: ignore[attr-defined]
+        _qlementine_index.cache_clear()
+
+
+def get_icon_pack() -> str:
+    return _icon_pack
 
 
 def toolbar_icon_color(theme_id: str) -> str:
@@ -147,22 +250,73 @@ def accent_icon_color(theme_id: str) -> str:
     }.get(theme_id, "#FFD700")
 
 
-def _qta_icon(mdi_name: str, color: str, size: int = 24) -> QIcon | None:
+def icons_dir() -> Path:
+    return resource_root() / "resources" / "icons" / "qlementine"
+
+
+@lru_cache(maxsize=1)
+def _qlementine_index() -> dict[str, Path]:
+    """Map basename → path for bundled Qlementine SVGs."""
+    root = icons_dir()
+    out: dict[str, Path] = {}
+    if not root.is_dir():
+        return out
+    for path in root.rglob("*.svg"):
+        out[path.stem] = path
+    return out
+
+
+def _recolor_svg(svg: str, color: str) -> bytes:
+    """Force monochrome SVG paths to *color* (Qlementine uses fill=#000)."""
+    c = color if color.startswith("#") else f"#{color}"
+    text = svg
+    for black in ('fill="#000"', "fill='#000'", 'fill="#000000"', "fill='#000000'"):
+        text = text.replace(black, f'fill="{c}"')
+    # Some assets use fill: #000 in style=
+    text = text.replace("fill:#000", f"fill:{c}").replace("fill: #000", f"fill: {c}")
+    return text.encode("utf-8")
+
+
+def _svg_to_icon(svg_path: Path, color: str) -> QIcon | None:
+    try:
+        from PyQt6.QtSvg import QSvgRenderer
+    except ImportError:
+        return None
+    try:
+        raw = svg_path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    data = _recolor_svg(raw, color)
+    renderer = QSvgRenderer(QByteArray(data))
+    if not renderer.isValid():
+        return None
+    ico = QIcon()
+    for logical in (16, 18, 20, 22, 24, 28, 32):
+        px = logical * 2  # HiDPI
+        pm = QPixmap(px, px)
+        pm.fill(Qt.GlobalColor.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        # Slight padding for 16px-designed glyphs at larger sizes
+        margin = max(1, px // 16)
+        renderer.render(p, QRectF(margin, margin, px - 2 * margin, px - 2 * margin))
+        p.end()
+        ico.addPixmap(pm)
+    return ico
+
+
+def _qta_icon(mdi_name: str, color: str) -> QIcon | None:
     try:
         import qtawesome as qta
     except ImportError:
         return None
     try:
-        return qta.icon(mdi_name, color=color, scale_factor=1.0, options=[{"scale_factor": 0.95}])
+        return qta.icon(mdi_name, color=color)
     except Exception:
-        try:
-            return qta.icon(mdi_name, color=color)
-        except Exception:
-            return None
+        return None
 
 
 def _fallback_icon(color: str) -> QIcon:
-    """Minimal circle glyph when QtAwesome cannot paint."""
     ico = QIcon()
     for s in (16, 20, 24, 32):
         pm = QPixmap(s, s)
@@ -172,7 +326,6 @@ def _fallback_icon(color: str) -> QIcon:
         pen = QPen(QColor(color))
         pen.setWidthF(max(1.2, s / 12))
         p.setPen(pen)
-        p.setBrush(Qt.BrushStyle.NoBrush)
         m = s * 0.22
         p.drawEllipse(QPointF(s / 2, s / 2), s / 2 - m, s / 2 - m)
         p.end()
@@ -180,32 +333,53 @@ def _fallback_icon(color: str) -> QIcon:
     return ico
 
 
+@lru_cache(maxsize=256)
 def icon(name: str, color: str = "#94A3B8") -> QIcon:
-    """Return toolbar/menu icon by semantic *name* (new, save, find, …)."""
+    """Toolbar/menu icon by semantic *name*."""
+    pack = _icon_pack
+    if pack == "material":
+        mdi = _ACTION_MDI.get(name, "mdi6.circle-outline")
+        ico = _qta_icon(mdi, color)
+        if ico is not None and not ico.isNull():
+            return ico
+    # qlementine (default) — with material fallback
+    qname = _ACTION_QLEMENTINE.get(name, "file")
+    path = _qlementine_index().get(qname)
+    if path is not None:
+        ico = _svg_to_icon(path, color)
+        if ico is not None and not ico.isNull():
+            return ico
     mdi = _ACTION_MDI.get(name, "mdi6.circle-outline")
     ico = _qta_icon(mdi, color)
     return ico if ico is not None and not ico.isNull() else _fallback_icon(color)
 
 
+@lru_cache(maxsize=128)
 def language_icon(lang_id: str, color: str = "#94A3B8") -> QIcon:
-    """File-type / language icon for tabs and lists."""
+    """File-type / language icon for tabs."""
+    pack = _icon_pack
+    if pack == "material":
+        mdi = _LANG_MDI.get(lang_id, _LANG_MDI["text"])
+        ico = _qta_icon(mdi, color)
+        if ico is not None and not ico.isNull():
+            return ico
+    qname = _LANG_QLEMENTINE.get(lang_id, "file-text")
+    path = _qlementine_index().get(qname)
+    if path is not None:
+        ico = _svg_to_icon(path, color)
+        if ico is not None and not ico.isNull():
+            return ico
     mdi = _LANG_MDI.get(lang_id, _LANG_MDI["text"])
     ico = _qta_icon(mdi, color)
     return ico if ico is not None and not ico.isNull() else _fallback_icon(color)
 
 
-def mdi_icon(mdi_name: str, color: str = "#94A3B8") -> QIcon:
-    """Direct Material Design Icons access (``mdi6.xxx``)."""
-    if not mdi_name.startswith("mdi"):
-        mdi_name = f"mdi6.{mdi_name}"
-    ico = _qta_icon(mdi_name, color)
-    return ico if ico is not None and not ico.isNull() else _fallback_icon(color)
-
-
-def icon_engine_available() -> bool:
+def icon_engine_info() -> str:
+    n = len(_qlementine_index())
     try:
         import qtawesome  # noqa: F401
 
-        return True
+        mdi = "yes"
     except ImportError:
-        return False
+        mdi = "no"
+    return f"pack={_icon_pack} qlementine_svgs={n} qtawesome={mdi}"

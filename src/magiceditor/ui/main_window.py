@@ -34,7 +34,13 @@ from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.core.encoding import ENCODING_CATALOG
-from magiceditor.ui.icons import icon, language_icon, toolbar_icon_color
+from magiceditor.ui.icons import (
+    get_icon_pack,
+    icon,
+    language_icon,
+    set_icon_pack,
+    toolbar_icon_color,
+)
 from magiceditor.ui.about_dialog import AboutDialog
 from magiceditor.ui.outline_dialog import OutlineDialog, extract_markdown_outline
 from magiceditor.ui.quick_open import QuickOpenDialog
@@ -67,6 +73,7 @@ class MainWindow(QMainWindow):
         )
         self._restoring = False
         self._icon_color = toolbar_icon_color(self._session.theme)
+        set_icon_pack(getattr(self._session, "icon_pack", None) or "qlementine")
 
         self.setWindowTitle("MagicEditor")
         self.setMinimumSize(900, 560)
@@ -697,6 +704,7 @@ class MainWindow(QMainWindow):
             cursors=cursors,
             drafts=drafts,
             recent_files=recent,
+            icon_pack=get_icon_pack(),
             gpu_acceleration=gfx.gpu_acceleration,
             gpu_multisample=gfx.gpu_multisample,
             antialiasing=gfx.antialiasing,
@@ -751,7 +759,16 @@ class MainWindow(QMainWindow):
             return
         old_gpu = self._session.gpu_acceleration
         old_msaa = self._session.gpu_multisample
+        old_pack = get_icon_pack()
         dlg.apply_to_state(self._session)
+        if self._session.icon_pack != old_pack:
+            set_icon_pack(self._session.icon_pack)
+            self._apply_icons()
+            self.tabs.set_close_icon_color(self._icon_color)
+            for i in range(self.tabs.count()):
+                w = self.tabs.widget(i)
+                if isinstance(w, EditorTab):
+                    self.tabs.setTabIcon(i, language_icon(w.language, self._icon_color))
         self._persist_session()
         self.apply_graphics_preferences()
         if (

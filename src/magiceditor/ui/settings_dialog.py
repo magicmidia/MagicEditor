@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QGroupBox,
@@ -19,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from magiceditor.services.settings import SessionState
+from magiceditor.ui.icons import ICON_PACKS
 
 
 class SettingsDialog(QDialog):
@@ -114,6 +116,42 @@ class SettingsDialog(QDialog):
         tip.setObjectName("findDialogStatus")
         vis_form.addWidget(tip)
 
+        # Icon pack (Qlementine vs Material Design outline)
+        self.icon_pack_box = QComboBox(self)
+        current_pack = getattr(state, "icon_pack", None) or "qlementine"
+        for pack_id, pack_label in ICON_PACKS:
+            # Localize known packs
+            if pack_id == "qlementine":
+                pack_label = t("settings.icon_pack_qlementine", "Qlementine (Qt)")
+            elif pack_id == "material":
+                pack_label = t(
+                    "settings.icon_pack_material",
+                    "Material Design (outline / light)",
+                )
+            self.icon_pack_box.addItem(pack_label, pack_id)
+        idx = self.icon_pack_box.findData(current_pack)
+        self.icon_pack_box.setCurrentIndex(max(0, idx))
+        pack_hint = QLabel(
+            t(
+                "settings.icon_pack_hint",
+                "Qlementine: set moderno para apps Qt. "
+                "Material: Material Design Icons (outline), via QtAwesome.",
+            ),
+            self,
+        )
+        pack_hint.setWordWrap(True)
+        pack_hint.setObjectName("findDialogStatus")
+
+        appearance = QGroupBox(t("settings.appearance", "Aparência"), self)
+        app_form = QVBoxLayout(appearance)
+        app_form.setSpacing(6)
+        app_form.setContentsMargins(10, 14, 10, 10)
+        pack_row = QHBoxLayout()
+        pack_row.addWidget(QLabel(t("settings.icon_pack", "Pacote de ícones"), self))
+        pack_row.addWidget(self.icon_pack_box, 1)
+        app_form.addLayout(pack_row)
+        app_form.addWidget(pack_hint)
+
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
             self,
@@ -132,6 +170,7 @@ class SettingsDialog(QDialog):
         root.setSpacing(12)
         root.addWidget(gfx)
         root.addWidget(vis)
+        root.addWidget(appearance)
         root.addWidget(buttons)
 
         QShortcut(QKeySequence("Esc"), self, activated=self.reject)
@@ -154,4 +193,6 @@ class SettingsDialog(QDialog):
         state.window_opacity = self.opacity_slider.value() / 100.0
         state.chrome_transparency = self.chrome_box.isChecked()
         state.editor_transparency = self.editor_box.isChecked()
+        pack = self.icon_pack_box.currentData()
+        state.icon_pack = str(pack) if pack else "qlementine"
         return state
