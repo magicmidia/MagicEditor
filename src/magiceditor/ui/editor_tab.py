@@ -180,6 +180,22 @@ class EditorTab(QWidget):
     def redo(self) -> None:
         self.editor.redo()
 
+    def cut(self) -> None:
+        self.editor.cut()
+
+    def copy(self) -> None:
+        self.editor.copy()
+
+    def paste(self) -> None:
+        self.editor.paste()
+
+    def select_all(self) -> None:
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.select_all()
+        else:
+            assert isinstance(self.editor, TextEditor)
+            self.editor.selectAll()
+
     def line_count(self) -> int:
         if isinstance(self.editor, VirtualEditor):
             return self.document.line_index().line_count

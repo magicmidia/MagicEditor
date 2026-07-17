@@ -174,6 +174,13 @@ class MainWindow(QMainWindow):
         act("action.export_pdf", self.export_pdf_current, "Ctrl+Shift+E")
         act("action.undo", self.undo_current, "Ctrl+Z")
         act("action.redo", self.redo_current, "Ctrl+Y")
+        self._actions["action.redo"].setShortcuts(
+            [QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")]
+        )
+        act("action.cut", self.cut_current, "Ctrl+X")
+        act("action.copy", self.copy_current, "Ctrl+C")
+        act("action.paste", self.paste_current, "Ctrl+V")
+        act("action.select_all", self.select_all_current, "Ctrl+A")
         act("action.find", self.show_find, "Ctrl+F")
         act("action.replace", self.show_replace, "Ctrl+H")
         act("action.find_in_files", self.show_find_in_files, "Ctrl+Shift+F")
@@ -224,6 +231,14 @@ class MainWindow(QMainWindow):
         self._menu_file.addAction(self._actions["action.exit"])
 
         for key in ("action.undo", "action.redo"):
+            self._menu_edit.addAction(self._actions[key])
+        self._menu_edit.addSeparator()
+        for key in (
+            "action.cut",
+            "action.copy",
+            "action.paste",
+            "action.select_all",
+        ):
             self._menu_edit.addAction(self._actions[key])
         self._menu_edit.addSeparator()
         for key in (
@@ -298,23 +313,36 @@ class MainWindow(QMainWindow):
         tb = QToolBar("Main", self)
         tb.setObjectName("mainToolbar")
         tb.setMovable(False)
-        tb.setIconSize(QSize(18, 18))
+        tb.setIconSize(QSize(20, 20))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.addToolBar(tb)
+        # File
         for key in (
             "action.new",
             "action.open",
             "action.open_folder",
             "action.save",
+            "action.print",
         ):
             tb.addAction(self._actions[key])
         tb.addSeparator()
+        # History
+        for key in ("action.undo", "action.redo"):
+            tb.addAction(self._actions[key])
+        tb.addSeparator()
+        # Clipboard
+        for key in ("action.cut", "action.copy", "action.paste"):
+            tb.addAction(self._actions[key])
+        tb.addSeparator()
+        # Search / view
         for key in (
             "action.find",
             "action.replace",
             "action.find_in_files",
+            "action.goto_line",
             "action.preview",
             "action.toggle_sidebar",
+            "action.settings",
         ):
             tb.addAction(self._actions[key])
         tb.addSeparator()
@@ -346,13 +374,17 @@ class MainWindow(QMainWindow):
             "action.open_folder": "folder",
             "action.save": "save",
             "action.save_as": "save_as",
-            "action.print": "save",
-            "action.export_pdf": "save_as",
+            "action.print": "print",
+            "action.export_pdf": "export_pdf",
             "action.undo": "undo",
             "action.redo": "redo",
+            "action.cut": "cut",
+            "action.copy": "copy",
+            "action.paste": "paste",
+            "action.select_all": "select_all",
             "action.find": "find",
             "action.replace": "replace",
-            "action.find_in_files": "find",
+            "action.find_in_files": "find_files",
             "action.goto_line": "goto",
             "action.toggle_bookmark": "bookmark",
             "action.next_bookmark": "bookmark",
@@ -366,7 +398,7 @@ class MainWindow(QMainWindow):
             "action.zoom_reset": "zoom_reset",
             "action.fullscreen": "fullscreen",
             "action.settings": "settings",
-            "action.quick_open": "find",
+            "action.quick_open": "quick_open",
             "action.exit": "exit",
             "action.about": "about",
         }
@@ -413,6 +445,10 @@ class MainWindow(QMainWindow):
             "action.export_pdf": t("action.export_pdf", "&Exportar PDF…"),
             "action.undo": t("action.undo", "&Desfazer"),
             "action.redo": t("action.redo", "&Refazer"),
+            "action.cut": t("action.cut", "Recor&tar"),
+            "action.copy": t("action.copy", "&Copiar"),
+            "action.paste": t("action.paste", "C&olar"),
+            "action.select_all": t("action.select_all", "Selecionar t&udo"),
             "action.find": t("action.find", "&Localizar"),
             "action.replace": t("action.replace", "&Substituir"),
             "action.find_in_files": t("action.find_in_files", "Localizar nos a&rquivos"),
@@ -943,6 +979,30 @@ class MainWindow(QMainWindow):
             tab.redo()
             self._refresh_tab_titles()
             self._update_status_for(tab)
+
+    def cut_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.cut()
+            self._refresh_tab_titles()
+            self._update_status_for(tab)
+
+    def copy_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.copy()
+
+    def paste_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.paste()
+            self._refresh_tab_titles()
+            self._update_status_for(tab)
+
+    def select_all_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.select_all()
 
     def _open_search_hit(self, path: str, line: int, column: int, source_key: str = "") -> None:
         tab: EditorTab | None = None

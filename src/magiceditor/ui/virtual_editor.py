@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QKeyEvent, QPainter, QPaintEvent, QWheelEvent
+from PyQt6.QtGui import QColor, QFont, QGuiApplication, QKeyEvent, QPainter, QPaintEvent, QWheelEvent
 from PyQt6.QtWidgets import QAbstractScrollArea, QWidget
 
 from magiceditor.core.line_wrap import expand_tabs, wrap_ranges
@@ -37,6 +37,7 @@ _DEFAULT_FG = "#E2E8F0"
 _FIND_BG = QColor(234, 179, 8, 90)
 _MAX_REPLACE_ALL = 50_000
 _MAX_UNDO = 500
+_MAX_CLIPBOARD = 8 * 1024 * 1024
 
 
 @dataclass(slots=True)
@@ -66,6 +67,9 @@ class VirtualEditor(QAbstractScrollArea):
         self._bookmarks: set[int] = set()
         self._cursor_line = 0
         self._cursor_col = 0
+        self._anchor_line: int | None = None
+        self._anchor_col = 0
+        self._selecting = False
         self._modified = False
         self._line_height = 18
         self._gutter_width = 56
@@ -84,6 +88,7 @@ class VirtualEditor(QAbstractScrollArea):
         self._fg = QColor(229, 226, 225)
         self._gutter_bg = QColor(127, 127, 127, 18)
         self._line_hl = QColor(255, 215, 0, 22)
+        self._sel_bg = QColor(255, 215, 0, 55)
         self._caret = QColor(255, 215, 0)
         self._gutter_fg = QColor(153, 144, 119)
         self._gutter_fg_active = QColor(255, 246, 223)
@@ -131,9 +136,136 @@ class VirtualEditor(QAbstractScrollArea):
         self._cursor_line = max(0, min(total - 1, line))
         text = self._doc.line_text(self._cursor_line)
         self._cursor_col = max(0, min(len(text), column))
+        self._clear_selection()
         self._ensure_visible(self._cursor_line)
         self.cursorPositionChanged.emit()
         self.viewport().update()
+
+    # --- clipboard / selection ----------------------------------------
+
+    def has_selection(self) -> bool:
+        return self._anchor_line is not None and (
+            self._anchor_line != self._cursor_line or self._anchor_col != self._cursor_col
+        )
+
+    def selected_text(self) -> str:
+        if not self.has_selection():
+            return ""
+        s_line, s_col, e_line, e_col = self._normalized_selection()
+        if s_line == e_line:
+            return self._doc.line_text(s_line)[s_col:e_col]
+        parts: list[str] = [self._doc.line_text(s_line)[s_col:]]
+        # Cap huge multi-line selections for clipboard safety.
+        max_lines = 50_000
+        for ln in range(s_line + 1, min(e_line, s_line + max_lines)):
+            parts.append(self._doc.line_text(ln))
+        if e_line - s_line < max_lines:
+            parts.append(self._doc.line_text(e_line)[:e_col])
+        text = "\n".join(parts)
+        if len(text) > _MAX_CLIPBOARD:
+            return text[:_MAX_CLIPBOARD]
+        return text
+
+    def copy(self) -> None:
+        text = self.selected_text()
+        if not text:
+            # Fallback: copy current line (editor habit)
+            text = self._doc.line_text(self._cursor_line)
+        if text:
+            QGuiApplication.clipboard().setText(text)
+
+    def cut(self) -> None:
+        if self.has_selection():
+            text = self.selected_text()
+            if text:
+                QGuiApplication.clipboard().setText(text)
+            self._delete_selection()
+            return
+        # No selection: cut the current line (with trailing newline when present).
+        line = self._cursor_line
+        total = self._line_count()
+        start = self._doc.line_index().line_start(line)
+        if line < total - 1:
+            end = self._doc.line_index().line_start(line + 1)
+            text = self._doc.line_text(line) + "\n"
+        else:
+            content = self._doc.line_text(line)
+            end = start + self._col_to_byte(line, len(content))
+            text = content
+        if text:
+            QGuiApplication.clipboard().setText(text)
+        if end > start:
+            self._delete_bytes_tracked(start, end - start)
+            self._place_cursor_at(start)
+            self._emit_edit()
+
+    def paste(self) -> None:
+        text = QGuiApplication.clipboard().text()
+        if not text:
+            return
+        if len(text) > _MAX_CLIPBOARD:
+            text = text[:_MAX_CLIPBOARD]
+        if self.has_selection():
+            self._delete_selection(emit=False)
+        self._insert_at_cursor(text)
+
+    def select_all(self) -> None:
+        total = self._line_count()
+        if total <= 0:
+            return
+        self._anchor_line = 0
+        self._anchor_col = 0
+        last = total - 1
+        self._cursor_line = last
+        self._cursor_col = len(self._doc.line_text(last))
+        self.cursorPositionChanged.emit()
+        self.viewport().update()
+
+    def _clear_selection(self) -> None:
+        self._anchor_line = None
+        self._anchor_col = 0
+
+    def _normalized_selection(self) -> tuple[int, int, int, int]:
+        assert self._anchor_line is not None
+        a = (self._anchor_line, self._anchor_col)
+        b = (self._cursor_line, self._cursor_col)
+        if a <= b:
+            return a[0], a[1], b[0], b[1]
+        return b[0], b[1], a[0], a[1]
+
+    def _selection_cols_on_line(self, line: int) -> tuple[int, int] | None:
+        if not self.has_selection():
+            return None
+        s_line, s_col, e_line, e_col = self._normalized_selection()
+        if line < s_line or line > e_line:
+            return None
+        a = s_col if line == s_line else 0
+        b = e_col if line == e_line else len(self._doc.line_text(line))
+        if a >= b:
+            return None
+        return a, b
+
+    def _delete_selection(self, *, emit: bool = True) -> bool:
+        if not self.has_selection():
+            return False
+        s_line, s_col, e_line, e_col = self._normalized_selection()
+        start = self._doc.line_index().line_start(s_line) + self._col_to_byte(s_line, s_col)
+        end = self._doc.line_index().line_start(e_line) + self._col_to_byte(e_line, e_col)
+        if end > start:
+            self._delete_bytes_tracked(start, end - start)
+        self._place_cursor_at(start)
+        self._clear_selection()
+        if emit:
+            self._emit_edit()
+        return True
+
+    def _begin_selection_if_needed(self, shift: bool) -> None:
+        if shift:
+            if self._anchor_line is None:
+                self._anchor_line = self._cursor_line
+                self._anchor_col = self._cursor_col
+        else:
+            self._clear_selection()
 
     def toPlainText(self) -> str:
         # Avoid materializing multi-GB strings casually.
@@ -195,6 +327,7 @@ class VirtualEditor(QAbstractScrollArea):
             self._bg = QColor(14, 14, 14)
             self._fg = QColor(229, 226, 225)
             self._line_hl = QColor(255, 215, 0, 22)
+            self._sel_bg = QColor(255, 215, 0, 55)
             self._caret = QColor(255, 215, 0)
             self._gutter_fg = QColor(153, 144, 119)
             self._gutter_fg_active = QColor(255, 246, 223)
@@ -203,6 +336,7 @@ class VirtualEditor(QAbstractScrollArea):
             self._bg = QColor(255, 255, 255)
             self._fg = QColor(30, 30, 30)
             self._line_hl = QColor(37, 99, 235, 28)
+            self._sel_bg = QColor(37, 99, 235, 55)
             self._caret = QColor(37, 99, 235)
             self._gutter_fg = QColor(100, 116, 139)
             self._gutter_fg_active = QColor(51, 65, 85)
@@ -211,6 +345,7 @@ class VirtualEditor(QAbstractScrollArea):
             self._bg = QColor(15, 23, 42)
             self._fg = QColor(226, 232, 240)
             self._line_hl = QColor(56, 189, 248, 28)
+            self._sel_bg = QColor(56, 189, 248, 70)
             self._caret = QColor(56, 189, 248)
             self._gutter_fg = QColor(148, 163, 184, 140)
             self._gutter_fg_active = QColor(148, 163, 184, 230)
@@ -532,11 +667,16 @@ class VirtualEditor(QAbstractScrollArea):
                 )
 
             base_x = gutter + self._pad_x - h_off
+            sel_cols = self._selection_cols_on_line(line)
             for ri, (d0, d1, row) in enumerate(rows):
                 ry = y + ri * lh
                 if ry > view_h:
                     break
                 baseline = ry + fm.ascent() + 1
+                if sel_cols is not None:
+                    self._paint_selection_row(
+                        painter, text, sel_cols, d0, d1, base_x, ry, lh, fm
+                    )
                 if self._find_needle:
                     self._paint_find_hits_row(painter, text, d0, d1, base_x, ry, lh, fm)
                 if do_syntax and text and len(text) <= 8000 and not self._word_wrap:
@@ -555,6 +695,30 @@ class VirtualEditor(QAbstractScrollArea):
 
             y += row_h
             line += 1
+
+    def _paint_selection_row(
+        self,
+        painter: QPainter,
+        text: str,
+        sel_cols: tuple[int, int],
+        d0: int,
+        d1: int,
+        base_x: int,
+        y: int,
+        lh: int,
+        fm,
+    ) -> None:
+        a_col, b_col = sel_cols
+        md0 = len(expand_tabs(text[:a_col]))
+        md1 = len(expand_tabs(text[:b_col]))
+        if md1 <= d0 or md0 >= d1:
+            return
+        a = max(md0, d0) - d0
+        b = min(md1, d1) - d0
+        row = expand_tabs(text)[d0:d1]
+        x0 = base_x + fm.horizontalAdvance(row[:a])
+        w = fm.horizontalAdvance(row[a:b])
+        painter.fillRect(x0, y + 1, max(2, w), lh - 2, self._sel_bg)
 
     def _paint_find_hits_row(
         self,
@@ -656,16 +820,30 @@ class VirtualEditor(QAbstractScrollArea):
         lines = self._line_count()
         visible = max(1, self.viewport().height() // self._line_height)
         ctrl = bool(mod & Qt.KeyboardModifier.ControlModifier)
+        shift = bool(mod & Qt.KeyboardModifier.ShiftModifier)
 
-        if ctrl and key == Qt.Key.Key_Z and not (mod & Qt.KeyboardModifier.ShiftModifier):
+        if ctrl and key == Qt.Key.Key_Z and not shift:
             self.undo()
             event.accept()
             return
-        shift = bool(mod & Qt.KeyboardModifier.ShiftModifier)
         if ctrl and (key == Qt.Key.Key_Y or (key == Qt.Key.Key_Z and shift)):
             self.redo()
             event.accept()
             return
+        # Clipboard (Ctrl+C/X/V/A) is owned by MainWindow QActions.
+
+        nav_keys = {
+            Qt.Key.Key_Up,
+            Qt.Key.Key_Down,
+            Qt.Key.Key_PageUp,
+            Qt.Key.Key_PageDown,
+            Qt.Key.Key_Home,
+            Qt.Key.Key_End,
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+        }
+        if key in nav_keys:
+            self._begin_selection_if_needed(shift)
 
         if key == Qt.Key.Key_Up:
             self._cursor_line = max(0, self._cursor_line - 1)
@@ -686,12 +864,16 @@ class VirtualEditor(QAbstractScrollArea):
                 len(self._doc.line_text(self._cursor_line)), self._cursor_col + 1
             )
         elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if self.has_selection():
+                self._delete_selection(emit=False)
             self._insert_at_cursor("\n")
         elif key == Qt.Key.Key_Backspace:
             self._backspace()
         elif key == Qt.Key.Key_Delete:
             self._delete_forward()
         elif event.text() and not ctrl:
+            if self.has_selection():
+                self._delete_selection(emit=False)
             self._insert_at_cursor(event.text())
         else:
             super().keyPressEvent(event)
@@ -703,15 +885,53 @@ class VirtualEditor(QAbstractScrollArea):
         event.accept()
 
     def mousePressEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event is not None and event.button() == Qt.MouseButton.LeftButton:
+            pos: QPoint = event.position().toPoint()
+            line, col = self._hit_test(pos)
+            shift = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+            if shift:
+                if self._anchor_line is None:
+                    self._anchor_line = self._cursor_line
+                    self._anchor_col = self._cursor_col
+            else:
+                self._anchor_line = line
+                self._anchor_col = col
+            self._cursor_line = line
+            self._cursor_col = col
+            self._selecting = True
+            self.cursorPositionChanged.emit()
+            self.viewport().update()
+            self.setFocus()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._selecting and event is not None and (
+            event.buttons() & Qt.MouseButton.LeftButton
+        ):
             pos: QPoint = event.position().toPoint()
             line, col = self._hit_test(pos)
             self._cursor_line = line
             self._cursor_col = col
             self.cursorPositionChanged.emit()
             self.viewport().update()
-            self.setFocus()
-        super().mousePressEvent(event)
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if event is not None and event.button() == Qt.MouseButton.LeftButton:
+            self._selecting = False
+            # Click without drag → caret only (no selection)
+            if (
+                self._anchor_line is not None
+                and self._anchor_line == self._cursor_line
+                and self._anchor_col == self._cursor_col
+            ):
+                self._clear_selection()
+            event.accept()
+        super().mouseReleaseEvent(event)
 
     def _hit_test(self, pos: QPoint) -> tuple[int, int]:
         """Map viewport point to (doc_line, char_col)."""
@@ -858,6 +1078,7 @@ class VirtualEditor(QAbstractScrollArea):
         data = text.encode(enc, errors="replace")
         off = self._byte_offset_at_cursor()
         self._insert_bytes_tracked(off, data)
+        self._clear_selection()
         if b"\n" in data or b"\r" in data:
             self._cursor_line = self._doc.line_index().offset_to_line(off + len(data))
             line_start = self._doc.line_index().line_start(self._cursor_line)
@@ -867,6 +1088,9 @@ class VirtualEditor(QAbstractScrollArea):
         self._emit_edit()
 
     def _backspace(self) -> None:
+        if self.has_selection():
+            self._delete_selection()
+            return
         off = self._byte_offset_at_cursor()
         if off <= 0:
             return
@@ -875,6 +1099,9 @@ class VirtualEditor(QAbstractScrollArea):
         self._emit_edit()
 
     def _delete_forward(self) -> None:
+        if self.has_selection():
+            self._delete_selection()
+            return
         off = self._byte_offset_at_cursor()
         if off >= len(self._doc.buffer):
             return
