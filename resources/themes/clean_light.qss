@@ -3,34 +3,36 @@ QMainWindow { background-color: #F8FAFC; color: #0F172A; }
 QWidget { color: #0F172A; background-color: transparent; }
 QMenuBar {
   background-color: #FFFFFF; color: #0F172A;
-  border-bottom: 1px solid #E2E8F0; padding: 4px 8px; spacing: 0px; min-height: 30px;
+  border-bottom: 1px solid #E2E8F0; padding: 2px 6px; spacing: 0px; min-height: 26px;
 }
 QMenuBar::item {
   background: transparent; color: #334155;
-  padding: 5px 10px; margin: 0px 2px; border-radius: 4px;
+  padding: 4px 8px; margin: 0px 1px; border-radius: 3px;
 }
 QMenuBar::item:selected, QMenuBar::item:pressed {
   background-color: #F1F5F9; color: #0F172A;
 }
 QMenu {
   background-color: #FFFFFF; color: #0F172A;
-  border: 1px solid #E2E8F0; border-radius: 6px; padding: 4px;
+  border: 1px solid #E2E8F0; border-radius: 4px; padding: 2px;
 }
 QMenu::item {
-  padding: 4px 14px 4px 10px; margin: 0px; border-radius: 4px; min-height: 18px;
+  background: transparent; color: #0F172A;
+  padding: 5px 12px 5px 8px; margin: 0px; border-radius: 3px; min-height: 20px;
 }
 QMenu::item:selected { background-color: #EFF6FF; color: #0F172A; }
-QMenu::indicator { width: 12px; height: 12px; left: 8px; }
+QMenu::indicator { width: 12px; height: 12px; left: 6px; }
 QMenu::indicator:checked { background-color: #2563EB; border-radius: 2px; }
-QMenu::separator { height: 1px; background: #E2E8F0; margin: 4px 8px; }
+QMenu::icon { left: 4px; }
+QMenu::separator { height: 1px; background: #E2E8F0; margin: 3px 6px; }
 QToolBar {
   background-color: #FFFFFF; border: none; border-bottom: 1px solid #E2E8F0;
-  spacing: 4px; padding: 6px 8px; min-height: 40px;
+  spacing: 2px; padding: 4px 8px; min-height: 36px;
 }
-QToolBar::separator { background: #E2E8F0; width: 1px; margin: 4px 6px; }
+QToolBar::separator { background: #E2E8F0; width: 1px; margin: 4px 4px; }
 QToolButton {
   background: transparent; color: #475569; border: 1px solid transparent;
-  border-radius: 6px; padding: 6px; min-width: 30px; min-height: 30px;
+  border-radius: 4px; padding: 5px; min-width: 28px; min-height: 28px;
 }
 QToolButton:hover { background-color: #F1F5F9; border-color: #E2E8F0; }
 QToolButton:pressed, QToolButton:checked {

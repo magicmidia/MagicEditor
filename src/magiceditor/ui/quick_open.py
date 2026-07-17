@@ -1,8 +1,10 @@
-"""Quick Open — filter files in workspace (Ctrl+P mockup search)."""
+"""Quick Open — filter files in workspace (Ctrl+P)."""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+from typing import Any
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -32,7 +34,7 @@ _MAX_FILES = 800
 
 
 class QuickOpenDialog(QDialog):
-    """Fuzzy-ish filename search under a workspace root."""
+    """Filename search under a workspace root."""
 
     path_chosen = pyqtSignal(str)
 
@@ -42,18 +44,24 @@ class QuickOpenDialog(QDialog):
         parent: QWidget | None = None,
         *,
         open_paths: list[str] | None = None,
+        tr: Any | None = None,
     ) -> None:
         super().__init__(parent)
         self.setModal(True)
-        self.setWindowTitle("Quick Open")
-        self.setMinimumSize(480, 360)
+        self.setMinimumSize(460, 340)
         self.setObjectName("quickOpenDialog")
 
+        def t(key: str, default: str) -> str:
+            return tr.t(key, default) if tr is not None else default
+
+        self._t = t
+        self.setWindowTitle(t("quick_open.title", "Abrir rapidamente"))
+
         self._root = Path(root) if root else None
-        self._all: list[tuple[str, str]] = []  # (display, path)
+        self._all: list[tuple[str, str]] = []
 
         self._input = QLineEdit(self)
-        self._input.setPlaceholderText("Search files…")
+        self._input.setPlaceholderText(t("quick_open.placeholder", "Pesquisar arquivos…"))
         self._input.setObjectName("quickOpenInput")
         self._list = QListWidget(self)
         self._list.setObjectName("quickOpenList")
@@ -84,7 +92,6 @@ class QuickOpenDialog(QDialog):
 
     def _build_index(self, open_paths: list[str]) -> None:
         seen: set[str] = set()
-        # Prefer currently open paths first
         for p in open_paths:
             path = Path(p)
             if path.is_file():
@@ -97,7 +104,7 @@ class QuickOpenDialog(QDialog):
             return
         root = self._root
         count = 0
-        for dirpath, dirnames, filenames in __import__("os").walk(root):
+        for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
             base = Path(dirpath)
             for name in filenames:
@@ -131,7 +138,10 @@ class QuickOpenDialog(QDialog):
             hits += 1
             if hits >= 80:
                 break
-        self._status.setText(f"{hits} file(s)" + (" (capped)" if hits >= 80 else ""))
+        msg = self._t("quick_open.hits", "{n} arquivo(s)").format(n=hits)
+        if hits >= 80:
+            msg += "…"
+        self._status.setText(msg)
         if self._list.count() > 0:
             self._list.setCurrentRow(0)
 

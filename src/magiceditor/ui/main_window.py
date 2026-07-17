@@ -598,7 +598,7 @@ class MainWindow(QMainWindow):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab) and w.document.path is not None:
                 open_paths.append(str(w.document.path))
-        dlg = QuickOpenDialog(self._workspace, self, open_paths=open_paths)
+        dlg = QuickOpenDialog(self._workspace, self, open_paths=open_paths, tr=self._tr)
         dlg.path_chosen.connect(self.open_path)
         dlg.exec()
 
@@ -873,6 +873,7 @@ class MainWindow(QMainWindow):
             self._workspace,
             self,
             open_sources=self._collect_open_sources(),
+            tr=self._tr,
         )
         dlg.hit_activated.connect(self._open_search_hit)
         dlg.exec()
