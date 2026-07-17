@@ -9,6 +9,21 @@ from PyQt6.QtWidgets import QTabBar, QTabWidget, QToolButton, QWidget
 from magiceditor.ui.icons import icon as make_icon
 
 
+class _MagicTabBar(QTabBar):
+    """Tab bar that reports double-clicks on empty space (Notepad++ parity)."""
+
+    empty_double_clicked = pyqtSignal()
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent | None) -> None:
+        if event is not None and event.button() == Qt.MouseButton.LeftButton:
+            # tabAt < 0 → click on padding / free strip, not on a tab title
+            if self.tabAt(event.position().toPoint()) < 0:
+                self.empty_double_clicked.emit()
+                event.accept()
+                return
+        super().mouseDoubleClickEvent(event)
+
+
 class TabManager(QTabWidget):
     """Multi-document tab bar with a reliable × close control."""
 
@@ -22,9 +37,13 @@ class TabManager(QTabWidget):
         self.setMovable(True)
         self.setDocumentMode(True)
         self.setUsesScrollButtons(True)
-        bar = self.tabBar()
+
+        bar = _MagicTabBar(self)
         bar.setExpanding(False)
         bar.setElideMode(Qt.TextElideMode.ElideRight)
+        bar.empty_double_clicked.connect(self.empty_area_double_clicked.emit)
+        self.setTabBar(bar)
+
         self._close_color = "#94A3B8"
 
     def set_close_icon_color(self, color: str) -> None:
@@ -73,10 +92,15 @@ class TabManager(QTabWidget):
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QMouseEvent | None) -> None:
+        # Fallback: double-click on the tab widget chrome (outside bar tabs)
         if event is not None and event.button() == Qt.MouseButton.LeftButton:
-            # Double-click empty tab bar → new document (Notepad++ parity)
-            if self.tabBar().tabAt(event.pos()) < 0:
-                self.empty_area_double_clicked.emit()
-                event.accept()
-                return
+            bar = self.tabBar()
+            # Map to bar coordinates if click is in tab bar geometry
+            local = event.position().toPoint()
+            if bar.geometry().contains(local):
+                bar_pos = bar.mapFrom(self, local)
+                if bar.tabAt(bar_pos) < 0:
+                    self.empty_area_double_clicked.emit()
+                    event.accept()
+                    return
         super().mouseDoubleClickEvent(event)

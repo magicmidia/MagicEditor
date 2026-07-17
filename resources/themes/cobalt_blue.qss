@@ -146,5 +146,14 @@ QToolTip {
   padding: 4px 8px; border-radius: 3px;
 }
 QMessageBox { background-color: #001B33; }
-QMessageBox QLabel { color: #FFFFFF; min-width: 200px; max-width: 420px; padding: 4px; }
-QMessageBox QPushButton { min-width: 72px; padding: 5px 12px; }
+QMessageBox, QDialog#aboutDialog { background-color: #002240; border: 1px solid #0A4A80; border-radius: 8px; }
+QMessageBox QLabel, QDialog#aboutDialog QLabel { color: #FFFFFF; min-width: 200px; max-width: 440px; padding: 6px 4px; }
+QLabel#aboutTitle { color: #FFFFFF; font-weight: 600; }
+QLabel#aboutMuted { color: #7BA3C9; font-size: 10pt; }
+QMessageBox QPushButton, QPushButton#aboutOk {
+  min-width: 88px; min-height: 28px; padding: 6px 16px; border-radius: 6px;
+  background-color: #0A3D6B; color: #FFFFFF; border: 1px solid #0A4A80;
+}
+QMessageBox QPushButton:default, QPushButton#aboutOk {
+  background-color: rgba(255, 204, 0, 35); border: 1px solid #FFCC00; color: #FFFFFF;
+}

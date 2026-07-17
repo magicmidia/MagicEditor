@@ -34,6 +34,7 @@ from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
+from magiceditor.ui.about_dialog import AboutDialog
 from magiceditor.ui.outline_dialog import OutlineDialog, extract_markdown_outline
 from magiceditor.ui.quick_open import QuickOpenDialog
 from magiceditor.ui.settings_dialog import SettingsDialog
@@ -375,7 +376,7 @@ class MainWindow(QMainWindow):
         tb = QToolBar("Main", self)
         tb.setObjectName("mainToolbar")
         tb.setMovable(False)
-        tb.setIconSize(QSize(20, 20))
+        tb.setIconSize(QSize(22, 22))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.addToolBar(tb)
         # File
@@ -461,6 +462,7 @@ class MainWindow(QMainWindow):
             "action.fullscreen": "fullscreen",
             "action.settings": "settings",
             "action.quick_open": "quick_open",
+            "action.outline": "outline",
             "action.exit": "exit",
             "action.about": "about",
         }
@@ -1422,17 +1424,8 @@ class MainWindow(QMainWindow):
                 a.setChecked(a.data() == eol)
 
     def _about(self) -> None:
-        QMessageBox.about(
-            self,
-            self._tr.t("msg.about_title", "Sobre o MagicEditor"),
-            self._tr.t(
-                "msg.about_body",
-                "<h3>MagicEditor</h3>"
-                "<p>Editor de texto e código moderno e rápido para o dia a dia.</p>"
-                "<p>Piece table · mmap · pré-visualização · temas · i18n</p>"
-                "<p>Versão 0.1.0</p>",
-            ),
-        )
+        dlg = AboutDialog(self, tr=self._tr, theme_id=self._themes.current)
+        dlg.exec()
 
     def closeEvent(self, event: QCloseEvent | None) -> None:
         if event is None:
