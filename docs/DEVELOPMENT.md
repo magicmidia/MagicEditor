@@ -43,19 +43,27 @@ cd .worktrees/feature-foo
 uv sync --all-extras
 ```
 
-## Ship Windows exe (each delivery)
+## Ship Windows packages (each delivery)
 
-Produce `MagicEditor.exe` at the **repository root**:
+Artifacts go to **`dist/`** (gitignored). Full guide: [`docs/BUILD.md`](BUILD.md).
 
 ```powershell
-pwsh -File scripts/build_exe.ps1
-# or
-scripts\build_exe.bat
+# EXE only → dist/MagicEditor.exe
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe
+
+# Portable ZIP
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Portable
+
+# MSI (needs: dotnet tool install -g wix)
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Msi
+
+# All of the above
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
+# or: scripts\build_all.bat
 ```
 
-Requirements: Python 3.12+, PyQt6, PyInstaller (`pip install -e ".[dev]"`).
-
-The binary is windowed (no console), onefile, with `locales/` and `resources/` bundled.
+Requirements: Python 3.12+, PyQt6, PyInstaller (`pip install -e ".[dev]"`).  
+Optional for MSI: .NET SDK + WiX CLI (`wix`).
 
 ## Project map
 See root `AGENTS.md` and `docs/magiceditor-architecture.md`.

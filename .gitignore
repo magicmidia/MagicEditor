@@ -16,13 +16,14 @@ env/
 !.env.example
 *.egg-info/
 .eggs/
-dist/
-build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+*.egg
 
 # IDE / OS
 .idea/
@@ -31,19 +32,57 @@ htmlcov/
 *.swo
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Local / temp
+# Local / temp / scratch
 tmp/
 *.log
-.coverage.*
-coverage.xml
+*.tmp
+*.bak
+*.orig
 
 # Host-local agent/MCP secrets (keep examples)
 .mcp.json
 *.local.md
 
-# Packaging (exe generated each delivery at repo root — not versioned)
+# ---------------------------------------------------------------------------
+# Packaging / release artifacts (never commit binaries)
+# ---------------------------------------------------------------------------
+# PyInstaller / setuptools
 build/
 dist/
 *.spec.bak
-MagicEditor.exe
+
+# Windows binaries and installers
+*.exe
+*.msi
+*.msix
+*.appx
+*.msixbundle
+*.cab
+*.msm
+*.msp
+
+# Portable / archives produced by scripts/build.ps1
+*.zip
+!resources/**/*.zip
+
+# Staging for MSI / portable
+out/
+release/
+installer/stage/
+packaging/stage/
+
+# WiX intermediate objects
+*.wixobj
+*.wixpdb
+*.cab
+packaging/wix/*.wixobj
+packaging/wix/*.wixpdb
+
+# Optional native installers from other tools
+*.iss.bak
+Output/
+
+# PyInstaller onedir leftovers if run from root
+MagicEditor/

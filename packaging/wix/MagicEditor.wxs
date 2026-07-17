@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX v4/v5 package — single-file MagicEditor.exe installer.
+  Built by scripts/build.ps1 -Msi (requires: dotnet tool install -g wix)
+
+  Stable UpgradeCode — do not change between releases of the same product line.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="MagicEditor"
+      Manufacturer="MagicEditor Contributors"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="A7C3E9F1-4B2D-4E8A-9C1F-6D5E8B0A2F34"
+      Language="1033"
+      Scope="perMachine"
+      Compressed="yes">
+
+    <SummaryInformation
+        Description="High-performance text and code editor"
+        Manufacturer="MagicEditor Contributors" />
+
+    <MajorUpgrade
+        DowngradeErrorMessage="A newer version of MagicEditor is already installed."
+        Schedule="afterInstallInitialize" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="$(var.ExePath)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/magicmidia/MagicEditor" />
+
+    <Feature Id="Main" Title="MagicEditor" Level="1" ConfigurableDirectory="INSTALLFOLDER">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentRef Id="ApplicationShortcut" />
+    </Feature>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="MagicEditor" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="MagicEditor" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <Component Id="MainExecutable" Guid="B1D4F8A2-5C3E-4F9B-8A2D-7E6F9C1B3A45">
+        <File
+            Id="MagicEditorExe"
+            Source="$(var.ExePath)"
+            KeyPath="yes"
+            Checksum="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Component Id="ApplicationShortcut" Directory="ApplicationProgramsFolder" Guid="C2E5A9B3-6D4F-4A0C-9B3E-8F7A0D2C4B56">
+      <Shortcut
+          Id="ApplicationStartMenuShortcut"
+          Name="MagicEditor"
+          Description="MagicEditor — text and code editor"
+          Target="[INSTALLFOLDER]MagicEditor.exe"
+          WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\MagicEditor\MagicEditor"
+          Name="installed"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+    </Component>
+  </Package>
+</Wix>

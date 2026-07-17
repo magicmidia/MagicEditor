@@ -15,6 +15,17 @@ uv run pytest
 uv run magiceditor
 ```
 
+## Windows packages
+
+Build artifacts under `dist/` (not committed). See [`docs/BUILD.md`](docs/BUILD.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
+# → dist/MagicEditor.exe
+# → dist/MagicEditor-Portable-<ver>-win64.zip
+# → dist/MagicEditor-<ver>-win64.msi   (if WiX CLI installed)
+```
+
 ## Layout
 
 | Path | Role |

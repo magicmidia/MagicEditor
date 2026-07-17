@@ -1,5 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec — outputs MagicEditor.exe at repository root (distpath=.)
+# PyInstaller spec — one-file windowed EXE.
+# Prefer:  powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+# Output:  dist/MagicEditor.exe  (never commit)
 
 from pathlib import Path
 
