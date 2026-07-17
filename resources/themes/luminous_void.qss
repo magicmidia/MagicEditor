@@ -281,17 +281,15 @@ QTabBar::tab:hover:!selected {
   color: #E5E2E1;
   background-color: rgba(255, 255, 255, 10);
 }
-QTabBar::close-button {
-  subcontrol-position: right;
-  subcontrol-origin: padding;
-  width: 14px;
-  height: 14px;
-  margin-right: 8px;
-  margin-left: 4px;
-  border-radius: 3px;
+QToolButton#tabCloseButton {
   background: transparent;
+  border: none;
+  border-radius: 3px;
+  margin-right: 6px;
+  margin-left: 2px;
+  padding: 1px;
 }
-QTabBar::close-button:hover {
+QToolButton#tabCloseButton:hover {
   background: rgba(255, 255, 255, 18);
 }
 

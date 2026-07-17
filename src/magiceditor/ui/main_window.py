@@ -70,6 +70,7 @@ class MainWindow(QMainWindow):
         self.resize(1280, 820)
 
         self.tabs = TabManager(self)
+        self.tabs.set_close_icon_color(self._icon_color)
         self.setCentralWidget(self.tabs)
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -699,6 +700,7 @@ class MainWindow(QMainWindow):
             return
         self._icon_color = toolbar_icon_color(theme_id)
         self._apply_icons()
+        self.tabs.set_close_icon_color(self._icon_color)
         light = theme_id == "clean_light"
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)

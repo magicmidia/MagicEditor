@@ -365,6 +365,12 @@ def _draw_about(p: QPainter) -> None:
     p.drawEllipse(QPointF(12, 7.8), 0.55, 0.55)
 
 
+def _draw_tab_close(p: QPainter) -> None:
+    # Clear × for tab chrome (slightly heavier for 12px icons)
+    p.drawLine(QPointF(7, 7), QPointF(17, 17))
+    p.drawLine(QPointF(17, 7), QPointF(7, 17))
+
+
 _DRAWERS: dict[str, DrawFn] = {
     "new": _draw_new,
     "open": _draw_open,
@@ -396,4 +402,5 @@ _DRAWERS: dict[str, DrawFn] = {
     "settings": _draw_settings,
     "bookmark": _draw_bookmark,
     "goto": _draw_goto,
+    "tab_close": _draw_tab_close,
 }

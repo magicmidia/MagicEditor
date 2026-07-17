@@ -61,12 +61,11 @@ QTabBar::tab {
 }
 QTabBar::tab:selected { background-color: #2B2B2B; color: #A9B7C6; border-bottom: 2px solid #4A88C7; }
 QTabBar::tab:hover:!selected { color: #BBBBBB; background-color: #4C5052; }
-QTabBar::close-button {
-  subcontrol-position: right; subcontrol-origin: padding;
-  width: 14px; height: 14px; margin-right: 8px; margin-left: 4px;
-  border-radius: 3px; background: transparent;
+QToolButton#tabCloseButton {
+  background: transparent; border: none; border-radius: 3px;
+  margin-right: 6px; margin-left: 2px; padding: 1px;
 }
-QTabBar::close-button:hover { background: rgba(255, 255, 255, 20); }
+QToolButton#tabCloseButton:hover { background: rgba(255, 255, 255, 20); }
 
 QPlainTextEdit, QTextEdit, QTextBrowser {
   background-color: #2B2B2B; color: #A9B7C6; border: none;
