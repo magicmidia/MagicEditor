@@ -292,6 +292,44 @@ QToolButton#tabCloseButton {
 QToolButton#tabCloseButton:hover {
   background: rgba(255, 255, 255, 18);
 }
+QToolButton#tabNewButton {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #999077;
+  margin: 2px 6px;
+}
+QToolButton#tabNewButton:hover {
+  background: rgba(255, 215, 0, 28);
+  color: #FFD700;
+}
+QListWidget#settingsNav {
+  background: #1C1B1B;
+  border: none;
+  outline: none;
+  padding: 8px 4px;
+  color: #999077;
+}
+QListWidget#settingsNav::item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin: 2px 4px;
+}
+QListWidget#settingsNav::item:selected {
+  background: rgba(255, 215, 0, 22);
+  color: #FFD700;
+}
+QListWidget#settingsNav::item:hover:!selected {
+  background: rgba(255, 255, 255, 10);
+  color: #E5E2E1;
+}
+QDialog#settingsDialog {
+  background: #0E0E0E;
+}
+QFrame#settingsSep {
+  color: #2A2929;
+  max-width: 1px;
+}
 
 /* --- Editor canvas (deep void) --- */
 QPlainTextEdit,

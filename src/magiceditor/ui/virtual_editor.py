@@ -64,6 +64,10 @@ class VirtualEditor(QAbstractScrollArea):
         self._doc = document
         self._show_line_numbers = True
         self._word_wrap = False
+        self._tab_width = 4
+        self._indent_with_spaces = True
+        self._highlight_current_line = True
+        self._base_font_size = 12
         self._bookmarks: set[int] = set()
         self._cursor_line = 0
         self._cursor_col = 0
@@ -284,6 +288,25 @@ class VirtualEditor(QAbstractScrollArea):
 
     def set_word_wrap(self, enabled: bool) -> None:
         self._word_wrap = enabled
+
+    def set_font_point_size(self, size: int) -> None:
+        size = max(8, min(48, int(size)))
+        self._base_font_size = size
+        f = self.font()
+        f.setPointSize(size)
+        self.setFont(f)
+        self._recalc_metrics()
+        self.viewport().update()
+
+    def set_tab_width(self, width: int) -> None:
+        self._tab_width = max(2, min(8, int(width)))
+
+    def set_indent_with_spaces(self, enabled: bool) -> None:
+        self._indent_with_spaces = bool(enabled)
+
+    def set_highlight_current_line(self, enabled: bool) -> None:
+        self._highlight_current_line = bool(enabled)
+        self.viewport().update()
         self._update_scrollbars()
         self.viewport().update()
 
@@ -367,7 +390,8 @@ class VirtualEditor(QAbstractScrollArea):
         self.viewport().update()
 
     def reset_zoom(self) -> None:
-        self.setFont(editor_font(12))
+        base = getattr(self, "_base_font_size", 12) or 12
+        self.setFont(editor_font(int(base)))
         self._recalc_metrics()
         self.viewport().update()
 
@@ -640,7 +664,7 @@ class VirtualEditor(QAbstractScrollArea):
                 text = ""
             rows = self._wrap_display_rows(text)
             row_h = lh * len(rows)
-            if line == self._cursor_line:
+            if line == self._cursor_line and self._highlight_current_line:
                 painter.fillRect(
                     gutter,
                     y,
@@ -1112,22 +1136,29 @@ class VirtualEditor(QAbstractScrollArea):
         return self._cursor_line + 1, self._cursor_col + 1
 
     def indent_line(self) -> None:
-        """Insert 4 spaces at the start of the current line."""
+        """Insert tab or N spaces at the start of the current line."""
         start = self._doc.line_index().line_start(self._cursor_line)
-        self._insert_bytes_tracked(start, b"    ")
-        self._cursor_col += 4
+        if self._indent_with_spaces:
+            n = max(2, min(8, self._tab_width))
+            chunk = b" " * n
+            self._insert_bytes_tracked(start, chunk)
+            self._cursor_col += n
+        else:
+            self._insert_bytes_tracked(start, b"\t")
+            self._cursor_col += 1
         self._clear_selection()
         self._emit_edit()
 
     def unindent_line(self) -> None:
         text = self._doc.line_text(self._cursor_line)
         strip = 0
+        n = max(2, min(8, self._tab_width))
         if text.startswith("\t"):
             strip = 1
-        elif text.startswith("    "):
-            strip = 4
+        elif text.startswith(" " * n):
+            strip = n
         elif text.startswith(" "):
-            strip = min(4, len(text) - len(text.lstrip(" ")))
+            strip = min(n, len(text) - len(text.lstrip(" ")))
         if strip <= 0:
             return
         start = self._doc.line_index().line_start(self._cursor_line)

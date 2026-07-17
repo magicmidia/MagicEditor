@@ -149,7 +149,9 @@ class MainWindow(QMainWindow):
             self.restoreState(self._session.window_state)
 
         self._restoring = True
-        restored = self._restore_session_files()
+        restored = False
+        if self._session.restore_session:
+            restored = self._restore_session_files()
         self._restoring = False
         if not restored:
             self.new_document()
@@ -158,7 +160,34 @@ class MainWindow(QMainWindow):
             self._show_workspace(self._workspace, persist=False)
 
         self._sync_checkables()
+        self._apply_chrome_visibility()
         self.retranslate_ui()
+
+    def _apply_chrome_visibility(self) -> None:
+        """Show/hide toolbar and status bar from session prefs."""
+        tb = getattr(self, "_toolbar", None)
+        if tb is not None:
+            tb.setVisible(bool(self._session.show_toolbar))
+        self.statusBar().setVisible(bool(self._session.show_status_bar))
+
+    def _apply_editor_prefs_to_tabs(self) -> None:
+        """Push font size, wrap, gutters, indent prefs to open editors."""
+        s = self._session
+        self._word_wrap = s.word_wrap
+        self._line_numbers = s.line_numbers
+        self._actions["action.word_wrap"].setChecked(self._word_wrap)
+        self._actions["action.line_numbers"].setChecked(self._line_numbers)
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if not isinstance(w, EditorTab):
+                continue
+            w.set_word_wrap(s.word_wrap)
+            w.set_line_numbers(s.line_numbers)
+            if isinstance(w.editor, VirtualEditor):
+                w.editor.set_font_point_size(s.font_size)
+                w.editor.set_tab_width(s.tab_width)
+                w.editor.set_indent_with_spaces(s.indent_with_spaces)
+                w.editor.set_highlight_current_line(s.highlight_current_line)
 
     # --- chrome -------------------------------------------------------
 
@@ -381,6 +410,7 @@ class MainWindow(QMainWindow):
         tb.setMovable(False)
         tb.setIconSize(QSize(22, 22))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self._toolbar = tb
         self.addToolBar(tb)
         # File
         for key in (
@@ -705,6 +735,13 @@ class MainWindow(QMainWindow):
             drafts=drafts,
             recent_files=recent,
             icon_pack=get_icon_pack(),
+            font_size=gfx.font_size,
+            tab_width=gfx.tab_width,
+            indent_with_spaces=gfx.indent_with_spaces,
+            highlight_current_line=gfx.highlight_current_line,
+            restore_session=gfx.restore_session,
+            show_status_bar=gfx.show_status_bar,
+            show_toolbar=gfx.show_toolbar,
             gpu_acceleration=gfx.gpu_acceleration,
             gpu_multisample=gfx.gpu_multisample,
             antialiasing=gfx.antialiasing,
@@ -754,13 +791,22 @@ class MainWindow(QMainWindow):
                 w.editor.apply_theme_palette(theme)
 
     def show_settings(self) -> None:
-        dlg = SettingsDialog(self._session, self, tr=self._tr)
+        langs = self._tr.available_languages() or ["pt_BR", "en_US", "es_ES"]
+        dlg = SettingsDialog(self._session, self, tr=self._tr, languages=langs)
         if dlg.exec() != SettingsDialog.DialogCode.Accepted:
             return
         old_gpu = self._session.gpu_acceleration
         old_msaa = self._session.gpu_multisample
         old_pack = get_icon_pack()
+        old_theme = self._themes.current
+        old_lang = self._tr.language
         dlg.apply_to_state(self._session)
+
+        if self._session.theme != old_theme:
+            self.apply_theme(self._session.theme, persist=False)
+        if self._session.language != old_lang:
+            self._set_language(self._session.language, persist=False)
+
         if self._session.icon_pack != old_pack:
             set_icon_pack(self._session.icon_pack)
             self._apply_icons()
@@ -769,6 +815,9 @@ class MainWindow(QMainWindow):
                 w = self.tabs.widget(i)
                 if isinstance(w, EditorTab):
                     self.tabs.setTabIcon(i, language_icon(w.language, self._icon_color))
+
+        self._apply_editor_prefs_to_tabs()
+        self._apply_chrome_visibility()
         self._persist_session()
         self.apply_graphics_preferences()
         if (
@@ -976,6 +1025,10 @@ class MainWindow(QMainWindow):
         tab.set_syntax_light_theme(self._themes.current == "clean_light")
         if isinstance(tab.editor, VirtualEditor):
             tab.editor.apply_theme_palette(self._themes.current)
+            tab.editor.set_font_point_size(self._session.font_size)
+            tab.editor.set_tab_width(self._session.tab_width)
+            tab.editor.set_indent_with_spaces(self._session.indent_with_spaces)
+            tab.editor.set_highlight_current_line(self._session.highlight_current_line)
         if self._session.editor_transparency:
             tab.editor.setObjectName("translucentEditor")
         tab.modification_changed.connect(self._refresh_tab_titles)

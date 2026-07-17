@@ -16,6 +16,14 @@ _MAX_DRAFT_CHARS = 400_000
 _MAX_RECENT = 15
 
 
+def _clamp_int(value: object, lo: int, hi: int, default: int) -> int:
+    try:
+        n = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(hi, n))
+
+
 @dataclass
 class SessionState:
     theme: str = "luminous_void"
@@ -35,6 +43,14 @@ class SessionState:
     recent_files: list[str] = field(default_factory=list)
     # Icon pack: "qlementine" (default) | "material"
     icon_pack: str = "qlementine"
+    # Editor preferences
+    font_size: int = 12  # 8-48
+    tab_width: int = 4  # spaces per indent (2-8)
+    indent_with_spaces: bool = True
+    highlight_current_line: bool = True
+    restore_session: bool = True
+    show_status_bar: bool = True
+    show_toolbar: bool = True
     # Graphics / appearance
     gpu_acceleration: bool = True
     gpu_multisample: bool = True
@@ -248,6 +264,15 @@ class AppSettings:
             drafts=drafts,
             recent_files=recent,
             icon_pack=qs.value("ui/icon_pack", "qlementine", str) or "qlementine",
+            font_size=_clamp_int(qs.value("editor/font_size", 12), 8, 48, 12),
+            tab_width=_clamp_int(qs.value("editor/tab_width", 4), 2, 8, 4),
+            indent_with_spaces=self._as_bool(qs.value("editor/indent_with_spaces"), True),
+            highlight_current_line=self._as_bool(
+                qs.value("editor/highlight_current_line"), True
+            ),
+            restore_session=self._as_bool(qs.value("ui/restore_session"), True),
+            show_status_bar=self._as_bool(qs.value("ui/show_status_bar"), True),
+            show_toolbar=self._as_bool(qs.value("ui/show_toolbar"), True),
             gpu_acceleration=self._as_bool(qs.value("graphics/gpu_acceleration"), True),
             gpu_multisample=self._as_bool(qs.value("graphics/gpu_multisample"), True),
             antialiasing=self._as_bool(qs.value("graphics/antialiasing"), True),
@@ -265,6 +290,13 @@ class AppSettings:
         qs.setValue("ui/word_wrap", state.word_wrap)
         qs.setValue("ui/line_numbers", state.line_numbers)
         qs.setValue("ui/icon_pack", state.icon_pack or "qlementine")
+        qs.setValue("editor/font_size", int(max(8, min(48, state.font_size))))
+        qs.setValue("editor/tab_width", int(max(2, min(8, state.tab_width))))
+        qs.setValue("editor/indent_with_spaces", state.indent_with_spaces)
+        qs.setValue("editor/highlight_current_line", state.highlight_current_line)
+        qs.setValue("ui/restore_session", state.restore_session)
+        qs.setValue("ui/show_status_bar", state.show_status_bar)
+        qs.setValue("ui/show_toolbar", state.show_toolbar)
         qs.setValue("graphics/gpu_acceleration", state.gpu_acceleration)
         qs.setValue("graphics/gpu_multisample", state.gpu_multisample)
         qs.setValue("graphics/antialiasing", state.antialiasing)

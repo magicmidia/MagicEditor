@@ -110,6 +110,35 @@ def test_graphics_prefs_roundtrip(tmp_path: Path) -> None:
     assert loaded.theme == "luminous_void"
 
 
+def test_editor_and_chrome_prefs_roundtrip(tmp_path: Path) -> None:
+    s = _isolated(tmp_path)
+    state = SessionState(
+        font_size=16,
+        tab_width=2,
+        indent_with_spaces=False,
+        highlight_current_line=False,
+        restore_session=False,
+        show_status_bar=False,
+        show_toolbar=False,
+        word_wrap=True,
+        line_numbers=False,
+        icon_pack="material",
+        theme="darcula",
+    )
+    s.save(state)
+    loaded = s.load()
+    assert loaded.font_size == 16
+    assert loaded.tab_width == 2
+    assert loaded.indent_with_spaces is False
+    assert loaded.highlight_current_line is False
+    assert loaded.restore_session is False
+    assert loaded.show_status_bar is False
+    assert loaded.show_toolbar is False
+    assert loaded.word_wrap is True
+    assert loaded.line_numbers is False
+    assert loaded.icon_pack == "material"
+
+
 def test_missing_files_dropped_on_load(tmp_path: Path) -> None:
     gone = tmp_path / "missing.txt"
     # do not create
