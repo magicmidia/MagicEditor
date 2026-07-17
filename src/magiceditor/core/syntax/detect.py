@@ -49,6 +49,29 @@ _EXT_MAP: dict[str, str] = {
     "txt": "text",
     "log": "text",
     "csv": "text",
+    "kt": "kotlin",
+    "kts": "kotlin",
+    "swift": "swift",
+    "lua": "lua",
+    "r": "r",
+    "dart": "dart",
+    "vue": "vue",
+    "svelte": "svelte",
+    "mk": "makefile",
+    "bat": "batch",
+    "cmd": "batch",
+    "less": "css",
+    "sass": "css",
+    "graphql": "graphql",
+    "gql": "graphql",
+}
+
+_BASENAME_MAP: dict[str, str] = {
+    "dockerfile": "dockerfile",
+    "makefile": "makefile",
+    "cmakelists.txt": "cmake",
+    "gemfile": "ruby",
+    "rakefile": "ruby",
 }
 
 
@@ -61,6 +84,9 @@ def detect_language(path: str | Path | None, title: str = "") -> str:
         name = title
     if not name:
         return "text"
+    base = name.lower()
+    if base in _BASENAME_MAP:
+        return _BASENAME_MAP[base]
     # multi-dot: take last suffix
     suffix = Path(name).suffix.lower().lstrip(".")
     if not suffix and "." in name:
@@ -93,6 +119,18 @@ def language_label(lang_id: str) -> str:
         "toml": "TOML",
         "ini": "INI",
         "text": "Plain Text",
+        "kotlin": "Kotlin",
+        "swift": "Swift",
+        "lua": "Lua",
+        "r": "R",
+        "dart": "Dart",
+        "vue": "Vue",
+        "svelte": "Svelte",
+        "dockerfile": "Dockerfile",
+        "makefile": "Makefile",
+        "batch": "Batch",
+        "graphql": "GraphQL",
+        "cmake": "CMake",
     }
     return labels.get(lang_id, lang_id.title())
 

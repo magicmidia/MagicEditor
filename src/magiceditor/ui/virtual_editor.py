@@ -1110,3 +1110,43 @@ class VirtualEditor(QAbstractScrollArea):
 
     def cursor_line_col(self) -> tuple[int, int]:
         return self._cursor_line + 1, self._cursor_col + 1
+
+    def indent_line(self) -> None:
+        """Insert 4 spaces at the start of the current line."""
+        start = self._doc.line_index().line_start(self._cursor_line)
+        self._insert_bytes_tracked(start, b"    ")
+        self._cursor_col += 4
+        self._clear_selection()
+        self._emit_edit()
+
+    def unindent_line(self) -> None:
+        text = self._doc.line_text(self._cursor_line)
+        strip = 0
+        if text.startswith("\t"):
+            strip = 1
+        elif text.startswith("    "):
+            strip = 4
+        elif text.startswith(" "):
+            strip = min(4, len(text) - len(text.lstrip(" ")))
+        if strip <= 0:
+            return
+        start = self._doc.line_index().line_start(self._cursor_line)
+        self._delete_bytes_tracked(start, self._col_to_byte(self._cursor_line, strip))
+        self._cursor_col = max(0, self._cursor_col - strip)
+        self._clear_selection()
+        self._emit_edit()
+
+    def duplicate_line(self) -> None:
+        text = self._doc.line_text(self._cursor_line)
+        enc = self._doc.encoding if self._doc.encoding != "utf-8-sig" else "utf-8"
+        line = self._cursor_line
+        total = self._line_count()
+        if line < total - 1:
+            off = self._doc.line_index().line_start(line + 1)
+            data = (text + "\n").encode(enc, errors="replace")
+        else:
+            off = len(self._doc.buffer)
+            data = ("\n" + text).encode(enc, errors="replace")
+        self._insert_bytes_tracked(off, data)
+        self._clear_selection()
+        self._emit_edit()

@@ -161,7 +161,7 @@ def rules_for(lang: str) -> list[Rule]:
             *common_number,
         ]
 
-    if lang in {"shell", "powershell", "yaml", "toml", "ini", "ruby"}:
+    if lang in {"shell", "powershell", "yaml", "toml", "ini", "ruby", "dockerfile", "makefile", "batch", "cmake"}:
         return [
             *hash_comment,
             *common_string,
@@ -169,8 +169,26 @@ def rules_for(lang: str) -> list[Rule]:
             _compile(
                 "keyword",
                 r"\b(?:if|then|else|fi|for|while|do|done|case|esac|function|return|"
-                r"export|local|true|false|null|true|false)\b",
+                r"export|local|true|false|null|FROM|RUN|CMD|COPY|ADD|ENV|WORKDIR|"
+                r"ENTRYPOINT|ARG|VOLUME|EXPOSE|USER|ONBUILD)\b",
+                re.I,
             ),
+        ]
+
+    if lang in {"kotlin", "swift", "dart", "lua", "r", "vue", "svelte", "graphql"}:
+        kws = (
+            r"\b(?:fun|val|var|class|object|interface|if|else|when|for|while|return|"
+            r"import|package|true|false|null|func|let|struct|enum|switch|case|"
+            r"async|await|const|export|default|type|query|mutation|subscription|"
+            r"function|local|end|then|do|repeat|until|library|require)\b"
+        )
+        return [
+            *block_c,
+            *line_slash,
+            *hash_comment,
+            *common_string,
+            _compile("keyword", kws),
+            *common_number,
         ]
 
     return [*hash_comment, *common_string, *common_number]

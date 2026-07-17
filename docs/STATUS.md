@@ -1,22 +1,30 @@
 # Project Status
 
-**Updated:** 2026-07-16  
+**Updated:** 2026-07-17  
 **Branch:** `feature/editor-mvp`
 
 ## Current phase
-**Feature expansion** — daily-driver editing + session memory.
+**MVP feature-complete** — daily-driver parity + session memory.
 
 ## Done
 - [x] AI harness, model routing, Cascadia Code bundled
 - [x] Modern MainWindow (themes, explorer optional, session restore, find modal)
 - [x] Piece table, line index, document I/O
-- [x] Syntax highlighting + Syntax menu
+- [x] Syntax highlighting + Syntax menu (many languages)
 - [x] Print / Export PDF (clean light styles)
 - [x] Virtual viewport + mmap + incremental line index
 - [x] Find in Files (workspace + open tabs) + regex
 - [x] Go to Line, replace, undo/redo (virtual)
 - [x] Soft wrap (virtual) + bookmarks
-- [x] **Session persistence:** open files (absolute paths, order, active tab), workspace, bookmarks per file, cursor per file
+- [x] Session: open files, workspace, bookmarks, cursors
+- [x] **Untitled draft recovery** (`session/drafts_json`)
+- [x] **Recent files** menu
+- [x] Encoding + EOL menu (Format)
+- [x] Cut/Copy/Paste/Select All + indent/outdent/duplicate line
+- [x] Close tab / others / all; double-click tab bar → new
+- [x] Locales: pt_BR, en_US, es_ES
+- [x] Luminous Void theme, GPU/transparency settings
+- [x] Quick Open (Ctrl+E); Ctrl+P = Print
 - [x] `MagicEditor.exe` pipeline at repo root
 
 ## Delivery rule
@@ -26,19 +34,15 @@ Every feature delivery: rebuild root exe:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ```
 
-## Done (recent)
-- [x] Theme **Luminous Void** (mockup-aligned: void black + #FFD700)
-- [x] Settings: GPU acceleration, MSAA, AA, window opacity, glass chrome, translucent editor
-- [x] Sidebar mockup: Workspace header, Explorer/Search/Settings nav, Open Editors, Project Files
-- [x] Quick Open (Ctrl+E) + toolbar search field; Ctrl+P = Print
-- [x] Status accent "Sync Active: MagicCloud"
-
-## Next
-1. [ ] Multi-cursor / column selection (stretch)
-2. [ ] Untitled buffer recovery (optional temp drafts)
-3. [ ] REVIEW before merge to `main`
+## Stretch / later
+1. [ ] Multi-cursor / column selection
+2. [ ] Tear-off tabs to new window
+3. [ ] Document outline (Markdown headings) dock
+4. [ ] Full Lucide SVG asset pack (optional)
+5. [ ] REVIEW + merge to `main`
 
 ## Handoff
-- Session keys: `session/open_files`, `session/active_file`, `session/bookmarks_json`, `session/cursors_json`
-- Only **saved files on disk** are restored (unsaved Untitled tabs are not)
-- UI smoke / session tests inject isolated `AppSettings` + clear modified before close
+- Session keys: `open_files`, `active_file`, `bookmarks_json`, `cursors_json`, `drafts_json`, `recent_files`
+- Drafts restore unsaved Untitled buffers (capped size)
+- Only paths that still exist are restored for disk files
+- UI smoke / session tests inject isolated `AppSettings`

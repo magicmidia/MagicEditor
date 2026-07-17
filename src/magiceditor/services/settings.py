@@ -10,6 +10,12 @@ from typing import Any
 from PyQt6.QtCore import QByteArray, QSettings
 
 
+# Caps for session drafts (Untitled recovery)
+_MAX_DRAFTS = 12
+_MAX_DRAFT_CHARS = 400_000
+_MAX_RECENT = 15
+
+
 @dataclass
 class SessionState:
     theme: str = "luminous_void"
@@ -23,6 +29,10 @@ class SessionState:
     bookmarks: dict[str, list[int]] = field(default_factory=dict)
     # path -> (line 1-based, column 1-based)
     cursors: dict[str, tuple[int, int]] = field(default_factory=dict)
+    # Untitled recovery: [{title, text, active?, bookmarks?, cursor?}]
+    drafts: list[dict[str, Any]] = field(default_factory=list)
+    # Most-recent first absolute paths
+    recent_files: list[str] = field(default_factory=list)
     # Graphics / appearance
     gpu_acceleration: bool = True
     gpu_multisample: bool = True
@@ -92,6 +102,21 @@ class AppSettings:
             if isinstance(data, dict):
                 return {str(k): v for k, v in data.items()}
         return {}
+
+    @staticmethod
+    def _load_json_list(raw: object) -> list[Any]:
+        if not raw:
+            return []
+        if isinstance(raw, list):
+            return list(raw)
+        if isinstance(raw, str):
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                return []
+            if isinstance(data, list):
+                return list(data)
+        return []
 
     def load(self) -> SessionState:
         qs = self._qs
@@ -166,6 +191,42 @@ class AppSettings:
             opacity_f = 1.0
         opacity_f = max(0.55, min(1.0, opacity_f))
 
+        drafts_raw = self._load_json_list(qs.value("session/drafts_json", ""))
+        drafts: list[dict[str, Any]] = []
+        for item in drafts_raw[:_MAX_DRAFTS]:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("title") or "Untitled")
+            text = str(item.get("text") or "")
+            if len(text) > _MAX_DRAFT_CHARS:
+                text = text[:_MAX_DRAFT_CHARS]
+            entry: dict[str, Any] = {"title": title, "text": text}
+            if item.get("active"):
+                entry["active"] = True
+            if isinstance(item.get("bookmarks"), list):
+                entry["bookmarks"] = [int(x) for x in item["bookmarks"] if str(x).lstrip("-").isdigit()]
+            cur = item.get("cursor")
+            if isinstance(cur, (list, tuple)) and len(cur) >= 2:
+                try:
+                    entry["cursor"] = [max(1, int(cur[0])), max(1, int(cur[1]))]
+                except (TypeError, ValueError):
+                    pass
+            drafts.append(entry)
+
+        recent: list[str] = []
+        seen_r: set[str] = set()
+        for p in self._as_str_list(qs.value("session/recent_files", [])):
+            path = Path(p)
+            if not path.is_file():
+                continue
+            key = normalize_path(path)
+            if key in seen_r:
+                continue
+            seen_r.add(key)
+            recent.append(key)
+            if len(recent) >= _MAX_RECENT:
+                break
+
         geom = qs.value("window/geometry")
         state = qs.value("window/state")
         return SessionState(
@@ -182,6 +243,8 @@ class AppSettings:
             active_file=active,
             bookmarks=bookmarks,
             cursors=cursors,
+            drafts=drafts,
+            recent_files=recent,
             gpu_acceleration=self._as_bool(qs.value("graphics/gpu_acceleration"), True),
             gpu_multisample=self._as_bool(qs.value("graphics/gpu_multisample"), True),
             antialiasing=self._as_bool(qs.value("graphics/antialiasing"), True),
@@ -241,6 +304,47 @@ class AppSettings:
             key = normalize_path(k) if Path(k).exists() else k
             cursors_out[key] = [max(1, int(line)), max(1, int(col))]
         qs.setValue("session/cursors_json", json.dumps(cursors_out, separators=(",", ":")))
+
+        drafts_out: list[dict[str, Any]] = []
+        for item in state.drafts[:_MAX_DRAFTS]:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "")
+            if len(text) > _MAX_DRAFT_CHARS:
+                text = text[:_MAX_DRAFT_CHARS]
+            entry: dict[str, Any] = {
+                "title": str(item.get("title") or "Untitled")[:120],
+                "text": text,
+            }
+            if item.get("active"):
+                entry["active"] = True
+            if isinstance(item.get("bookmarks"), list):
+                entry["bookmarks"] = [
+                    int(x) for x in item["bookmarks"] if isinstance(x, (int, float, str))
+                ][:500]
+            cur = item.get("cursor")
+            if isinstance(cur, (list, tuple)) and len(cur) >= 2:
+                try:
+                    entry["cursor"] = [max(1, int(cur[0])), max(1, int(cur[1]))]
+                except (TypeError, ValueError):
+                    pass
+            drafts_out.append(entry)
+        qs.setValue("session/drafts_json", json.dumps(drafts_out, separators=(",", ":")))
+
+        recent_out: list[str] = []
+        seen_r: set[str] = set()
+        for p in state.recent_files:
+            path = Path(p)
+            if not path.is_file():
+                continue
+            key = normalize_path(path)
+            if key in seen_r:
+                continue
+            seen_r.add(key)
+            recent_out.append(key)
+            if len(recent_out) >= _MAX_RECENT:
+                break
+        qs.setValue("session/recent_files", recent_out)
 
         if state.geometry is not None:
             qs.setValue("window/geometry", state.geometry)

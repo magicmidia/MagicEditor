@@ -45,6 +45,24 @@ def detect_eol(data: bytes) -> Eol:
     return "NONE"
 
 
+def normalize_newlines(data: bytes, target: Eol) -> bytes:
+    """Convert line endings in *data* to *target* (LF / CRLF / CR).
+
+    MIXED and NONE leave data unchanged.
+    """
+    if target in {"MIXED", "NONE"}:
+        return data
+    # Collapse to LF first
+    out = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    if target == "LF":
+        return out
+    if target == "CRLF":
+        return out.replace(b"\n", b"\r\n")
+    if target == "CR":
+        return out.replace(b"\n", b"\r")
+    return data
+
+
 def decode_bytes(data: bytes) -> TextProbe:
     """Decode with a small priority list suitable for editor files."""
     candidates: list[EncodingName] = ["utf-8-sig", "utf-8", "cp1252", "latin-1"]

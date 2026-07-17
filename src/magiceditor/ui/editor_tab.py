@@ -196,6 +196,50 @@ class EditorTab(QWidget):
             assert isinstance(self.editor, TextEditor)
             self.editor.selectAll()
 
+    def indent(self) -> None:
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.indent_line()
+        else:
+            assert isinstance(self.editor, TextEditor)
+            cur = self.editor.textCursor()
+            cur.insertText("    ")
+
+    def unindent(self) -> None:
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.unindent_line()
+        else:
+            assert isinstance(self.editor, TextEditor)
+            cur = self.editor.textCursor()
+            cur.movePosition(cur.MoveOperation.StartOfBlock)
+            block = cur.block().text()
+            strip = 0
+            if block.startswith("\t"):
+                strip = 1
+            elif block.startswith("    "):
+                strip = 4
+            elif block.startswith(" "):
+                strip = min(4, len(block) - len(block.lstrip(" ")))
+            if strip:
+                cur.movePosition(
+                    cur.MoveOperation.Right,
+                    cur.MoveMode.KeepAnchor,
+                    strip,
+                )
+                cur.removeSelectedText()
+
+    def duplicate_line(self) -> None:
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.duplicate_line()
+        else:
+            assert isinstance(self.editor, TextEditor)
+            cur = self.editor.textCursor()
+            cur.select(cur.SelectionType.BlockUnderCursor)
+            text = cur.selectedText()
+            # Qt uses U+2029 as block separator in selectedText
+            text = text.replace("\u2029", "\n")
+            cur.movePosition(cur.MoveOperation.EndOfBlock)
+            cur.insertText("\n" + text)
+
     def line_count(self) -> int:
         if isinstance(self.editor, VirtualEditor):
             return self.document.line_index().line_count

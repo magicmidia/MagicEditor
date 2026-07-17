@@ -74,6 +74,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.tabs)
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.tabs.empty_area_double_clicked.connect(self.new_document)
+        self._recent_menu = None  # type: ignore[assignment]
+        self._menu_format = None  # type: ignore[assignment]
+        self._menu_encoding = None  # type: ignore[assignment]
+        self._menu_eol = None  # type: ignore[assignment]
 
         self._status = EditorStatusBar(self)
         self.setStatusBar(self._status)
@@ -182,6 +187,9 @@ class MainWindow(QMainWindow):
         act("action.copy", self.copy_current, "Ctrl+C")
         act("action.paste", self.paste_current, "Ctrl+V")
         act("action.select_all", self.select_all_current, "Ctrl+A")
+        act("action.indent", self.indent_current, "Ctrl+]")
+        act("action.unindent", self.unindent_current, "Ctrl+[")
+        act("action.duplicate_line", self.duplicate_line_current, "Ctrl+Shift+D")
         act("action.find", self.show_find, "Ctrl+F")
         act("action.replace", self.show_replace, "Ctrl+H")
         act("action.find_in_files", self.show_find_in_files, "Ctrl+Shift+F")
@@ -200,6 +208,9 @@ class MainWindow(QMainWindow):
         act("action.settings", self.show_settings, "Ctrl+,")
         # Ctrl+P = Print (platform default). Quick Open uses Ctrl+E.
         act("action.quick_open", self.show_quick_open, "Ctrl+E")
+        act("action.close_tab", self.close_current_tab, "Ctrl+W")
+        act("action.close_others", self.close_other_tabs)
+        act("action.close_all", self.close_all_tabs)
         act("action.exit", self.close, "Ctrl+Q")
 
         self._actions["action.word_wrap"].setChecked(self._word_wrap)
@@ -213,6 +224,7 @@ class MainWindow(QMainWindow):
         self._menu_file = mb.addMenu("&Arquivo")
         self._menu_edit = mb.addMenu("&Editar")
         self._menu_view = mb.addMenu("E&xibir")
+        self._menu_format = mb.addMenu("&Formatar")
         self._menu_syntax = mb.addMenu("&Sintaxe")
         self._menu_themes = mb.addMenu("&Temas")
         self._menu_lang = mb.addMenu("&Idioma da interface")
@@ -229,6 +241,16 @@ class MainWindow(QMainWindow):
         ):
             self._menu_file.addAction(self._actions[key])
         self._menu_file.addSeparator()
+        for key in (
+            "action.close_tab",
+            "action.close_others",
+            "action.close_all",
+        ):
+            self._menu_file.addAction(self._actions[key])
+        self._menu_file.addSeparator()
+        self._recent_menu = self._menu_file.addMenu(self._tr.t("menu.recent", "Arquivos recentes"))
+        self._rebuild_recent_menu()
+        self._menu_file.addSeparator()
         self._menu_file.addAction(self._actions["action.exit"])
 
         for key in ("action.undo", "action.redo"):
@@ -239,6 +261,13 @@ class MainWindow(QMainWindow):
             "action.copy",
             "action.paste",
             "action.select_all",
+        ):
+            self._menu_edit.addAction(self._actions[key])
+        self._menu_edit.addSeparator()
+        for key in (
+            "action.indent",
+            "action.unindent",
+            "action.duplicate_line",
         ):
             self._menu_edit.addAction(self._actions[key])
         self._menu_edit.addSeparator()
@@ -270,6 +299,35 @@ class MainWindow(QMainWindow):
             "action.settings",
         ):
             self._menu_view.addAction(self._actions[key])
+
+        # Format: encoding + EOL
+        self._menu_encoding = self._menu_format.addMenu(
+            self._tr.t("menu.encoding", "Codificação")
+        )
+        self._enc_group = QActionGroup(self)
+        self._enc_group.setExclusive(True)
+        for enc, label in (
+            ("utf-8", "UTF-8"),
+            ("utf-8-sig", "UTF-8 BOM"),
+            ("cp1252", "Windows-1252"),
+            ("latin-1", "ISO-8859-1"),
+        ):
+            a = QAction(label, self)
+            a.setCheckable(True)
+            a.setData(enc)
+            a.triggered.connect(lambda checked=False, e=enc: self.set_current_encoding(e))
+            self._enc_group.addAction(a)
+            self._menu_encoding.addAction(a)
+        self._menu_eol = self._menu_format.addMenu(self._tr.t("menu.eol", "Fim de linha"))
+        self._eol_group = QActionGroup(self)
+        self._eol_group.setExclusive(True)
+        for eol, label in (("LF", "Unix (LF)"), ("CRLF", "Windows (CRLF)"), ("CR", "Classic Mac (CR)")):
+            a = QAction(label, self)
+            a.setCheckable(True)
+            a.setData(eol)
+            a.triggered.connect(lambda checked=False, e=eol: self.set_current_eol(e))
+            self._eol_group.addAction(a)
+            self._menu_eol.addAction(a)
 
         for lang_id, label in supported_languages():
             action = QAction(label, self)
@@ -431,10 +489,18 @@ class MainWindow(QMainWindow):
         self._menu_file.setTitle(t("menu.file", "&Arquivo"))
         self._menu_edit.setTitle(t("menu.edit", "&Editar"))
         self._menu_view.setTitle(t("menu.view", "E&xibir"))
+        if self._menu_format is not None:
+            self._menu_format.setTitle(t("menu.format", "&Formatar"))
         self._menu_syntax.setTitle(t("menu.syntax", "&Sintaxe"))
         self._menu_themes.setTitle(t("menu.themes", "&Temas"))
         self._menu_lang.setTitle(t("menu.ui_language", "&Idioma da interface"))
         self._menu_help.setTitle(t("menu.help", "A&juda"))
+        if self._recent_menu is not None:
+            self._recent_menu.setTitle(t("menu.recent", "Arquivos recentes"))
+        if self._menu_encoding is not None:
+            self._menu_encoding.setTitle(t("menu.encoding", "Codificação"))
+        if self._menu_eol is not None:
+            self._menu_eol.setTitle(t("menu.eol", "Fim de linha"))
         self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorador"))
         labels = {
             "action.new": t("action.new", "&Novo"),
@@ -450,6 +516,9 @@ class MainWindow(QMainWindow):
             "action.copy": t("action.copy", "&Copiar"),
             "action.paste": t("action.paste", "C&olar"),
             "action.select_all": t("action.select_all", "Selecionar t&udo"),
+            "action.indent": t("action.indent", "Avançar &indentação"),
+            "action.unindent": t("action.unindent", "Recuar indenta&ção"),
+            "action.duplicate_line": t("action.duplicate_line", "Duplicar &linha"),
             "action.find": t("action.find", "&Localizar"),
             "action.replace": t("action.replace", "&Substituir"),
             "action.find_in_files": t("action.find_in_files", "Localizar nos a&rquivos"),
@@ -467,6 +536,9 @@ class MainWindow(QMainWindow):
             "action.fullscreen": t("action.fullscreen", "&Tela cheia"),
             "action.settings": t("action.settings", "Confi&gurações…"),
             "action.quick_open": t("action.quick_open", "Abrir rapi&damente"),
+            "action.close_tab": t("action.close_tab", "Fechar &aba"),
+            "action.close_others": t("action.close_others", "Fechar &outras"),
+            "action.close_all": t("action.close_all", "Fechar t&odas"),
             "action.exit": t("action.exit", "&Sair"),
             "action.about": t("action.about", "&Sobre"),
         }
@@ -527,7 +599,33 @@ class MainWindow(QMainWindow):
             if active_key and key == active_key:
                 active_index = self.tabs.indexOf(tab)
             opened = True
+
+        # Restore Untitled drafts (unsaved buffers)
+        draft_active_idx: int | None = None
+        for draft in self._session.drafts:
+            text = str(draft.get("text") or "")
+            title = str(draft.get("title") or "Untitled")
+            doc = Document.from_text(text)
+            doc.title = title
+            if text:
+                doc.modified = True
+            tab = self._add_document(doc, activate=False)
+            marks = draft.get("bookmarks")
+            if isinstance(marks, list):
+                tab.set_bookmarks(marks)
+            cur = draft.get("cursor")
+            if isinstance(cur, (list, tuple)) and len(cur) >= 2:
+                try:
+                    tab.goto_line(int(cur[0]), int(cur[1]))
+                except (TypeError, ValueError):
+                    pass
+            if draft.get("active"):
+                draft_active_idx = self.tabs.indexOf(tab)
+            opened = True
+
         if opened:
+            if draft_active_idx is not None and draft_active_idx >= 0:
+                active_index = draft_active_idx
             self.tabs.setCurrentIndex(max(0, active_index))
             w = self.current_tab()
             if w is not None:
@@ -538,27 +636,46 @@ class MainWindow(QMainWindow):
         open_files: list[str] = []
         bookmarks: dict[str, list[int]] = {}
         cursors: dict[str, tuple[int, int]] = {}
+        drafts: list[dict] = []
         active: str | None = None
         current = self.current_tab()
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
-            if not isinstance(w, EditorTab) or w.document.path is None:
+            if not isinstance(w, EditorTab):
                 continue
-            if not w.document.path.is_file():
-                continue
-            p = normalize_path(w.document.path)
-            open_files.append(p)
-            marks = w.get_bookmarks()
-            if marks:
-                bookmarks[p] = marks
-            cursors[p] = w.cursor_line_col_1based()
-            if w is current:
-                active = p
+            if w.document.path is not None and w.document.path.is_file():
+                p = normalize_path(w.document.path)
+                open_files.append(p)
+                marks = w.get_bookmarks()
+                if marks:
+                    bookmarks[p] = marks
+                cursors[p] = w.cursor_line_col_1based()
+                if w is current:
+                    active = p
+            else:
+                # Untitled / unsaved buffer recovery
+                try:
+                    text = w.document.text()
+                except Exception:
+                    text = ""
+                if not text and not w.document.modified:
+                    continue
+                entry: dict = {
+                    "title": w.document.title,
+                    "text": text[:400_000],
+                    "bookmarks": w.get_bookmarks(),
+                    "cursor": list(w.cursor_line_col_1based()),
+                }
+                if w is current:
+                    entry["active"] = True
+                drafts.append(entry)
+
         workspace = None
         if self._workspace is not None and self._workspace.is_dir():
             workspace = normalize_path(self._workspace)
         # Preserve graphics prefs already loaded (updated via Settings dialog).
         gfx = self._session
+        recent = list(self._session.recent_files)
         return SessionState(
             theme=self._themes.current,
             language=self._tr.language,
@@ -569,6 +686,8 @@ class MainWindow(QMainWindow):
             active_file=active,
             bookmarks=bookmarks,
             cursors=cursors,
+            drafts=drafts,
+            recent_files=recent,
             gpu_acceleration=gfx.gpu_acceleration,
             gpu_multisample=gfx.gpu_multisample,
             antialiasing=gfx.antialiasing,
@@ -792,6 +911,7 @@ class MainWindow(QMainWindow):
                 and w.document.path.resolve() == path.resolve()
             ):
                 self.tabs.setCurrentIndex(i)
+                self._push_recent(path)
                 return w
         try:
             doc = open_document(path)
@@ -799,6 +919,7 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return None
         tab = self._add_document(doc)
+        self._push_recent(path)
         self._status.showMessage(f"Opened {path.name}", 3000)
         self._persist_session()
         return tab
@@ -873,6 +994,8 @@ class MainWindow(QMainWindow):
         if not tab.is_huge:
             tab.editor.document().setModified(False)  # type: ignore[union-attr]
         tab.document.modified = False
+        if tab.document.path is not None:
+            self._push_recent(tab.document.path)
         self._refresh_tab_titles()
         self._update_status_for(tab)
         self._status.showMessage("Saved", 2000)
@@ -899,6 +1022,8 @@ class MainWindow(QMainWindow):
         if not tab.is_huge:
             tab.editor.document().setModified(False)  # type: ignore[union-attr]
         tab.document.modified = False
+        if tab.document.path is not None:
+            self._push_recent(tab.document.path)
         self._refresh_tab_titles()
         self._update_status_for(tab)
         self._persist_session()
@@ -1005,6 +1130,106 @@ class MainWindow(QMainWindow):
         tab = self.current_tab()
         if tab is not None:
             tab.select_all()
+
+    def indent_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.indent()
+            self._refresh_tab_titles()
+
+    def unindent_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.unindent()
+            self._refresh_tab_titles()
+
+    def duplicate_line_current(self) -> None:
+        tab = self.current_tab()
+        if tab is not None:
+            tab.duplicate_line()
+            self._refresh_tab_titles()
+
+    def close_current_tab(self) -> None:
+        idx = self.tabs.currentIndex()
+        if idx >= 0:
+            self._close_tab(idx)
+
+    def close_other_tabs(self) -> None:
+        current = self.tabs.currentIndex()
+        if current < 0:
+            return
+        # Close from the end so indices stay valid
+        for i in range(self.tabs.count() - 1, -1, -1):
+            if i != current:
+                self._close_tab(i)
+
+    def close_all_tabs(self) -> None:
+        for i in range(self.tabs.count() - 1, -1, -1):
+            self._close_tab(i)
+
+    def set_current_encoding(self, encoding: str) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        if encoding not in {"utf-8", "utf-8-sig", "latin-1", "cp1252"}:
+            return
+        tab.document.set_encoding(encoding)  # type: ignore[arg-type]
+        self._refresh_tab_titles()
+        self._update_status_for(tab)
+        self._status.showMessage(f"Encoding → {encoding}", 2500)
+
+    def set_current_eol(self, eol: str) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        if eol not in {"LF", "CRLF", "CR"}:
+            return
+        tab.document.set_eol(eol)  # type: ignore[arg-type]
+        # Refresh classic editor text after in-buffer EOL rewrite
+        if not tab.is_huge and not isinstance(tab.editor, VirtualEditor):
+            from magiceditor.ui.text_editor import TextEditor
+
+            if isinstance(tab.editor, TextEditor):
+                pos = tab.editor.textCursor().position()
+                tab.editor.blockSignals(True)
+                tab.editor.setPlainText(tab.document.text())
+                tab.editor.blockSignals(False)
+                cur = tab.editor.textCursor()
+                cur.setPosition(min(pos, len(tab.document.text())))
+                tab.editor.setTextCursor(cur)
+        self._refresh_tab_titles()
+        self._update_status_for(tab)
+        self._status.showMessage(f"EOL → {eol}", 2500)
+
+    def _push_recent(self, path: Path | str) -> None:
+        key = normalize_path(path)
+        recent = [p for p in self._session.recent_files if p != key]
+        recent.insert(0, key)
+        self._session.recent_files = recent[:15]
+        self._rebuild_recent_menu()
+
+    def _rebuild_recent_menu(self) -> None:
+        menu = self._recent_menu
+        if menu is None:
+            return
+        menu.clear()
+        files = [p for p in self._session.recent_files if Path(p).is_file()]
+        if not files:
+            empty = menu.addAction(self._tr.t("menu.recent_empty", "(vazio)"))
+            empty.setEnabled(False)
+            return
+        for p in files[:15]:
+            act = menu.addAction(Path(p).name)
+            act.setToolTip(p)
+            act.triggered.connect(lambda checked=False, path=p: self.open_path(path))
+        menu.addSeparator()
+        clear = menu.addAction(self._tr.t("menu.recent_clear", "Limpar lista"))
+        clear.triggered.connect(self._clear_recent)
+
+    def _clear_recent(self) -> None:
+        self._session.recent_files = []
+        self._rebuild_recent_menu()
+        self._persist_session()
 
     def _open_search_hit(self, path: str, line: int, column: int, source_key: str = "") -> None:
         tab: EditorTab | None = None
@@ -1162,6 +1387,17 @@ class MainWindow(QMainWindow):
         self._status.set_filetype(label)
         self.setWindowTitle(f"{doc.display_name()} — MagicEditor")
         self._sync_syntax_check()
+        self._sync_format_menus(tab)
+
+    def _sync_format_menus(self, tab: EditorTab) -> None:
+        enc = tab.document.encoding
+        eol = tab.document.eol
+        if hasattr(self, "_enc_group"):
+            for a in self._enc_group.actions():
+                a.setChecked(a.data() == enc)
+        if hasattr(self, "_eol_group"):
+            for a in self._eol_group.actions():
+                a.setChecked(a.data() == eol)
 
     def _about(self) -> None:
         QMessageBox.about(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QTabBar, QTabWidget, QToolButton, QWidget
 
@@ -11,6 +11,8 @@ from magiceditor.ui.icons import icon as make_icon
 
 class TabManager(QTabWidget):
     """Multi-document tab bar with a reliable × close control."""
+
+    empty_area_double_clicked = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -69,3 +71,12 @@ class TabManager(QTabWidget):
                 self.tabCloseRequested.emit(idx)
                 return
         super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QMouseEvent | None) -> None:
+        if event is not None and event.button() == Qt.MouseButton.LeftButton:
+            # Double-click empty tab bar → new document (Notepad++ parity)
+            if self.tabBar().tabAt(event.pos()) < 0:
+                self.empty_area_double_clicked.emit()
+                event.accept()
+                return
+        super().mouseDoubleClickEvent(event)

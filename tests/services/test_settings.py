@@ -63,6 +63,32 @@ def test_open_files_and_bookmarks_roundtrip(tmp_path: Path) -> None:
     assert Path(loaded.workspace).resolve() == tmp_path.resolve()
 
 
+def test_drafts_and_recent_roundtrip(tmp_path: Path) -> None:
+    f1 = tmp_path / "recent.py"
+    f1.write_text("x=1\n", encoding="utf-8")
+    p1 = normalize_path(f1)
+    s = _isolated(tmp_path)
+    state = SessionState(
+        drafts=[
+            {
+                "title": "Untitled-1",
+                "text": "hello draft",
+                "active": True,
+                "bookmarks": [0],
+                "cursor": [1, 3],
+            }
+        ],
+        recent_files=[p1],
+        theme="luminous_void",
+    )
+    s.save(state)
+    loaded = s.load()
+    assert len(loaded.drafts) == 1
+    assert loaded.drafts[0]["text"] == "hello draft"
+    assert loaded.drafts[0]["title"] == "Untitled-1"
+    assert loaded.recent_files == [p1]
+
+
 def test_graphics_prefs_roundtrip(tmp_path: Path) -> None:
     s = _isolated(tmp_path)
     state = SessionState(
