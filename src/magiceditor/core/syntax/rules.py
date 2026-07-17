@@ -175,19 +175,54 @@ def rules_for(lang: str) -> list[Rule]:
             ),
         ]
 
-    if lang in {"kotlin", "swift", "dart", "lua", "r", "vue", "svelte", "graphql"}:
+    if lang in {
+        "kotlin",
+        "swift",
+        "dart",
+        "lua",
+        "r",
+        "vue",
+        "svelte",
+        "graphql",
+        "perl",
+        "scala",
+        "haskell",
+        "elixir",
+        "erlang",
+        "clojure",
+        "fsharp",
+        "vb",
+        "objectivec",
+        "julia",
+        "nim",
+        "zig",
+        "solidity",
+        "terraform",
+        "nginx",
+        "apache",
+        "diff",
+        "git",
+        "csv",
+        "tsv",
+        "properties",
+        "env",
+        "cmake",
+    }:
         kws = (
             r"\b(?:fun|val|var|class|object|interface|if|else|when|for|while|return|"
             r"import|package|true|false|null|func|let|struct|enum|switch|case|"
             r"async|await|const|export|default|type|query|mutation|subscription|"
-            r"function|local|end|then|do|repeat|until|library|require)\b"
+            r"function|local|end|then|do|repeat|until|library|require|module|"
+            r"resource|provider|variable|output|fn|pub|use|match|impl|trait|"
+            r"contract|pragma|mapping|address|uint|bytes|def|elif|lambda|"
+            r"server|location|upstream|proxy_pass|Select|From|Where)\b"
         )
         return [
             *block_c,
             *line_slash,
             *hash_comment,
             *common_string,
-            _compile("keyword", kws),
+            _compile("keyword", kws, re.I),
             *common_number,
         ]
 

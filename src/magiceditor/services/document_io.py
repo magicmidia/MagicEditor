@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from magiceditor.core.encoding import decode_bytes
+from magiceditor.core.encoding import decode_bytes, encode_text, normalize_newlines
 from magiceditor.core.line_index import LineIndex
 from magiceditor.core.mmap_source import MmapSource, should_use_mmap
 from magiceditor.core.piece_table import PieceTable
@@ -74,19 +74,17 @@ def save_document(document: Document, path: Path | str | None = None) -> Documen
     if target is None:
         raise ValueError("No path for save")
 
-    # Prefer raw buffer bytes (works for huge_mode without re-encoding surprises).
-    data = document.buffer.get_text()
-    if document.encoding == "utf-8-sig" and not data.startswith(b"\xef\xbb\xbf"):
-        data = b"\xef\xbb\xbf" + data
-
-    # Normalize EOL for non-mixed documents when not huge (cheap on small files).
-    if not document.huge_mode:
-        if document.eol == "CRLF":
-            data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
-        elif document.eol == "LF":
-            data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
-        elif document.eol == "CR":
-            data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r")
+    if document.huge_mode:
+        # Avoid materializing multi-GB as str; persist piece-table bytes.
+        data = document.buffer.get_text()
+        if document.encoding == "utf-8-sig" and not data.startswith(b"\xef\xbb\xbf"):
+            data = b"\xef\xbb\xbf" + data
+    else:
+        # Re-encode from text so Format → Encoding is honored on save.
+        text = document.text()
+        data = encode_text(text, document.encoding)
+        if document.eol in {"LF", "CRLF", "CR"}:
+            data = normalize_newlines(data, document.eol)
 
     target.write_bytes(data)
     document.path = target

@@ -3,8 +3,13 @@
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_data_files
+
 block_cipher = None
 root = Path(SPECPATH)
+
+# QtAwesome ships TTF + charmaps under qtawesome/fonts/
+_qta_datas = collect_data_files("qtawesome")
 
 a = Analysis(
     [str(root / "src" / "magiceditor" / "__main__.py")],
@@ -13,6 +18,7 @@ a = Analysis(
     datas=[
         (str(root / "locales"), "locales"),
         (str(root / "resources"), "resources"),
+        *_qta_datas,
     ],
     hiddenimports=[
         "PyQt6.QtCore",
@@ -20,10 +26,13 @@ a = Analysis(
         "PyQt6.QtWidgets",
         "PyQt6.QtPrintSupport",
         "markdown",
+        "qtawesome",
+        "qtawesome.iconic_font",
         "magiceditor",
         "magiceditor.app",
         "magiceditor.ui.main_window",
         "magiceditor.ui.syntax_highlighter",
+        "magiceditor.ui.icons",
         "magiceditor.core.syntax",
     ],
     hookspath=[],

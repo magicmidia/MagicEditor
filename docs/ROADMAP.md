@@ -152,7 +152,7 @@ Este documento inventaria funcionalidades e vantagens dos editores do “tipo Ma
 | ID | Item | Aceite |
 |----|------|--------|
 | A1 | Duplo clique na **tab bar** cria Untitled | Clique na área vazia ou corner → novo doc |
-| A2 | Ícones Lucide densos, HiDPI, contraste por tema | Toolbar 20px legível; menus 16px |
+| A2 | Ícones **QtAwesome / Material Design Icons 6** + ícones por linguagem | Pacote de mercado; tabs com tipo de arquivo |
 | A3 | Diálogo **Sobre** custom (logo, versão, links) | Não é QMessageBox genérico |
 | A4 | QSS de `QMessageBox` / `QDialog` densos | Botões com padding, cantos, tipografia |
 | A5 | Roadmap + STATUS sincronizados | docs/ROADMAP.md |

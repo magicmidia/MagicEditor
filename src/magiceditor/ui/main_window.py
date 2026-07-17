@@ -33,7 +33,8 @@ from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
-from magiceditor.ui.icons import icon, toolbar_icon_color
+from magiceditor.core.encoding import ENCODING_CATALOG
+from magiceditor.ui.icons import icon, language_icon, toolbar_icon_color
 from magiceditor.ui.about_dialog import AboutDialog
 from magiceditor.ui.outline_dialog import OutlineDialog, extract_markdown_outline
 from magiceditor.ui.quick_open import QuickOpenDialog
@@ -310,12 +311,7 @@ class MainWindow(QMainWindow):
         )
         self._enc_group = QActionGroup(self)
         self._enc_group.setExclusive(True)
-        for enc, label in (
-            ("utf-8", "UTF-8"),
-            ("utf-8-sig", "UTF-8 BOM"),
-            ("cp1252", "Windows-1252"),
-            ("latin-1", "ISO-8859-1"),
-        ):
+        for enc, label in ENCODING_CATALOG:
             a = QAction(label, self)
             a.setCheckable(True)
             a.setData(enc)
@@ -463,12 +459,19 @@ class MainWindow(QMainWindow):
             "action.settings": "settings",
             "action.quick_open": "quick_open",
             "action.outline": "outline",
+            "action.indent": "indent",
+            "action.unindent": "unindent",
+            "action.duplicate_line": "duplicate_line",
+            "action.close_tab": "close_tab",
             "action.exit": "exit",
             "action.about": "about",
         }
         for key, name in mapping.items():
             if key in self._actions:
                 self._actions[key].setIcon(icon(name, c))
+        # Syntax menu language icons
+        for lang_id, action in self._syntax_actions.items():
+            action.setIcon(language_icon(lang_id, c))
 
     def _sync_checkables(self) -> None:
         theme = self._themes.current
@@ -849,6 +852,7 @@ class MainWindow(QMainWindow):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab):
                 w.set_syntax_light_theme(light)
+                self.tabs.setTabIcon(i, language_icon(w.language, self._icon_color))
         self._apply_virtual_palette()
         self._sync_checkables()
         self._status.showMessage(f"Theme: {theme_id}", 2500)
@@ -959,14 +963,21 @@ class MainWindow(QMainWindow):
             tab.editor.setObjectName("translucentEditor")
         tab.modification_changed.connect(self._refresh_tab_titles)
         tab.cursor_info_changed.connect(self._status.set_cursor)
-        tab.language_changed.connect(lambda _lang: self._sync_syntax_check())
+        tab.language_changed.connect(lambda _lang: self._on_tab_language_changed(tab))
         idx = self.tabs.addTab(tab, doc.display_name())
+        self.tabs.setTabIcon(idx, language_icon(tab.language, self._icon_color))
         self._refresh_open_editors_sidebar()
         if activate:
             self.tabs.setCurrentIndex(idx)
             self._update_status_for(tab)
             self._sync_syntax_check()
         return tab
+
+    def _on_tab_language_changed(self, tab: EditorTab) -> None:
+        self._sync_syntax_check()
+        idx = self.tabs.indexOf(tab)
+        if idx >= 0:
+            self.tabs.setTabIcon(idx, language_icon(tab.language, self._icon_color))
 
     def print_current(self) -> None:
         tab = self.current_tab()
@@ -1195,9 +1206,14 @@ class MainWindow(QMainWindow):
         tab = self.current_tab()
         if tab is None:
             return
-        if encoding not in {"utf-8", "utf-8-sig", "latin-1", "cp1252"}:
-            return
-        tab.document.set_encoding(encoding)  # type: ignore[arg-type]
+        # Accept any codec listed in the catalog (or known to Python)
+        known = {code for code, _ in ENCODING_CATALOG}
+        if encoding not in known:
+            try:
+                "test".encode(encoding)
+            except LookupError:
+                return
+        tab.document.set_encoding(encoding)
         self._refresh_tab_titles()
         self._update_status_for(tab)
         self._status.showMessage(f"Encoding → {encoding}", 2500)
