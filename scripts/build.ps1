@@ -105,15 +105,20 @@ if ($Exe -or $Portable -or $Msi) {
         Remove-Item -Force $legacyRoot -ErrorAction SilentlyContinue
     }
 
-    python -m PyInstaller `
+    # PyInstaller logs to stderr; do not treat that as a terminating error.
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & python -m PyInstaller `
         --noconfirm `
         --clean `
         --distpath $DistDir `
         --workpath $WorkDir `
         $SpecPath
+    $pyiExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "PyInstaller failed (exit $LASTEXITCODE)"
+    if ($pyiExit -ne 0) {
+        throw "PyInstaller failed (exit $pyiExit)"
     }
     if (-not (Test-Path $ExePath)) {
         throw "Build failed: $ExePath not found"
