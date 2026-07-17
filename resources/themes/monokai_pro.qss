@@ -57,10 +57,16 @@ QTabBar { background: #221F22; }
 QTabBar::tab {
   background: transparent; color: #939293; border: none;
   border-bottom: 2px solid transparent; border-top-left-radius: 4px;
-  border-top-right-radius: 4px; min-width: 88px; padding: 6px 12px; margin-right: 1px;
+  border-top-right-radius: 4px; min-width: 88px; padding: 6px 22px 6px 12px; margin-right: 2px;
 }
 QTabBar::tab:selected { background-color: #2D2A2E; color: #FCFCFA; border-bottom: 2px solid #A9DC76; }
 QTabBar::tab:hover:!selected { color: #FCFCFA; background-color: #403E41; }
+QTabBar::close-button {
+  subcontrol-position: right; subcontrol-origin: padding;
+  width: 14px; height: 14px; margin-right: 8px; margin-left: 4px;
+  border-radius: 3px; background: transparent;
+}
+QTabBar::close-button:hover { background: rgba(255, 255, 255, 20); }
 
 QPlainTextEdit, QTextEdit, QTextBrowser {
   background-color: #2D2A2E; color: #FCFCFA; border: none;

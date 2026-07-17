@@ -152,7 +152,7 @@ QTabBar::tab {
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
   min-width: 96px;
-  padding: 8px 14px;
+  padding: 8px 22px 8px 12px;
   margin-right: 2px;
 }
 QTabBar::tab:selected {
@@ -163,6 +163,19 @@ QTabBar::tab:selected {
 QTabBar::tab:hover:!selected {
   color: #E2E8F0;
   background-color: #334155;
+}
+QTabBar::close-button {
+  subcontrol-position: right;
+  subcontrol-origin: padding;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  margin-left: 4px;
+  border-radius: 3px;
+  background: transparent;
+}
+QTabBar::close-button:hover {
+  background: rgba(255, 255, 255, 16);
 }
 
 /* --- Editor canvas --- */

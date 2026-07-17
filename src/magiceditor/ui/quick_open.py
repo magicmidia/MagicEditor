@@ -1,4 +1,4 @@
-"""Quick Open — filter files in workspace (Ctrl+P)."""
+"""Quick Open — filter files in workspace (Ctrl+E)."""
 
 from __future__ import annotations
 

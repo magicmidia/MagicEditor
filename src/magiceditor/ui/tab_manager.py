@@ -16,6 +16,10 @@ class TabManager(QTabWidget):
         self.setMovable(True)
         self.setDocumentMode(True)
         self.setUsesScrollButtons(True)
+        # Breathing room so the close button is not flush with the tab edge.
+        bar = self.tabBar()
+        bar.setExpanding(False)
+        bar.setElideMode(Qt.TextElideMode.ElideRight)
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         if event is not None and event.button() == Qt.MouseButton.MiddleButton:

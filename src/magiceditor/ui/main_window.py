@@ -158,7 +158,10 @@ class MainWindow(QMainWindow):
             action.triggered.connect(slot)
             if shortcut:
                 action.setShortcut(QKeySequence(shortcut))
+                # Survive focus in the editor canvas (QWidget shortcuts alone can fail).
+                action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
             action.setCheckable(checkable)
+            self.addAction(action)
             self._actions[key] = action
             return action
 
@@ -187,7 +190,8 @@ class MainWindow(QMainWindow):
         act("action.zoom_reset", self.zoom_reset, "Ctrl+0")
         act("action.fullscreen", self.toggle_fullscreen, "F11", checkable=True)
         act("action.settings", self.show_settings, "Ctrl+,")
-        act("action.quick_open", self.show_quick_open, "Ctrl+P")
+        # Ctrl+P = Print (platform default). Quick Open uses Ctrl+E.
+        act("action.quick_open", self.show_quick_open, "Ctrl+E")
         act("action.exit", self.close, "Ctrl+Q")
 
         self._actions["action.word_wrap"].setChecked(self._word_wrap)
@@ -196,13 +200,15 @@ class MainWindow(QMainWindow):
 
     def _build_menus(self) -> None:
         mb = self.menuBar()
-        self._menu_file = mb.addMenu("File")
-        self._menu_edit = mb.addMenu("Edit")
-        self._menu_view = mb.addMenu("View")
-        self._menu_syntax = mb.addMenu("Syntax")
-        self._menu_themes = mb.addMenu("Themes")
-        self._menu_lang = mb.addMenu("UI Language")
-        self._menu_help = mb.addMenu("Help")
+        mb.setNativeMenuBar(False)
+        # Titles with & mnemonics come from retranslate_ui (Alt+A → Arquivo, etc.).
+        self._menu_file = mb.addMenu("&Arquivo")
+        self._menu_edit = mb.addMenu("&Editar")
+        self._menu_view = mb.addMenu("E&xibir")
+        self._menu_syntax = mb.addMenu("&Sintaxe")
+        self._menu_themes = mb.addMenu("&Temas")
+        self._menu_lang = mb.addMenu("&Idioma da interface")
+        self._menu_help = mb.addMenu("A&juda")
 
         for key in (
             "action.new",
@@ -312,10 +318,10 @@ class MainWindow(QMainWindow):
         ):
             tb.addAction(self._actions[key])
         tb.addSeparator()
-        # Mockup-style command search (Ctrl+P)
+        # Quick Open field (Ctrl+E; Ctrl+P is Print)
         search = QLineEdit(self)
         search.setObjectName("toolbarSearch")
-        search.setPlaceholderText("Search files (Ctrl+P)")
+        search.setPlaceholderText("Pesquisar arquivos (Ctrl+E)")
         search.setClearButtonEnabled(True)
         search.setMinimumWidth(200)
         search.setMaximumWidth(320)
@@ -389,54 +395,59 @@ class MainWindow(QMainWindow):
 
     def retranslate_ui(self) -> None:
         t = self._tr.t
-        self._menu_file.setTitle(t("menu.file", "Arquivo"))
-        self._menu_edit.setTitle(t("menu.edit", "Editar"))
-        self._menu_view.setTitle(t("menu.view", "Exibir"))
-        self._menu_syntax.setTitle(t("menu.syntax", "Sintaxe"))
-        self._menu_themes.setTitle(t("menu.themes", "Temas"))
-        self._menu_lang.setTitle(t("menu.ui_language", "Idioma da interface"))
-        self._menu_help.setTitle(t("menu.help", "Ajuda"))
+        self._menu_file.setTitle(t("menu.file", "&Arquivo"))
+        self._menu_edit.setTitle(t("menu.edit", "&Editar"))
+        self._menu_view.setTitle(t("menu.view", "E&xibir"))
+        self._menu_syntax.setTitle(t("menu.syntax", "&Sintaxe"))
+        self._menu_themes.setTitle(t("menu.themes", "&Temas"))
+        self._menu_lang.setTitle(t("menu.ui_language", "&Idioma da interface"))
+        self._menu_help.setTitle(t("menu.help", "A&juda"))
         self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorador"))
         labels = {
-            "action.new": t("action.new", "Novo"),
-            "action.open": t("action.open", "Abrir"),
-            "action.open_folder": t("action.open_folder", "Abrir pasta…"),
-            "action.save": t("action.save", "Salvar"),
-            "action.save_as": t("action.save_as", "Salvar como…"),
-            "action.print": t("action.print", "Imprimir…"),
-            "action.export_pdf": t("action.export_pdf", "Exportar PDF…"),
-            "action.undo": t("action.undo", "Desfazer"),
-            "action.redo": t("action.redo", "Refazer"),
-            "action.find": t("action.find", "Localizar"),
-            "action.replace": t("action.replace", "Substituir"),
-            "action.find_in_files": t("action.find_in_files", "Localizar nos arquivos"),
-            "action.goto_line": t("action.goto_line", "Ir para linha…"),
-            "action.toggle_bookmark": t("action.toggle_bookmark", "Alternar marcador"),
+            "action.new": t("action.new", "&Novo"),
+            "action.open": t("action.open", "&Abrir"),
+            "action.open_folder": t("action.open_folder", "Abrir &pasta…"),
+            "action.save": t("action.save", "&Salvar"),
+            "action.save_as": t("action.save_as", "Salvar &como…"),
+            "action.print": t("action.print", "&Imprimir…"),
+            "action.export_pdf": t("action.export_pdf", "&Exportar PDF…"),
+            "action.undo": t("action.undo", "&Desfazer"),
+            "action.redo": t("action.redo", "&Refazer"),
+            "action.find": t("action.find", "&Localizar"),
+            "action.replace": t("action.replace", "&Substituir"),
+            "action.find_in_files": t("action.find_in_files", "Localizar nos a&rquivos"),
+            "action.goto_line": t("action.goto_line", "&Ir para linha…"),
+            "action.toggle_bookmark": t("action.toggle_bookmark", "Alternar &marcador"),
             "action.next_bookmark": t("action.next_bookmark", "Próximo marcador"),
             "action.prev_bookmark": t("action.prev_bookmark", "Marcador anterior"),
-            "action.preview": t("action.preview", "Pré-visualizar"),
-            "action.toggle_sidebar": t("action.toggle_sidebar", "Alternar explorador"),
-            "action.word_wrap": t("action.word_wrap", "Quebra de linha"),
-            "action.line_numbers": t("action.line_numbers", "Números de linha"),
-            "action.zoom_in": t("action.zoom_in", "Aumentar zoom"),
-            "action.zoom_out": t("action.zoom_out", "Diminuir zoom"),
-            "action.zoom_reset": t("action.zoom_reset", "Zoom padrão"),
-            "action.fullscreen": t("action.fullscreen", "Tela cheia"),
-            "action.settings": t("action.settings", "Configurações…"),
-            "action.quick_open": t("action.quick_open", "Abrir rapidamente"),
-            "action.exit": t("action.exit", "Sair"),
-            "action.about": t("action.about", "Sobre"),
+            "action.preview": t("action.preview", "Pré-&visualizar"),
+            "action.toggle_sidebar": t("action.toggle_sidebar", "Alternar e&xplorador"),
+            "action.word_wrap": t("action.word_wrap", "&Quebra de linha"),
+            "action.line_numbers": t("action.line_numbers", "&Números de linha"),
+            "action.zoom_in": t("action.zoom_in", "Aumentar &zoom"),
+            "action.zoom_out": t("action.zoom_out", "Diminuir z&oom"),
+            "action.zoom_reset": t("action.zoom_reset", "Zoom &padrão"),
+            "action.fullscreen": t("action.fullscreen", "&Tela cheia"),
+            "action.settings": t("action.settings", "Confi&gurações…"),
+            "action.quick_open": t("action.quick_open", "Abrir rapi&damente"),
+            "action.exit": t("action.exit", "&Sair"),
+            "action.about": t("action.about", "&Sobre"),
         }
         for key, label in labels.items():
             if key in self._actions:
                 self._actions[key].setText(label)
-                self._actions[key].setToolTip(label)
+                # Tooltip without mnemonic ampersand (&& → literal &)
+                tip = label.replace("&&", "\0").replace("&", "").replace("\0", "&")
+                sc = self._actions[key].shortcut().toString(
+                    QKeySequence.SequenceFormat.NativeText
+                )
+                self._actions[key].setToolTip(f"{tip} ({sc})" if sc else tip)
         # Theme menu labels
         for tid, action in self._theme_actions.items():
             action.setText(t(f"theme.{tid}", action.text()))
         if self._quick_search is not None:
             self._quick_search.setPlaceholderText(
-                t("toolbar.search_placeholder", "Pesquisar arquivos (Ctrl+P)")
+                t("toolbar.search_placeholder", "Pesquisar arquivos (Ctrl+E)")
             )
         self._sidebar.retranslate(self._tr)
         if self._workspace is None:
