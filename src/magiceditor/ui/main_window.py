@@ -34,6 +34,7 @@ from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.ui.icons import icon, toolbar_icon_color
+from magiceditor.ui.outline_dialog import OutlineDialog, extract_markdown_outline
 from magiceditor.ui.quick_open import QuickOpenDialog
 from magiceditor.ui.settings_dialog import SettingsDialog
 from magiceditor.ui.sidebar import Sidebar
@@ -208,6 +209,7 @@ class MainWindow(QMainWindow):
         act("action.settings", self.show_settings, "Ctrl+,")
         # Ctrl+P = Print (platform default). Quick Open uses Ctrl+E.
         act("action.quick_open", self.show_quick_open, "Ctrl+E")
+        act("action.outline", self.show_outline, "Ctrl+Shift+O")
         act("action.close_tab", self.close_current_tab, "Ctrl+W")
         act("action.close_others", self.close_other_tabs)
         act("action.close_all", self.close_all_tabs)
@@ -290,6 +292,7 @@ class MainWindow(QMainWindow):
             "action.preview",
             "action.toggle_sidebar",
             "action.quick_open",
+            "action.outline",
             "action.word_wrap",
             "action.line_numbers",
             "action.zoom_in",
@@ -536,6 +539,7 @@ class MainWindow(QMainWindow):
             "action.fullscreen": t("action.fullscreen", "&Tela cheia"),
             "action.settings": t("action.settings", "Confi&gurações…"),
             "action.quick_open": t("action.quick_open", "Abrir rapi&damente"),
+            "action.outline": t("action.outline", "Estru&tura do documento"),
             "action.close_tab": t("action.close_tab", "Fechar &aba"),
             "action.close_others": t("action.close_others", "Fechar &outras"),
             "action.close_all": t("action.close_all", "Fechar t&odas"),
@@ -758,6 +762,24 @@ class MainWindow(QMainWindow):
                     "Reinicie o MagicEditor para ativar o novo modo de renderização.",
                 ),
             )
+
+    def show_outline(self) -> None:
+        tab = self.current_tab()
+        if tab is None:
+            return
+        try:
+            text = tab.document.text() if tab.is_huge else (
+                tab.editor.toPlainText() if hasattr(tab.editor, "toPlainText") else tab.document.text()
+            )
+        except Exception:
+            text = ""
+        # Cap huge-file outline scan to first ~2MB of decoded text
+        if len(text) > 2_000_000:
+            text = text[:2_000_000]
+        entries = extract_markdown_outline(text)
+        dlg = OutlineDialog(entries, self, tr=self._tr)
+        dlg.line_chosen.connect(lambda line: tab.goto_line(line, 1))
+        dlg.exec()
 
     def show_quick_open(self) -> None:
         open_paths: list[str] = []

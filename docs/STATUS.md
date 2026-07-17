@@ -37,7 +37,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ## Stretch / later
 1. [ ] Multi-cursor / column selection
 2. [ ] Tear-off tabs to new window
-3. [ ] Document outline (Markdown headings) dock
+3. [x] Document outline (Markdown headings) — dialog Ctrl+Shift+O
 4. [ ] Full Lucide SVG asset pack (optional)
 5. [ ] REVIEW + merge to `main`
 
