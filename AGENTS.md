@@ -63,6 +63,7 @@ resources/  # themes/*.qss, icons
 | Area | Read first |
 |------|------------|
 | Product/UX/themes | `docs/magiceditor-architecture.md` |
+| AI setup (hosts/MCP) | `docs/ai/ai-setup.md` |
 | AI tooling/skills | `docs/ai/skills-and-tools.md` |
 | Model routing | `docs/ai/model-routing.md` |
 | Coding standards | `docs/ai/coding-standards.md` |
@@ -72,6 +73,20 @@ resources/  # themes/*.qss, icons
 | Package root | `src/magiceditor/AGENTS.md` |
 | Core engine | `src/magiceditor/core/AGENTS.md` |
 | UI | `src/magiceditor/ui/AGENTS.md` |
+| Services | `src/magiceditor/services/AGENTS.md` |
+| Themes / i18n / preview | matching package `AGENTS.md` |
+
+## Project skills (selective)
+Canonical dir: `.agents/skills/`. Prefer domain skills over generic ones:
+
+| Work | Skill |
+|------|-------|
+| Feature pipeline | `me-feature` (`/me-feature`) |
+| `core/` | `me-core` |
+| `ui/` | `me-ui` |
+| Themes/QSS | `me-theme` + `design-taste` |
+| i18n | `me-i18n` |
+| Lint/tests | `me-verify-loop` (`/me-verify`) |
 
 ## Workflow
 1. Classify phase → set effort/role (`HIGH`/`MEDIUM`/`LOW`) before heavy work

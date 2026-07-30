@@ -13,4 +13,6 @@ See `docs/ai/model-routing.md`.
 
 Token hygiene: hierarchical routing in `AGENTS.md` — load only scoped files.  
 Optional RTK: global `@RTK.md` if available.  
-Skills catalog: `docs/ai/skills-and-tools.md` (load selectively).
+Skills: `.agents/skills/` · catalog `docs/ai/skills-and-tools.md` (load selectively).  
+Host/MCP setup: `docs/ai/ai-setup.md`.  
+Claude local: `.claude/settings.json` + `.claude/CLAUDE.md`.

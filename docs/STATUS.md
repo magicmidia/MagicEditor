@@ -1,7 +1,7 @@
 # Project Status
 
-**Updated:** 2026-07-17  
-**Branch:** `feature/editor-mvp`
+**Updated:** 2026-07-30  
+**Branch:** `main`
 
 ## Current phase
 **Design + competitive roadmap** — MVP solid; polish and next-wave features planned in `docs/ROADMAP.md`.
@@ -37,7 +37,15 @@ See full matrix in `docs/ROADMAP.md`. Immediate priorities:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build_exe.ps1
 ```
 
+## AI harness (2026-07-30)
+- Domain skills: `.agents/skills/me-*` + design-taste / superpowers / token-economy
+- Slash commands: `/me-feature`, `/me-verify`, `/me-review`
+- Multi-host: `.grok/`, `.claude/`, `.cursor/rules/`, `.github/copilot-instructions.md`
+- MCP examples: `.mcp.example.json`, `.grok/mcp.example.toml` (opt-in, no secrets)
+- Guide: `docs/ai/ai-setup.md` · package AGENTS under services/themes/i18n/preview
+
 ## Handoff
 - Roadmap is the source of truth for feature backlog
 - Double-click empty tab strip (not on a tab title) creates Untitled
 - About: Help → Sobre (custom dialog, monogram M)
+- Prefer extract modules over growing `main_window.py` / `virtual_editor.py`

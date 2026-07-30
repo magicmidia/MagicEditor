@@ -1,0 +1,52 @@
+# MagicEditor — example MCP servers for Grok Build
+# Copy sections you need into ~/.grok/config.toml (user) or merge carefully into
+# project config if your host supports repo-level mcp_servers.
+# Never commit tokens. Prefer env vars.
+
+# Cold-start npx servers often need >30s on first download:
+# MCP_TIMEOUT=120000
+# or per-server startup_timeout_sec = 120
+
+[mcp]
+max_output_bytes = 40000
+
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+enabled = true
+startup_timeout_sec = 120
+description = "Scope file tools to this repo only"
+
+[mcp_servers.git]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-git", "--repository", "."]
+enabled = true
+startup_timeout_sec = 120
+description = "Git helpers"
+
+[mcp_servers.memory]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-memory"]
+enabled = false
+startup_timeout_sec = 120
+description = "Optional; prefer .memory/ for project ADRs"
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+enabled = false
+startup_timeout_sec = 120
+description = "PLAN-phase structured reasoning"
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+enabled = false
+startup_timeout_sec = 120
+description = "Library docs (PyQt6 etc.)"
+
+# [mcp_servers.github]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-github"]
+# enabled = false
+# env = { GITHUB_PERSONAL_ACCESS_TOKEN = "set-via-host-env-not-here" }

@@ -4,6 +4,7 @@ High-performance desktop text/code editor (Python 3.12+, PyQt6): virtual viewpor
 
 **Architecture (master spec):** [`docs/magiceditor-architecture.md`](docs/magiceditor-architecture.md)  
 **Agent entry:** [`AGENTS.md`](AGENTS.md)  
+**AI setup (skills/MCP/hosts):** [`docs/ai/ai-setup.md`](docs/ai/ai-setup.md)  
 **Dev setup:** [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)  
 **Status:** [`docs/STATUS.md`](docs/STATUS.md)
 

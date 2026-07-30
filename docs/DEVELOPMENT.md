@@ -43,6 +43,14 @@ cd .worktrees/feature-foo
 uv sync --all-extras
 ```
 
+## AI-assisted development
+See [`docs/ai/ai-setup.md`](ai/ai-setup.md) for skills, MCP, and multi-host config.
+
+- Entry: root `AGENTS.md`
+- Skills: `.agents/skills/` (e.g. `me-core`, `me-ui`, `me-feature`)
+- Optional MCP: copy from `.mcp.example.json` or `.grok/mcp.example.toml`
+- Never commit secrets or host-local `.mcp.json`
+
 ## Ship Windows packages (each delivery)
 
 Artifacts go to **`dist/`** (gitignored). Full guide: [`docs/BUILD.md`](BUILD.md).

@@ -14,7 +14,25 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
       "description": "Optional cross-session memory; prefer .memory/ for ADRs"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "description": "Structured reasoning for PLAN-phase architecture trade-offs"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "description": "Fresh library docs (PyQt6, pytest, ruff) without noisy web scrapes"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "Optional PRs/issues; set GITHUB_TOKEN in host env — never commit tokens"
     }
   },
-  "_comment": "Copy entries into your host MCP config (Claude/Cursor/etc). Do not commit real tokens."
+  "_comment": "Copy selected servers into host config (Claude/Cursor/VS Code). Do not commit real tokens. Grok: see .grok/mcp.example.toml"
 }

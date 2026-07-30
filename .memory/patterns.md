@@ -27,3 +27,13 @@
 3. VERIFY on LOW (`me-verify` / `/effort low`) — file-scoped ruff/pytest  
 4. REVIEW on HIGH (`me-review` / `/effort high`) — findings only  
 One plan + one review per feature unit; batch tests.
+
+## God-file guard (UI)
+- `main_window.py` and `virtual_editor.py` already exceed the ≤300 LOC target
+- New behavior: extract collaborators (actions, helpers, mixins) instead of appending methods
+- Skills `me-ui` + REVIEW enforce this
+
+## Skill selection
+- Prefer **one** domain skill (`me-core` / `me-ui` / …) over loading global skill catalogs
+- Feature work: `me-feature` then domain skill on BUILD
+- VERIFY always via `me-verify-loop` or me-verify agent

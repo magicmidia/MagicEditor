@@ -2,29 +2,47 @@
 
 Use this catalog when starting a task. Load **only** the skills that match the current work (token hygiene).
 
+Setup for hosts/MCP: **`docs/ai/ai-setup.md`**.
+
 ## Model routing first
 Before picking skills, pick **phase/effort**: `docs/ai/model-routing.md`.
 
 | Phase | Effort | Skills OK to load |
 |-------|--------|-------------------|
-| PLAN (HIGH) | xhigh/high | `brainstorming`, `writing-plans`, `architecture*` |
-| BUILD (MEDIUM) | medium | `test-driven-development`, `python-pro`, `clean-code` |
-| VERIFY (LOW) | low | `lint-and-validate`, `verification-before-completion` (run cmds) |
-| REVIEW (HIGH) | high | `requesting-code-review`, `find-bugs`, `code-review-checklist` |
+| PLAN (HIGH) | xhigh/high | `me-feature`, `brainstorming`, `writing-plans`, `architecture*` |
+| BUILD (MEDIUM) | medium | `me-core`, `me-ui`, `me-theme`, `me-i18n`, `test-driven-development`, `python-pro` |
+| VERIFY (LOW) | low | `me-verify-loop`, `lint-and-validate` |
+| REVIEW (HIGH) | high | `me-review` command, `find-bugs`, `code-review-checklist` |
 
 Grok agents/roles: `me-plan`, `me-build`, `me-verify`, `me-review` under `.grok/`.
+
+## Project-local skills (`.agents/skills/`)
+
+| Skill | When |
+|-------|------|
+| **`me-feature`** | Non-trivial feature; full PLAN→BUILD→VERIFY→REVIEW |
+| **`me-core`** | `core/`: piece table, mmap, line index, search, encoding |
+| **`me-ui`** | `ui/`: thin widgets, virtual viewport, dialogs, pytest-qt |
+| **`me-theme`** | QSS themes, chrome polish |
+| **`me-i18n`** | Locales, `retranslate_ui`, new strings |
+| **`me-verify-loop`** | File-scoped ruff/pytest / delivery check |
+| **`design-taste`** | Anti-slop visual system (pairs with me-theme) |
+| **`superpowers`** | Hard architecture, deep debug, multi-agent discipline |
+| **`token-economy`** | Context hygiene, long sessions |
+
+Slash commands (`.agents/commands/`): `/me-feature`, `/me-verify`, `/me-review`.
 
 ## Always-on mindset
 | Concern | Prefer |
 |---------|--------|
-| Isolation | `using-git-worktrees` for feature branches under `.worktrees/` |
-| Spec before code | PLAN (HIGH) → `writing-plans` → BUILD (MEDIUM) |
-| Core correctness | `test-driven-development` on BUILD; VERIFY on LOW |
-| Token cost | Model routing + `AGENTS.md` file routing + `.memory/`; no full architecture re-read |
-| Code quality | REVIEW on HIGH; `clean-code` on BUILD |
+| Isolation | `using-git-worktrees` under `.worktrees/` |
+| Spec before code | PLAN (HIGH) → `me-feature` / `writing-plans` → BUILD |
+| Core correctness | `me-core` + TDD; VERIFY on LOW |
+| Token cost | Model routing + AGENTS file routing + `.memory/` |
+| Code quality | REVIEW on HIGH; extract from god-files |
 | Anti-bloat | `moyu`, `andrej-karpathy`, `code-simplifier` |
 
-## Superpowers / delivery loop
+## Superpowers / delivery loop (global skills)
 | Skill | When |
 |-------|------|
 | `brainstorming` | New feature/UX before coding |
@@ -40,11 +58,12 @@ Grok agents/roles: `me-plan`, `me-build`, `me-verify`, `me-review` under `.grok/
 ## Design / UX (desktop editor)
 | Skill | When |
 |-------|------|
-| `impeccable` | UI polish, hierarchy, empty states, settings |
+| `me-theme` + `design-taste` | First choice for MagicEditor chrome |
+| `impeccable` | Hierarchy, empty states, settings polish |
 | `ui-ux-designer` | Layout/IA for main window, docks, toolbars |
-| `product-design` | Design tokens, visual system for QSS themes |
+| `product-design` | Design tokens / visual system |
 | `accessibility-compliance-accessibility-audit` | Keyboard, contrast, focus order |
-| `motion-design` | Subtle transitions only (prefer snappy desktop feel) |
+| `motion-design` | Subtle transitions only (snappy desktop) |
 | `baseline-ui` | Spacing/type consistency checks |
 
 ## Engineering (this stack)
@@ -62,13 +81,13 @@ Grok agents/roles: `me-plan`, `me-build`, `me-verify`, `me-review` under `.grok/
 ## Token / context economy
 | Skill / tool | When |
 |--------------|------|
-| Hierarchical routing (`AGENTS.md`) | Every session — load scoped files only |
-| `.memory/*` | Persist decisions/patterns; don't re-derive |
-| `recursive-context-pruning-token-budgeting` | Long sessions, bloated context |
-| `context-optimization` / `filesystem-context` | Offload large dumps to files |
-| RTK (global `@RTK.md`) | Compress noisy CLI output when installed |
-| `zipai-optimizer` | Dense intermediate notes |
-| `graphify` | Only on `/graphify` — knowledge graph of repo |
+| Hierarchical routing (`AGENTS.md`) | Every session — scoped files only |
+| `.memory/*` | Persist decisions/patterns |
+| `token-economy` (project) | Long sessions |
+| `recursive-context-pruning-token-budgeting` | Bloated context |
+| `context-optimization` / `filesystem-context` | Offload large dumps |
+| RTK (global `@RTK.md`) | Compress noisy CLI when installed |
+| `graphify` | Only on `/graphify` |
 
 ## Security / quality gates
 | Skill | When |
@@ -79,28 +98,29 @@ Grok agents/roles: `me-plan`, `me-build`, `me-verify`, `me-review` under `.grok/
 | `vibe-code-auditor` | After large AI-generated chunks |
 
 ## Recommended MCPs (optional)
-Install only if the agent host supports them; do not hard-require.
+Do not hard-require. Examples: `.mcp.example.json`, `.grok/mcp.example.toml`.
 
 | MCP | Use |
 |-----|-----|
-| **filesystem** (scoped to repo) | Safe file ops within project root |
-| **git** / GitHub | Branches, PRs, reviews |
-| **memory** / mesh-memory | Cross-session project memory (if not using `.memory/`) |
-| **sequential-thinking** | Hard architecture trade-offs (piece table vs rope) |
-| **context7** / docs MCP | Fresh PyQt6 / Qt docs without web scrape noise |
-
-Project-local suggestion file: `.mcp.example.json` (copy to host-specific config; never commit secrets).
+| **filesystem** (repo-scoped) | Safe file ops within project root |
+| **git** | Branches, status, log helpers |
+| **context7** | Fresh PyQt6 / Qt / pytest docs |
+| **sequential-thinking** | PLAN trade-offs (piece table vs rope, etc.) |
+| **github** | PRs/issues (token via env only) |
+| **memory** | Cross-session; prefer `.memory/` for ADRs |
 
 ## Plugins / host config
 | Host | Suggested |
 |------|-----------|
-| Claude Code | Project `CLAUDE.md` + skills above; worktrees; hooks for ruff if desired |
-| Cursor | `.cursor/rules/magiceditor.mdc` (points at `AGENTS.md`) |
-| Grok / Codex | Root `AGENTS.md` as primary |
-| VS Code | Python + Ruff extension; pytest; Qt offscreen for CI |
+| Grok | `.grok/config.toml` + roles; skills from `.agents/skills/` |
+| Claude Code | `CLAUDE.md` + `.claude/settings.json`; skills catalog |
+| Cursor | `.cursor/rules/magiceditor.mdc` |
+| VS Code / Copilot | `.github/copilot-instructions.md` + Ruff/Python |
+| CI | `.github/workflows/ci.yml` (ruff + core tests) |
 
 ## Anti-patterns
 - Loading 10+ skills “just in case”
 - Pasting full architecture into every prompt (route instead)
 - UI skills for pure `core/` algorithms
 - Implementing features without reading the matching scoped `AGENTS.md`
+- Growing `main_window.py` / `virtual_editor.py` past SRP limits

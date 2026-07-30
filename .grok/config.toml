@@ -1,9 +1,17 @@
 # MagicEditor — Grok project config (model routing + subagents)
+#
+# Skills: discovered from .agents/skills/ and .grok/skills/
+# Commands: .agents/commands/ (slash: /me-feature, /me-verify, /me-review)
+# MCP: copy from .grok/mcp.example.toml into ~/.grok/config.toml (optional)
+# Full AI setup: docs/ai/ai-setup.md
 
 [models]
 # Parent sessions: prefer starting at medium for day-to-day coding.
 # Raise effort via /effort for plan/review turns.
 default = "grok-4.5"
+
+[mcp]
+max_output_bytes = 40000
 
 [subagents]
 enabled = true

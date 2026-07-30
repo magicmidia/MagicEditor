@@ -84,5 +84,9 @@ packaging/wix/*.wixpdb
 *.iss.bak
 Output/
 
-# PyInstaller onedir leftovers if run from root
-MagicEditor/
+# PyInstaller onedir leftovers if run from root.
+# Do NOT use a bare "MagicEditor/" pattern: on Windows (case-insensitive)
+# it matches this repo folder (magicEditor) and hides new source files.
+/MagicEditor/base_library.zip
+/MagicEditor/*.pkg
+/MagicEditor/MagicEditor.exe

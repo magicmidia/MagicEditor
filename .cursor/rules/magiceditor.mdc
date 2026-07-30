@@ -14,11 +14,17 @@ alwaysApply: true
   - Plan/Review → strongest (HIGH)
   - Build → default coding (MEDIUM)
   - Tests/lint/mechanical → fast (LOW)
-- Skills catalog (load selectively): `docs/ai/skills-and-tools.md`.
+- Skills: `.agents/skills/` · catalog `docs/ai/skills-and-tools.md` (selective).
+- AI setup / MCP: `docs/ai/ai-setup.md`.
+
+## Domain skills
+- `core/` → `me-core` · `ui/` → `me-ui` · themes → `me-theme` · i18n → `me-i18n`
+- Features → `me-feature` · after edits → `me-verify-loop`
 
 ## Hard rules
 - `src/magiceditor/core/**` must not import PyQt6.
 - Files >50MB: mmap + piece table + virtual viewport — never full `str` load.
 - Prefer modules ≤300 LOC; one responsibility per file.
+- Do not grow `main_window.py` / `virtual_editor.py` further — extract helpers.
 - After edits: VERIFY phase (LOW) — ruff + relevant pytest.
 - AI commits need `Co-Authored-By` trailer.
