@@ -6,7 +6,7 @@
   "menu.view": "&Ver",
   "menu.format": "&Formato",
   "menu.language": "&Idioma",
-  "menu.ui_language": "Idioma de la &interfaz",
+  "menu.ui_language": "&Idioma",
   "menu.syntax": "&Sintaxis",
   "menu.tools": "&Herramientas",
   "menu.themes": "&Temas",
@@ -81,7 +81,7 @@
   "settings.tab.tabs": "Pestañas",
   "settings.tab.advanced": "Avanzado",
   "settings.general_group": "General",
-  "settings.language": "Idioma de la interfaz",
+  "settings.language": "Idioma",
   "settings.restore_session": "Restaurar pestañas y borradores al iniciar",
   "settings.show_toolbar": "Mostrar barra de herramientas",
   "settings.show_status_bar": "Mostrar barra de estado",
@@ -170,5 +170,10 @@
   "theme.midnight_dark": "Midnight Dark",
   "theme.darcula": "Darcula Mode",
   "theme.cobalt_blue": "Cobalt Blue",
-  "theme.monokai_pro": "Monokai Pro"
+  "theme.monokai_pro": "Monokai Pro",
+  "settings.tab.spell": "Ortografía",
+  "settings.tab.performance": "Rendimiento",
+  "about.version": "Versión 0.9.1 BETA",
+  "about.version_prefix": "Versión",
+  "settings.show_splash": "Mostrar pantalla de inicio (splash) — mínimo 5 segundos"
 }

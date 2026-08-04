@@ -54,7 +54,9 @@ class Sidebar(QWidget):
         # --- Header (Workspace) ---
         self._ws_title = QLabel("Workspace", self)
         self._ws_title.setObjectName("sidebarWorkspaceTitle")
-        self._ws_sub = QLabel("v0.1.0", self)
+        from magiceditor.version import version_label
+
+        self._ws_sub = QLabel(version_label(), self)
         self._ws_sub.setObjectName("sidebarWorkspaceSub")
         badge = QLabel("✦", self)
         badge.setObjectName("sidebarWorkspaceBadge")

@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec — one-file windowed EXE.
-# Prefer:  powershell -ExecutionPolicy Bypass -File scripts/build.ps1
-# Output:  dist/MagicEditor.exe  (never commit)
+# Prefer:  build.bat  or  powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+# Output:  MagicEditor.exe at repo root (+ copy under dist/)
 
 from pathlib import Path
 
@@ -9,6 +9,7 @@ from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 root = Path(SPECPATH)
+_app_icon = root / "resources" / "icons" / "app" / "magiceditor.ico"
 
 # QtAwesome ships TTF + charmaps under qtawesome/fonts/
 _qta_datas = collect_data_files("qtawesome")
@@ -80,4 +81,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=str(_app_icon) if _app_icon.is_file() else None,
 )

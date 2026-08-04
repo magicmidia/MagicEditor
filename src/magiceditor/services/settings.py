@@ -9,7 +9,6 @@ from typing import Any
 
 from PyQt6.QtCore import QByteArray, QSettings
 
-
 # Caps for session drafts (Untitled recovery)
 _MAX_DRAFTS = 12
 _MAX_DRAFT_CHARS = 400_000
@@ -51,6 +50,34 @@ class SessionState:
     restore_session: bool = True
     show_status_bar: bool = True
     show_toolbar: bool = True
+    show_splash: bool = True  # modern gradient splash (≥5s)
+    # Spell & advanced editor
+    spell_check: bool = True
+    spell_language: str = "pt_BR"
+    spell_force: bool | None = None  # None = auto by language
+    spell_extra_languages: str = ""  # comma-separated e.g. "en_US,es_ES"
+    autosave_interval_sec: int = 0  # 0 = off
+    show_minimap: bool = False
+    first_run_done: bool = False
+    high_contrast: bool = False
+    word_completion: bool = False
+    # Editor chrome extras
+    show_whitespace: bool = False
+    brace_match: bool = True
+    syntax_highlight: bool = True
+    caret_width: int = 1  # 1-4
+    trim_trailing_on_save: bool = False
+    insert_final_newline: bool = False
+    editor_context_menu: bool = True
+    # Tab chrome
+    tab_height: int = 28  # 22-40
+    tab_min_width: int = 72  # 48-160
+    tab_max_width: int = 220  # 120-400
+    show_tab_scroll_buttons: bool = True
+    middle_click_close: bool = True
+    confirm_close_unsaved: bool = True
+    # Performance / session
+    recent_files_max: int = 15  # 5-50
     # Graphics / appearance
     gpu_acceleration: bool = True
     gpu_multisample: bool = True
@@ -273,6 +300,40 @@ class AppSettings:
             restore_session=self._as_bool(qs.value("ui/restore_session"), True),
             show_status_bar=self._as_bool(qs.value("ui/show_status_bar"), True),
             show_toolbar=self._as_bool(qs.value("ui/show_toolbar"), True),
+            show_splash=self._as_bool(qs.value("ui/show_splash"), True),
+            spell_check=self._as_bool(qs.value("editor/spell_check"), True),
+            spell_language=qs.value("editor/spell_language", "pt_BR", str) or "pt_BR",
+            spell_force=(
+                True
+                if self._as_bool(qs.value("editor/spell_force"), False)
+                else None
+            ),
+            spell_extra_languages=qs.value("editor/spell_extra", "", str) or "",
+            autosave_interval_sec=_clamp_int(qs.value("editor/autosave_sec", 0), 0, 3600, 0),
+            show_minimap=self._as_bool(qs.value("ui/show_minimap"), False),
+            first_run_done=self._as_bool(qs.value("ui/first_run_done"), False),
+            high_contrast=self._as_bool(qs.value("ui/high_contrast"), False),
+            word_completion=self._as_bool(qs.value("editor/word_completion"), False),
+            show_whitespace=self._as_bool(qs.value("editor/show_whitespace"), False),
+            brace_match=self._as_bool(qs.value("editor/brace_match"), True),
+            syntax_highlight=self._as_bool(qs.value("editor/syntax_highlight"), True),
+            caret_width=_clamp_int(qs.value("editor/caret_width", 1), 1, 4, 1),
+            trim_trailing_on_save=self._as_bool(
+                qs.value("editor/trim_trailing_on_save"), False
+            ),
+            insert_final_newline=self._as_bool(
+                qs.value("editor/insert_final_newline"), False
+            ),
+            editor_context_menu=self._as_bool(qs.value("editor/context_menu"), True),
+            tab_height=_clamp_int(qs.value("tabs/height", 28), 22, 40, 28),
+            tab_min_width=_clamp_int(qs.value("tabs/min_width", 72), 48, 160, 72),
+            tab_max_width=_clamp_int(qs.value("tabs/max_width", 220), 120, 400, 220),
+            show_tab_scroll_buttons=self._as_bool(qs.value("tabs/scroll_buttons"), True),
+            middle_click_close=self._as_bool(qs.value("tabs/middle_click_close"), True),
+            confirm_close_unsaved=self._as_bool(
+                qs.value("tabs/confirm_close_unsaved"), True
+            ),
+            recent_files_max=_clamp_int(qs.value("session/recent_max", 15), 5, 50, 15),
             gpu_acceleration=self._as_bool(qs.value("graphics/gpu_acceleration"), True),
             gpu_multisample=self._as_bool(qs.value("graphics/gpu_multisample"), True),
             antialiasing=self._as_bool(qs.value("graphics/antialiasing"), True),
@@ -297,6 +358,30 @@ class AppSettings:
         qs.setValue("ui/restore_session", state.restore_session)
         qs.setValue("ui/show_status_bar", state.show_status_bar)
         qs.setValue("ui/show_toolbar", state.show_toolbar)
+        qs.setValue("ui/show_splash", state.show_splash)
+        qs.setValue("editor/spell_check", state.spell_check)
+        qs.setValue("editor/spell_language", state.spell_language or "pt_BR")
+        qs.setValue("editor/spell_force", bool(state.spell_force) is True)
+        qs.setValue("editor/spell_extra", state.spell_extra_languages or "")
+        qs.setValue("editor/autosave_sec", int(max(0, min(3600, state.autosave_interval_sec))))
+        qs.setValue("ui/show_minimap", state.show_minimap)
+        qs.setValue("ui/first_run_done", state.first_run_done)
+        qs.setValue("ui/high_contrast", state.high_contrast)
+        qs.setValue("editor/word_completion", state.word_completion)
+        qs.setValue("editor/show_whitespace", state.show_whitespace)
+        qs.setValue("editor/brace_match", state.brace_match)
+        qs.setValue("editor/syntax_highlight", state.syntax_highlight)
+        qs.setValue("editor/caret_width", int(max(1, min(4, state.caret_width))))
+        qs.setValue("editor/trim_trailing_on_save", state.trim_trailing_on_save)
+        qs.setValue("editor/insert_final_newline", state.insert_final_newline)
+        qs.setValue("editor/context_menu", state.editor_context_menu)
+        qs.setValue("tabs/height", int(max(22, min(40, state.tab_height))))
+        qs.setValue("tabs/min_width", int(max(48, min(160, state.tab_min_width))))
+        qs.setValue("tabs/max_width", int(max(120, min(400, state.tab_max_width))))
+        qs.setValue("tabs/scroll_buttons", state.show_tab_scroll_buttons)
+        qs.setValue("tabs/middle_click_close", state.middle_click_close)
+        qs.setValue("tabs/confirm_close_unsaved", state.confirm_close_unsaved)
+        qs.setValue("session/recent_max", int(max(5, min(50, state.recent_files_max))))
         qs.setValue("graphics/gpu_acceleration", state.gpu_acceleration)
         qs.setValue("graphics/gpu_multisample", state.gpu_multisample)
         qs.setValue("graphics/antialiasing", state.antialiasing)

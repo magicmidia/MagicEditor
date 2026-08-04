@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  WiX v4/v5 package — single-file MagicEditor.exe installer.
+  WiX v4/v5 package — MagicEditor.exe installer with file associations.
   Built by scripts/build.ps1 -Msi (requires: dotnet tool install -g wix)
 
   Stable UpgradeCode — do not change between releases of the same product line.
@@ -25,13 +25,21 @@
 
     <MediaTemplate EmbedCab="yes" />
 
-    <Icon Id="AppIcon" SourceFile="$(var.ExePath)" />
+    <!-- Prefer dedicated .ico when passed as IconPath; else fall back to EXE -->
+    <Icon Id="AppIcon" SourceFile="$(var.IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/magicmidia/MagicEditor" />
+    <!-- Optional first-run defaults (can be set via msiexec PROPERTY=value) -->
+    <Property Id="ME_LANG" Value="pt_BR" />
+    <Property Id="ME_THEME" Value="luminous_void" />
 
     <Feature Id="Main" Title="MagicEditor" Level="1" ConfigurableDirectory="INSTALLFOLDER">
       <ComponentGroupRef Id="ProductComponents" />
       <ComponentRef Id="ApplicationShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="FileAssociations" />
+      <ComponentRef Id="ContextMenu" />
+      <ComponentRef Id="DefaultPrograms" />
     </Feature>
 
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -41,6 +49,8 @@
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="ApplicationProgramsFolder" Name="MagicEditor" />
     </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
 
     <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
       <Component Id="MainExecutable" Guid="B1D4F8A2-5C3E-4F9B-8A2D-7E6F9C1B3A45">
@@ -67,6 +77,137 @@
           Type="integer"
           Value="1"
           KeyPath="yes" />
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\MagicEditor\MagicEditor"
+          Name="install_lang"
+          Type="string"
+          Value="[ME_LANG]" />
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\MagicEditor\MagicEditor"
+          Name="install_theme"
+          Type="string"
+          Value="[ME_THEME]" />
+    </Component>
+
+    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="D3F6B0C4-7E5A-4B1D-0C4F-9A8B1E3D5C67">
+      <Shortcut
+          Id="ApplicationDesktopShortcut"
+          Name="MagicEditor"
+          Description="MagicEditor"
+          Target="[INSTALLFOLDER]MagicEditor.exe"
+          WorkingDirectory="INSTALLFOLDER" />
+      <RegistryValue
+          Root="HKCU"
+          Key="Software\MagicEditor\MagicEditor"
+          Name="desktop"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+    </Component>
+
+    <!-- ProgID + open verb for text-oriented extensions -->
+    <Component Id="FileAssociations" Directory="INSTALLFOLDER" Guid="E4A7C1D5-8F6B-4C2E-1D5A-0B9C2F4E6D78">
+      <RegistryValue Root="HKCR" Key="MagicEditor.Document" Value="MagicEditor Document" Type="string" KeyPath="yes" />
+      <RegistryValue Root="HKCR" Key="MagicEditor.Document\DefaultIcon" Value="[INSTALLFOLDER]MagicEditor.exe,0" Type="string" />
+      <RegistryValue Root="HKCR" Key="MagicEditor.Document\shell\open\command" Value="&quot;[INSTALLFOLDER]MagicEditor.exe&quot; &quot;%1&quot;" Type="string" />
+
+      <RegistryValue Root="HKCR" Key=".txt\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".md\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".markdown\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".log\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".ini\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".cfg\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".conf\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".json\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".xml\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".yml\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".yaml\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".csv\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".sql\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".py\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".js\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".ts\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".html\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".css\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".cs\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".java\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".c\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".cpp\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".h\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".hpp\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".sh\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".ps1\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".bat\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".cmd\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+      <RegistryValue Root="HKCR" Key=".toml\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
+    </Component>
+
+    <Component Id="ContextMenu" Directory="INSTALLFOLDER" Guid="F5B8D2E6-9A7C-4D3F-2E6B-1C0D3A5F7E89">
+      <RegistryValue
+          Root="HKCR"
+          Key="*\shell\EditWithMagicEditor"
+          Value="Edit with MagicEditor"
+          Type="string"
+          KeyPath="yes" />
+      <RegistryValue
+          Root="HKCR"
+          Key="*\shell\EditWithMagicEditor\command"
+          Value="&quot;[INSTALLFOLDER]MagicEditor.exe&quot; &quot;%1&quot;"
+          Type="string" />
+    </Component>
+
+    <Component Id="DefaultPrograms" Directory="INSTALLFOLDER" Guid="A6C9E3F7-0B8D-4E4A-3F7C-2D1E4B6A8F90">
+      <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\RegisteredApplications"
+          Name="MagicEditor"
+          Value="Software\MagicEditor\Capabilities"
+          Type="string"
+          KeyPath="yes" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities"
+          Name="ApplicationName"
+          Value="MagicEditor"
+          Type="string" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities"
+          Name="ApplicationDescription"
+          Value="High-performance text and code editor"
+          Type="string" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities\FileAssociations"
+          Name=".txt"
+          Value="MagicEditor.Document"
+          Type="string" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities\FileAssociations"
+          Name=".md"
+          Value="MagicEditor.Document"
+          Type="string" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities\FileAssociations"
+          Name=".log"
+          Value="MagicEditor.Document"
+          Type="string" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities\FileAssociations"
+          Name=".py"
+          Value="MagicEditor.Document"
+          Type="string" />
+      <RegistryValue
+          Root="HKLM"
+          Key="Software\MagicEditor\Capabilities\FileAssociations"
+          Name=".json"
+          Value="MagicEditor.Document"
+          Type="string" />
     </Component>
   </Package>
 </Wix>

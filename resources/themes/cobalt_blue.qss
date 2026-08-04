@@ -147,7 +147,7 @@ QToolTip {
 }
 QMessageBox { background-color: #001B33; }
 QMessageBox, QDialog#aboutDialog { background-color: #002240; border: 1px solid #0A4A80; border-radius: 8px; }
-QMessageBox QLabel, QDialog#aboutDialog QLabel { color: #FFFFFF; min-width: 200px; max-width: 440px; padding: 6px 4px; }
+QDialog#aboutDialog QLabel { color: inherit; padding: 6px 4px; }
 QLabel#aboutTitle { color: #FFFFFF; font-weight: 600; }
 QLabel#aboutMuted { color: #7BA3C9; font-size: 10pt; }
 QMessageBox QPushButton, QPushButton#aboutOk {
@@ -156,4 +156,174 @@ QMessageBox QPushButton, QPushButton#aboutOk {
 }
 QMessageBox QPushButton:default, QPushButton#aboutOk {
   background-color: rgba(255, 204, 0, 35); border: 1px solid #FFCC00; color: #FFFFFF;
+}
+
+/* --- MagicEditor tab chrome (patched) --- */
+QTabWidget {
+  background-color: #001B33;
+}
+QTabWidget::pane {
+  border: none;
+  background-color: #002240;
+  top: 0px;
+}
+QTabBar {
+  background-color: #001B33;
+  qproperty-drawBase: 0;
+}
+QTabBar::tab {
+  background-color: transparent;
+  color: #9EBBD2;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  min-width: 72px;
+  max-width: 220px;
+  padding: 3px 12px 3px 10px;
+  margin-right: 1px;
+  min-height: 18px;
+}
+QTabBar::tab:selected {
+  background-color: #002240;
+  color: #FFFFFF;
+  border-bottom: 2px solid #FFCC00;
+}
+QTabBar::tab:hover:!selected {
+  color: #FFFFFF;
+  background-color: #0A4A80;
+}
+QTabBar::scroller {
+  width: 0px;
+}
+QTabBar QToolButton {
+  background: #001B33;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 3px;
+  margin: 1px;
+}
+QToolButton#tabScrollButton {
+  background: transparent;
+  color: #9EBBD2;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 0px;
+}
+QToolButton#tabScrollButton:hover {
+  background: rgba(255, 204, 0, 30);
+  color: #FFFFFF;
+}
+QToolButton#tabScrollButton:disabled {
+  color: #9EBBD2;
+  opacity: 0.4;
+}
+QWidget#tabCornerLeft, QWidget#tabCornerRight {
+  background-color: #001B33;
+}
+QToolButton#tabCloseButton {
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  margin-right: 4px;
+  margin-left: 1px;
+  padding: 1px;
+  min-width: 14px;
+  min-height: 14px;
+}
+QToolButton#tabCloseButton:hover {
+  background-color: #EF4444;
+  border-radius: 3px;
+}
+QToolButton#tabCloseButton:pressed {
+  background-color: #DC2626;
+}
+QToolButton#tabNewButton {
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #9EBBD2;
+  margin: 1px 4px;
+}
+QToolButton#tabNewButton:hover {
+  background: rgba(255, 204, 0, 30);
+  color: #FFCC00;
+}
+QDockWidget {
+  background-color: #001B33;
+  color: #FFFFFF;
+  border: none;
+}
+QDockWidget::title {
+  background-color: #001B33;
+  color: #FFFFFF;
+  padding: 6px 10px;
+  border-bottom: 1px solid #0A4A80;
+  text-align: left;
+}
+QWidget#workspaceSidebar {
+  background-color: #001B33;
+  border-right: 1px solid #0A4A80;
+}
+QTreeView, QTreeView#sidebarTree {
+  background-color: #002240;
+  color: #FFFFFF;
+  border: none;
+  outline: none;
+  padding: 4px;
+}
+QMessageBox {
+  background-color: #002240;
+}
+QMessageBox, QDialog#aboutDialog {
+  background-color: #002240;
+  border: 1px solid #0A4A80;
+  border-radius: 8px;
+}
+QMessageBox QLabel { background: transparent; padding: 2px; }
+QMessageBox QLabel#qt_msgbox_label,
+QMessageBox QLabel#qt_msgboxextrainfo {
+  min-width: 0px;
+  max-width: none;
+  padding: 4px 8px;
+}
+QMessageBox QPushButton, QPushButton#aboutOk {
+  min-width: 88px;
+  min-height: 28px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  background-color: #0A3D6B;
+  color: #FFFFFF;
+  border: 1px solid #0A4A80;
+}
+QMessageBox QPushButton:hover, QPushButton#aboutOk:hover {
+  border-color: #FFCC00;
+}
+QMessageBox QPushButton:default, QPushButton#aboutOk {
+  background-color: rgba(255, 204, 0, 30);
+  border: 1px solid #FFCC00;
+  color: #FFFFFF;
+}
+/* --- end MagicEditor tab chrome --- */
+
+/* confirmDialog */
+QDialog#confirmDialog {
+  min-width: 420px;
+}
+QLabel#confirmText {
+  min-width: 280px;
+  max-width: 480px;
+  padding: 0px;
+}
+QLabel#confirmInfo {
+  min-width: 280px;
+  max-width: 480px;
+  padding: 0px;
+  opacity: 0.9;
+}
+QLabel#confirmIcon {
+  min-width: 48px;
+  max-width: 48px;
+  padding: 0px;
 }

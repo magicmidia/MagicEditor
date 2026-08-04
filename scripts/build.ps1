@@ -1,21 +1,23 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Build MagicEditor release artifacts: EXE, Portable ZIP, and/or MSI.
 
 .DESCRIPTION
-  Outputs land under dist/ (gitignored). Never commits binaries.
+  Primary EXE is copied to the **repo root** as MagicEditor.exe.
+  A copy is also kept under dist/ for portable/MSI packaging.
+  Binaries are gitignored - never commit them.
 
   Targets:
-    -Exe       PyInstaller onefile → dist/MagicEditor.exe
-    -Portable  ZIP with exe + README → dist/MagicEditor-Portable-<ver>-win64.zip
-    -Msi       WiX installer → dist/MagicEditor-<ver>-win64.msi
+    -Exe       PyInstaller onefile -> ./MagicEditor.exe (+ dist/MagicEditor.exe)
+    -Portable  ZIP with exe + README -> dist/MagicEditor-Portable-<ver>-win64.zip
+    -Msi       WiX installer -> dist/MagicEditor-<ver>-win64.msi
     -All       Exe + Portable + Msi (Msi skipped with warning if WiX missing)
 
 .EXAMPLE
+  build.bat
   powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
   powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Portable
-  powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Msi
 #>
 [CmdletBinding()]
 param(
@@ -68,11 +70,14 @@ $ProductVersion = Get-ProductVersion -Override $Version
 $DistDir = Join-Path $Root "dist"
 $WorkDir = Join-Path $Root "build\pyinstaller"
 $ExePath = Join-Path $DistDir "MagicEditor.exe"
+$RootExePath = Join-Path $Root "MagicEditor.exe"
 $SpecPath = Join-Path $Root "MagicEditor.spec"
+$IconPath = Join-Path $Root "resources\icons\app\magiceditor.ico"
 
 Write-Host "MagicEditor build" -ForegroundColor Green
 Write-Host "  root     : $Root"
 Write-Host "  version  : $ProductVersion"
+Write-Host "  icon     : $(if(Test-Path $IconPath){ $IconPath } else { '(missing)' })"
 Write-Host "  targets  :$(if($Exe){' exe'})$(if($Portable){' portable'})$(if($Msi){' msi'})"
 
 # --- Dependencies -------------------------------------------------------
@@ -92,17 +97,18 @@ if ($Exe -or $Portable -or $Msi) {
         throw "Missing MagicEditor.spec at $SpecPath"
     }
 
-    Write-Step "PyInstaller onefile → dist/MagicEditor.exe"
+    Write-Step "PyInstaller onefile -> MagicEditor.exe (repo root)"
+    if (-not (Test-Path $IconPath)) {
+        Write-Warning "App icon missing at $IconPath - EXE will use default PyInstaller icon"
+    }
     if (-not $KeepWork -and (Test-Path (Join-Path $Root "build"))) {
         Remove-Item -Recurse -Force (Join-Path $Root "build") -ErrorAction SilentlyContinue
     }
     if (Test-Path $ExePath) {
         Remove-Item -Force $ExePath
     }
-    # Legacy root exe (old builds) — remove so nobody commits it by mistake
-    $legacyRoot = Join-Path $Root "MagicEditor.exe"
-    if (Test-Path $legacyRoot) {
-        Remove-Item -Force $legacyRoot -ErrorAction SilentlyContinue
+    if (Test-Path $RootExePath) {
+        Remove-Item -Force $RootExePath -ErrorAction SilentlyContinue
     }
 
     # PyInstaller logs to stderr; do not treat that as a terminating error.
@@ -124,8 +130,15 @@ if ($Exe -or $Portable -or $Msi) {
         throw "Build failed: $ExePath not found"
     }
 
-    $sizeMb = [math]::Round((Get-Item $ExePath).Length / 1MB, 1)
-    Write-Host "  OK: $ExePath ($sizeMb MB)" -ForegroundColor Green
+    # Primary deliverable: root of the project
+    Copy-Item -Force $ExePath $RootExePath
+    if (-not (Test-Path $RootExePath)) {
+        throw "Build failed: could not copy EXE to $RootExePath"
+    }
+
+    $sizeMb = [math]::Round((Get-Item $RootExePath).Length / 1MB, 1)
+    Write-Host ("  OK: " + $RootExePath + "  " + [string]$sizeMb + " MB") -ForegroundColor Green
+    Write-Host ("  OK: " + $ExePath + " (packaging copy)") -ForegroundColor DarkGray
 }
 
 # --- Portable ZIP -------------------------------------------------------
@@ -164,7 +177,7 @@ if ($Portable) {
 
     Remove-Item -Recurse -Force $stage
     $zMb = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
-    Write-Host "  OK: $zipPath ($zMb MB)" -ForegroundColor Green
+    Write-Host ("  OK: " + $zipPath + "  " + [string]$zMb + " MB") -ForegroundColor Green
 }
 
 # --- MSI (WiX) ----------------------------------------------------------
@@ -209,9 +222,11 @@ Then re-run:
         if (Test-Path $msiOut) { Remove-Item -Force $msiOut }
 
         # WiX 4/5: wix build file.wxs -d Name=Value -o out.msi
+        $iconForMsi = if (Test-Path $IconPath) { $IconPath } else { $ExePath }
         & wix build $wxs `
             -d "ProductVersion=$ProductVersion" `
             -d "ExePath=$ExePath" `
+            -d "IconPath=$iconForMsi" `
             -o $msiOut `
             -arch x64
 
@@ -222,12 +237,16 @@ Then re-run:
             throw "MSI not produced: $msiOut"
         }
         $mMb = [math]::Round((Get-Item $msiOut).Length / 1MB, 1)
-        Write-Host "  OK: $msiOut ($mMb MB)" -ForegroundColor Green
+        Write-Host ("  OK: " + $msiOut + "  " + [string]$mMb + " MB") -ForegroundColor Green
     }
 }
 
 # --- Summary ------------------------------------------------------------
 Write-Step "Done"
+if (Test-Path $RootExePath) {
+    $mb = [math]::Round((Get-Item $RootExePath).Length / 1MB, 1)
+    Write-Host ("  {0,-48} {1,6} MB" -f "MagicEditor.exe (project root)", $mb) -ForegroundColor Green
+}
 Get-ChildItem $DistDir -File -ErrorAction SilentlyContinue |
     Sort-Object Name |
     ForEach-Object {

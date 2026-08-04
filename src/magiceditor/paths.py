@@ -44,3 +44,12 @@ def themes_dir() -> Path:
 
 def fonts_dir() -> Path:
     return resource_root() / "resources" / "fonts"
+
+
+def icons_dir() -> Path:
+    return resource_root() / "resources" / "icons"
+
+
+def app_icon_path() -> Path:
+    """Windows multi-size application icon (``.ico``)."""
+    return icons_dir() / "app" / "magiceditor.ico"

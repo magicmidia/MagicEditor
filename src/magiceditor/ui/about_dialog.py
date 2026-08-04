@@ -69,7 +69,16 @@ class AboutDialog(QDialog):
         bg = "#2A2929" if theme_id != "clean_light" else "#F1F5F9"
 
         logo = QLabel(self)
-        logo.setPixmap(_monogram_pixmap(72, accent, bg))
+        try:
+            from magiceditor.ui.app_icon import load_app_icon
+
+            app_ico = load_app_icon()
+            if not app_ico.isNull():
+                logo.setPixmap(app_ico.pixmap(72, 72))
+            else:
+                logo.setPixmap(_monogram_pixmap(72, accent, bg))
+        except Exception:
+            logo.setPixmap(_monogram_pixmap(72, accent, bg))
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         title = QLabel("MagicEditor", self)
@@ -80,7 +89,12 @@ class AboutDialog(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setObjectName("aboutTitle")
 
-        version = QLabel(t("about.version", "Versão 0.2.0"), self)
+        from magiceditor.version import about_version_text
+
+        version = QLabel(
+            about_version_text(prefix=t("about.version_prefix", "Versão")),
+            self,
+        )
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         version.setObjectName("aboutMuted")
 

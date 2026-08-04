@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -37,11 +38,17 @@ class FindInFilesDialog(QDialog):
         *,
         open_sources: list[tuple[str, str, str]] | None = None,
         tr: Any | None = None,
+        is_cancelled: Callable[[], bool] | None = None,
+        on_cancel_request: Callable[[], None] | None = None,
+        on_search_start: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self._root = Path(root) if root else None
         self._open_sources = open_sources or []
         self._tr = tr
+        self._is_cancelled = is_cancelled
+        self._on_cancel_request = on_cancel_request
+        self._on_search_start = on_search_start
         self.setModal(True)
         self.setMinimumSize(560, 400)
         self.setObjectName("findInFilesDialog")
@@ -75,6 +82,8 @@ class FindInFilesDialog(QDialog):
         btn_search = QPushButton(t("find_files.search", "Pesquisar"), self)
         btn_search.setDefault(True)
         btn_search.clicked.connect(self.run_search)
+        self._btn_cancel = QPushButton(t("find_files.cancel", "Cancelar busca"), self)
+        self._btn_cancel.clicked.connect(self._request_cancel)
         btn_close = QPushButton(t("find.close", "Fechar"), self)
         btn_close.clicked.connect(self.reject)
 
@@ -85,6 +94,7 @@ class FindInFilesDialog(QDialog):
         row.addWidget(self.case_box)
         row.addWidget(self.regex_box)
         row.addWidget(btn_search)
+        row.addWidget(self._btn_cancel)
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
@@ -150,6 +160,16 @@ class FindInFilesDialog(QDialog):
         scope = self.scope_box.currentData()
         case = self.case_box.isChecked()
         use_re = self.regex_box.isChecked()
+        if self._on_search_start is not None:
+            self._on_search_start()
+
+        def _progress(seen: int, max_files: int, n_hits: int) -> None:
+            self._status.setText(
+                self._t(
+                    "find_files.progress",
+                    "Buscando… {seen}/{max} arquivos, {hits} hits",
+                ).format(seen=seen, max=max_files, hits=n_hits)
+            )
 
         if scope == "tabs":
             if not self._open_sources:
@@ -177,7 +197,14 @@ class FindInFilesDialog(QDialog):
                 needle,
                 case_sensitive=case,
                 use_regex=use_re,
+                is_cancelled=self._is_cancelled,
+                on_progress=_progress,
             )
+            if hits is None:
+                self._status.setText(
+                    self._t("find_files.cancelled", "Busca cancelada.")
+                )
+                return
 
         if not hits:
             self._status.setText(self._t("find_files.none", "Nenhuma ocorrência."))
@@ -214,6 +241,11 @@ class FindInFilesDialog(QDialog):
         else:
             path_s = str(hit.path)
         return f"{path_s}:{hit.line}:{hit.column}  {hit.text}"
+
+    def _request_cancel(self) -> None:
+        if self._on_cancel_request is not None:
+            self._on_cancel_request()
+        self._status.setText(self._t("find_files.cancelling", "Cancelando…"))
 
     def _open_item(self, item: QListWidgetItem | None) -> None:
         if item is None:

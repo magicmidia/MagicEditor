@@ -6,7 +6,7 @@
   "menu.view": "E&xibir",
   "menu.format": "&Formatar",
   "menu.language": "&Idioma",
-  "menu.ui_language": "&Idioma da interface",
+  "menu.ui_language": "&Idioma",
   "menu.syntax": "&Sintaxe",
   "menu.tools": "Ferramen&tas",
   "menu.themes": "&Temas",
@@ -77,7 +77,7 @@
   "msg.gpu_restart": "As opções de GPU/MSAA são aplicadas na próxima inicialização.\nReinicie o MagicEditor para ativar o novo modo de renderização.",
   "msg.about_title": "Sobre o MagicEditor",
   "msg.about_body": "<p>Editor de texto e código moderno e rápido para o dia a dia.</p><p>Piece table · mmap · pré-visualização · temas · i18n</p>",
-  "about.version": "Versão 0.2.0",
+  "about.version": "Versão 0.9.1 BETA",
   "about.tagline": "Zero travamentos em arquivos gigantes. Design Luminous Void.",
   "settings.title": "Configurações",
   "settings.tab.general": "Geral",
@@ -87,7 +87,7 @@
   "settings.tab.tabs": "Abas",
   "settings.tab.advanced": "Avançado",
   "settings.general_group": "Geral",
-  "settings.language": "Idioma da interface",
+  "settings.language": "Idioma",
   "settings.restore_session": "Restaurar abas e rascunhos ao iniciar",
   "settings.show_toolbar": "Mostrar barra de ferramentas",
   "settings.show_status_bar": "Mostrar barra de status",
@@ -176,5 +176,10 @@
   "theme.midnight_dark": "Meia-noite",
   "theme.darcula": "Darcula",
   "theme.cobalt_blue": "Azul cobalto",
-  "theme.monokai_pro": "Monokai Pro"
+  "theme.monokai_pro": "Monokai Pro",
+  "settings.tab.spell": "Ortografia",
+  "settings.tab.performance": "Desempenho",
+  "ctx.menu": "Menu de contexto",
+  "about.version_prefix": "Versão",
+  "settings.show_splash": "Mostrar tela inicial (splash) ao abrir — mínimo 5 segundos"
 }

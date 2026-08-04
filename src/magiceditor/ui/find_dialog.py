@@ -124,6 +124,9 @@ class FindDialog(QDialog):
         root.addLayout(buttons)
 
         self.find_input.returnPressed.connect(self.find_next)
+        self.find_input.textChanged.connect(self._on_find_text_changed)
+        self.case_box.toggled.connect(lambda _c: self._on_find_text_changed(self.find_input.text()))
+        self.regex_box.toggled.connect(lambda _c: self._on_find_text_changed(self.find_input.text()))
         QShortcut(QKeySequence("Esc"), self, activated=self.reject)
 
         if not self._virtual:
@@ -134,6 +137,48 @@ class FindDialog(QDialog):
                     self.find_input.setText(sel)
         self.find_input.selectAll()
         self.find_input.setFocus()
+        self._on_find_text_changed(self.find_input.text())
+
+    def _on_find_text_changed(self, text: str) -> None:
+        """Incremental find: highlight + in-view / total match count."""
+        needle = text or ""
+        if self._virtual and hasattr(self._editor, "set_find_highlight"):
+            self._editor.set_find_highlight(
+                needle,
+                case_sensitive=self.case_box.isChecked(),
+                use_regex=self.regex_box.isChecked(),
+            )
+        if not needle:
+            self._status.setText("")
+            return
+        try:
+            pattern = compile_pattern(
+                needle,
+                case_sensitive=self.case_box.isChecked(),
+                use_regex=self.regex_box.isChecked(),
+            )
+        except PatternError as exc:
+            self._status.setText(
+                self._tt("find.invalid_regex", "Regex inválida: {err}").format(err=exc)
+            )
+            return
+        # Count matches in a bounded sample (viewport-friendly for huge files)
+        try:
+            if self._virtual and hasattr(self._editor, "document_model"):
+                doc = self._editor.document_model()
+                sample = doc.text() if len(doc.buffer) <= 2_000_000 else doc.text()[:2_000_000]
+            elif hasattr(self._editor, "toPlainText"):
+                sample = self._editor.toPlainText()
+                if len(sample) > 2_000_000:
+                    sample = sample[:2_000_000]
+            else:
+                sample = ""
+            total = len(list(pattern.finditer(sample)))
+            self._status.setText(
+                self._tt("find.match_count", "{n} ocorrências").format(n=total)
+            )
+        except Exception:
+            pass
 
     def _tt(self, key: str, default: str) -> str:
         return _t(self._tr, key, default)

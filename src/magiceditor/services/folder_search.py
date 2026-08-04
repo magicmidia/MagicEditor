@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,8 +62,13 @@ def search_folder(
     use_regex: bool = False,
     max_hits: int = 200,
     max_files: int = 2000,
-) -> list[SearchHit]:
-    """Scan text files under ``root`` for ``needle`` (literal or regex)."""
+    is_cancelled: Callable[[], bool] | None = None,
+    on_progress: Callable[[int, int, int], None] | None = None,
+) -> list[SearchHit] | None:
+    """Scan text files under ``root`` for ``needle`` (literal or regex).
+
+    Returns ``None`` if ``is_cancelled()`` becomes true mid-scan.
+    """
     if not needle:
         return []
     root = Path(root)
@@ -79,9 +84,13 @@ def search_folder(
     files_seen = 0
 
     for path in _iter_files(root):
+        if is_cancelled is not None and is_cancelled():
+            return None
         if files_seen >= max_files or len(hits) >= max_hits:
             break
         files_seen += 1
+        if on_progress is not None:
+            on_progress(files_seen, max_files, len(hits))
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue

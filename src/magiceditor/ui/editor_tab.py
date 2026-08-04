@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QTextCursor
-from PyQt6.QtWidgets import QSplitter, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QSplitter, QVBoxLayout, QWidget
 
 from magiceditor.core.piece_table import PieceTable
 from magiceditor.core.syntax.detect import detect_language
 from magiceditor.preview.web_preview import WebPreview
 from magiceditor.services.document import Document
+from magiceditor.ui.minimap_widget import MinimapWidget
 from magiceditor.ui.syntax_highlighter import MagicHighlighter
 from magiceditor.ui.text_editor import TextEditor
 from magiceditor.ui.virtual_editor import VirtualEditor
@@ -27,30 +28,43 @@ class EditorTab(QWidget):
         self.document = document
         self._preview_visible = False
         self._language = detect_language(document.path, document.title)
+        # Viewport path for all docs so spell/multi-cursor/power features always work.
+        # huge_mode still gates mmap / full-load policy in document I/O.
         self._huge = document.huge_mode
         self._highlighter: MagicHighlighter | None = None
+        # Spell dictionary languages for this document (union). Empty = use session default.
+        self.spell_languages: list[str] = []
+        self.spell_force: bool | None = None  # None = auto by syntax language
 
-        if self._huge:
-            virtual = VirtualEditor(document, self)
-            virtual.set_language(self._language)
-            self.editor: TextEditor | VirtualEditor = virtual
-            self.editor.cursorPositionChanged.connect(self._on_virtual_cursor)
-            self.editor.textChanged.connect(self._on_virtual_text)
-            self.editor.modificationChanged.connect(self._on_virtual_mod)
-        else:
-            classic = TextEditor(self)
-            self.editor = classic
-            self._highlighter = MagicHighlighter(classic.document(), self._language)
-            classic.setPlainText(document.text())
-            classic.document().setModified(False)
-            classic.textChanged.connect(self._on_text_changed)
-            classic.cursorPositionChanged.connect(self._on_cursor)
+        virtual = VirtualEditor(document, self)
+        virtual.set_language(self._language)
+        self.editor: TextEditor | VirtualEditor = virtual
+        self.editor.cursorPositionChanged.connect(self._on_virtual_cursor)
+        self.editor.textChanged.connect(self._on_virtual_text)
+        self.editor.modificationChanged.connect(self._on_virtual_mod)
 
         self.preview = WebPreview(self)
         self.preview.hide()
 
+        self.minimap = MinimapWidget(self)
+        self.minimap.hide()
+        self.minimap.jump_ratio.connect(self._on_minimap_jump)
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.textChanged.connect(self._refresh_minimap)
+            self.editor.cursorPositionChanged.connect(self._refresh_minimap_viewport)
+            self.editor.verticalScrollBar().valueChanged.connect(
+                self._refresh_minimap_viewport
+            )
+
+        editor_row = QWidget(self)
+        row_lay = QHBoxLayout(editor_row)
+        row_lay.setContentsMargins(0, 0, 0, 0)
+        row_lay.setSpacing(0)
+        row_lay.addWidget(self.editor, 1)
+        row_lay.addWidget(self.minimap, 0)
+
         self._splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        self._splitter.addWidget(self.editor)
+        self._splitter.addWidget(editor_row)
         self._splitter.addWidget(self.preview)
         self._splitter.setStretchFactor(0, 3)
         self._splitter.setStretchFactor(1, 2)
@@ -75,6 +89,65 @@ class EditorTab(QWidget):
         if isinstance(self.editor, VirtualEditor):
             self.editor.set_language(language)
         self.language_changed.emit(language)
+
+    def set_minimap_visible(self, visible: bool) -> None:
+        """Show/hide minimap; degrades (hides) for huge documents."""
+        if self._huge and visible:
+            # Still allow density sample but cap cost
+            pass
+        self.minimap.set_enabled(bool(visible))
+        if visible:
+            self._refresh_minimap()
+            self._refresh_minimap_viewport()
+
+    def minimap_visible(self) -> bool:
+        return self.minimap.isVisible()
+
+    def set_word_completion(self, enabled: bool) -> None:
+        if isinstance(self.editor, VirtualEditor):
+            self.editor.set_word_completion(enabled)
+
+    def _refresh_minimap(self) -> None:
+        if not self.minimap.isVisible():
+            return
+        lines: list[str] = []
+        if isinstance(self.editor, VirtualEditor):
+            total = self.document.line_index().line_count
+            # Cap sample for huge files
+            step = max(1, total // 4000) if total > 4000 else 1
+            for i in range(0, total, step):
+                try:
+                    lines.append(self.document.line_text(i))
+                except IndexError:
+                    break
+                if len(lines) >= 4000:
+                    break
+        else:
+            lines = self.editor.toPlainText().splitlines()[:4000]
+        self.minimap.set_document_lines(lines)
+
+    def _refresh_minimap_viewport(self) -> None:
+        if not self.minimap.isVisible():
+            return
+        if isinstance(self.editor, VirtualEditor):
+            total = max(1, self.document.line_index().line_count)
+            first = self.editor.verticalScrollBar().value()
+            lh = getattr(self.editor, "_line_height", 18)
+            vis = max(1, self.editor.viewport().height() // max(1, int(lh)))
+            self.minimap.set_viewport_ratio(first / total, min(1.0, (first + vis) / total))
+        else:
+            sb = self.editor.verticalScrollBar()
+            mx = max(1, sb.maximum())
+            self.minimap.set_viewport_ratio(sb.value() / mx, min(1.0, (sb.value() + 10) / mx))
+
+    def _on_minimap_jump(self, ratio: float) -> None:
+        if isinstance(self.editor, VirtualEditor):
+            total = max(1, self.document.line_index().line_count)
+            line = int(ratio * (total - 1))
+            self.editor.goto_line(line, 0)
+        else:
+            sb = self.editor.verticalScrollBar()
+            sb.setValue(int(ratio * sb.maximum()))
 
     def goto_line(self, line: int, column: int = 0) -> None:
         """Move caret to 1-based line/column."""
@@ -139,17 +212,16 @@ class EditorTab(QWidget):
     def refresh_preview(self) -> None:
         if self._huge:
             return
-        assert isinstance(self.editor, TextEditor)
         name = self.document.title.lower()
-        text = self.editor.toPlainText()
+        text = self.export_text()
         if name.endswith((".html", ".htm")) or self._language == "html":
             self.preview.set_html(text)
         else:
             self.preview.set_markdown(text)
 
     def sync_document_from_editor(self) -> None:
-        if self._huge:
-            # Virtual editor already mutates the piece table in place.
+        # Virtual editor mutates the piece table in place.
+        if isinstance(self.editor, VirtualEditor):
             return
         assert isinstance(self.editor, TextEditor)
         self.document.buffer = PieceTable(self.editor.toPlainText())

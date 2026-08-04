@@ -5,8 +5,10 @@ Release artifacts are written to **`dist/`** and are **gitignored**. Never commi
 ## Quick commands
 
 ```powershell
-# Default: onefile EXE → dist/MagicEditor.exe
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+# From repo root — primary EXE lands at ./MagicEditor.exe
+build.bat
+# same as:
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe
 
 # Portable ZIP (includes EXE + README)
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Portable
@@ -16,6 +18,16 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Msi
 
 # Everything
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
+
+# Full release kit (tests + All + SHA256SUMS.txt)
+powershell -ExecutionPolicy Bypass -File scripts/build_release.ps1
+powershell -ExecutionPolicy Bypass -File scripts/build_release.ps1 -SkipTests -Version 0.2.0
+
+# Smoke dist EXE (offscreen)
+powershell -ExecutionPolicy Bypass -File scripts/smoke_dist.ps1
+
+# Regenerate app icon (.ico)
+python scripts/generate_app_icon.py
 
 # Wrappers
 scripts\build_exe.bat
@@ -36,9 +48,14 @@ Optional flags:
 
 | Artifact | Path |
 |----------|------|
-| Onefile EXE | `dist/MagicEditor.exe` |
+| Onefile EXE (primary) | **`MagicEditor.exe`** (repo root) |
+| Onefile EXE (packaging copy) | `dist/MagicEditor.exe` |
 | Portable | `dist/MagicEditor-Portable-<ver>-win64.zip` |
 | Installer | `dist/MagicEditor-<ver>-win64.msi` |
+| App icon source | `resources/icons/app/magiceditor.ico` |
+
+The root EXE embeds `resources/icons/app/magiceditor.ico` (taskbar / Explorer).  
+Both `*.exe` paths are **gitignored**.
 
 ## Portable
 
@@ -61,10 +78,17 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Msi
 
 Source: `packaging/wix/MagicEditor.wxs`  
 - Installs to `Program Files\MagicEditor\`  
-- Start Menu shortcut  
+- Start Menu + Desktop shortcuts  
+- ProgID `MagicEditor.Document` + OpenWithProgids for text extensions  
+- Context menu “Edit with MagicEditor”  
+- Default Programs capabilities (subset of extensions)  
+- Optional MSI properties `ME_LANG` / `ME_THEME` → HKCU install defaults  
+- Extension list source of truth: `packaging/wix/file-associations.json` (+ `magiceditor.services.file_associations`)  
 - MajorUpgrade enabled (stable `UpgradeCode`)
 
 If `wix` is not on `PATH`, `-All` still produces EXE + Portable and **warns** that MSI was skipped.
+
+Code signing (optional): set `ME_SIGN_CERT` and run `build_release.ps1 -Sign`.
 
 ## What not to commit
 

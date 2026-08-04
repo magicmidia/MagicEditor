@@ -6,7 +6,7 @@
   "menu.view": "&View",
   "menu.format": "F&ormat",
   "menu.language": "&Language",
-  "menu.ui_language": "UI &Language",
+  "menu.ui_language": "&Language",
   "menu.syntax": "&Syntax",
   "menu.tools": "&Tools",
   "menu.themes": "&Themes",
@@ -77,7 +77,7 @@
   "msg.gpu_restart": "GPU / MSAA settings apply on the next launch.\nRestart MagicEditor to enable the new rendering path.",
   "msg.about_title": "About MagicEditor",
   "msg.about_body": "<p>Modern, fast text and code editor for everyday work.</p><p>Piece table · mmap · preview · themes · i18n</p>",
-  "about.version": "Version 0.2.0",
+  "about.version": "Version 0.9.1 BETA",
   "about.tagline": "Zero freezes on huge files. Luminous Void design.",
   "settings.title": "Settings",
   "settings.tab.general": "General",
@@ -87,7 +87,7 @@
   "settings.tab.tabs": "Tabs",
   "settings.tab.advanced": "Advanced",
   "settings.general_group": "General",
-  "settings.language": "UI language",
+  "settings.language": "Language",
   "settings.restore_session": "Restore tabs and drafts on startup",
   "settings.show_toolbar": "Show toolbar",
   "settings.show_status_bar": "Show status bar",
@@ -176,5 +176,9 @@
   "theme.midnight_dark": "Midnight Dark",
   "theme.darcula": "Darcula Mode",
   "theme.cobalt_blue": "Cobalt Blue",
-  "theme.monokai_pro": "Monokai Pro"
+  "theme.monokai_pro": "Monokai Pro",
+  "settings.tab.spell": "Spelling",
+  "settings.tab.performance": "Performance",
+  "about.version_prefix": "Version",
+  "settings.show_splash": "Show splash screen on startup — at least 5 seconds"
 }
