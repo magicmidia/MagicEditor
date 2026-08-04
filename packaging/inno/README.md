@@ -2,14 +2,17 @@
 
 ## Build
 
-```powershell
-# 1) Build the onefile EXE
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe
+```bat
+REM One-shot (EXE + Inno installer) — preferred
+scripts\setup_Install.bat
+```
 
-# 2) Compile the installer (needs Inno Setup 6)
-powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1
-# or:
+```powershell
+# Same pipeline:
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Inno
+
+# Or only the setup from an existing dist\MagicEditor.exe:
+powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1
 ```
 
 Prerequisite: [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`).

@@ -16,7 +16,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Portable
 # MSI installer (needs WiX CLI)
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Msi
 
-# Inno Setup installer (needs Inno Setup 6 / ISCC)
+# Inno Setup installer (needs Inno Setup 6 / ISCC) — one double-click:
+scripts\setup_Install.bat
+# same as:
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Inno
 # or only the setup from an existing dist EXE:
 powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1
