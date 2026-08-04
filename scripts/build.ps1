@@ -12,7 +12,8 @@
     -Exe       PyInstaller onefile -> ./MagicEditor.exe (+ dist/MagicEditor.exe)
     -Portable  ZIP with exe + README -> dist/MagicEditor-Portable-<ver>-win64.zip
     -Msi       WiX installer -> dist/MagicEditor-<ver>-win64.msi
-    -All       Exe + Portable + Msi (Msi skipped with warning if WiX missing)
+    -Inno      Inno Setup installer -> dist/MagicEditor-<ver>-win64-setup.exe
+    -All       Exe + Portable + Msi + Inno (missing tools warn and skip)
 
 .EXAMPLE
   build.bat
@@ -24,6 +25,7 @@ param(
     [switch]$Exe,
     [switch]$Portable,
     [switch]$Msi,
+    [switch]$Inno,
     [switch]$All,
     [switch]$SkipDeps,
     [switch]$KeepWork,
@@ -38,8 +40,9 @@ if ($All) {
     $Exe = $true
     $Portable = $true
     $Msi = $true
+    $Inno = $true
 }
-if (-not ($Exe -or $Portable -or $Msi)) {
+if (-not ($Exe -or $Portable -or $Msi -or $Inno)) {
     # Default: onefile exe (most common for local delivery)
     $Exe = $true
 }
@@ -78,7 +81,7 @@ Write-Host "MagicEditor build" -ForegroundColor Green
 Write-Host "  root     : $Root"
 Write-Host "  version  : $ProductVersion"
 Write-Host "  icon     : $(if(Test-Path $IconPath){ $IconPath } else { '(missing)' })"
-Write-Host "  targets  :$(if($Exe){' exe'})$(if($Portable){' portable'})$(if($Msi){' msi'})"
+Write-Host "  targets  :$(if($Exe){' exe'})$(if($Portable){' portable'})$(if($Msi){' msi'})$(if($Inno){' inno'})"
 
 # --- Dependencies -------------------------------------------------------
 if (-not $SkipDeps) {
@@ -238,6 +241,27 @@ Then re-run:
         }
         $mMb = [math]::Round((Get-Item $msiOut).Length / 1MB, 1)
         Write-Host ("  OK: " + $msiOut + "  " + [string]$mMb + " MB") -ForegroundColor Green
+    }
+}
+
+# --- Inno Setup installer -----------------------------------------------
+if ($Inno) {
+    Write-Step "Inno Setup installer"
+    if (-not (Test-Path $ExePath)) {
+        throw "Inno requires dist/MagicEditor.exe (run with -Exe first)"
+    }
+    $innoScript = Join-Path $Root "scripts\build_inno.ps1"
+    if (-not (Test-Path $innoScript)) {
+        throw "Missing $innoScript"
+    }
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $innoScript -Version $ProductVersion -ExePath $ExePath
+        if ($LASTEXITCODE -ne 0) {
+            throw "build_inno.ps1 failed (exit $LASTEXITCODE)"
+        }
+    } catch {
+        Write-Warning "Inno Setup skipped: $($_.Exception.Message)"
+        Write-Warning "Install Inno Setup 6 (winget install JRSoftware.InnoSetup) and re-run with -Inno"
     }
 }
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 BETA — Inno Setup installer
+
+- Inno Setup package: `packaging/inno/MagicEditor.iss` + `scripts/build_inno.ps1`
+- Associations from `file-associations.json` (Open with, optional defaults, context menu)
+- Installer wizard: default language + theme → QSettings
+- Build: `scripts/build.ps1 -Exe -Inno`
+
 ## 0.9.1 BETA — Splash, settings depth, tab groups
 
 - Centralized version module (`magiceditor.version`) — **0.9.1 BETA**

@@ -16,6 +16,11 @@ powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Portable
 # MSI installer (needs WiX CLI)
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Msi
 
+# Inno Setup installer (needs Inno Setup 6 / ISCC)
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Inno
+# or only the setup from an existing dist EXE:
+powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1
+
 # Everything
 powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
 
@@ -51,7 +56,8 @@ Optional flags:
 | Onefile EXE (primary) | **`MagicEditor.exe`** (repo root) |
 | Onefile EXE (packaging copy) | `dist/MagicEditor.exe` |
 | Portable | `dist/MagicEditor-Portable-<ver>-win64.zip` |
-| Installer | `dist/MagicEditor-<ver>-win64.msi` |
+| Installer (MSI / WiX) | `dist/MagicEditor-<ver>-win64.msi` |
+| Installer (Inno Setup) | `dist/MagicEditor-<ver>-win64-setup.exe` |
 | App icon source | `resources/icons/app/magiceditor.ico` |
 
 The root EXE embeds `resources/icons/app/magiceditor.ico` (taskbar / Explorer).  
@@ -87,6 +93,32 @@ Source: `packaging/wix/MagicEditor.wxs`
 - MajorUpgrade enabled (stable `UpgradeCode`)
 
 If `wix` is not on `PATH`, `-All` still produces EXE + Portable and **warns** that MSI was skipped.
+
+## Inno Setup
+
+Requires **Inno Setup 6** (`ISCC.exe`):
+
+```powershell
+winget install JRSoftware.InnoSetup
+# optional: set ISCC_PATH if not on PATH
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Inno
+```
+
+Source: `packaging/inno/MagicEditor.iss`  
+Associations include: `packaging/inno/associations.issinc` (generated from `file-associations.json`).
+
+| Feature | Detail |
+|---------|--------|
+| Install dir | `Program Files\MagicEditor\` |
+| Shortcuts | Start Menu + optional Desktop |
+| ProgID | `MagicEditor.Document` + open verb |
+| Open with | `OpenWithProgids` for all listed extensions |
+| Default open | Task **Associar extensões…** (optional, checked by default) |
+| Context menu | **Editar com MagicEditor** on all files (+ folder) |
+| Default Programs | `RegisteredApplications` + Capabilities |
+| First-run prefs | Wizard page: **idioma** (pt_BR/en_US/es_ES) + **tema** → HKCU `Software\MagicEditor\MagicEditor\ui\*` |
+
+If `ISCC` is missing, `-Inno` / `-All` **warns** and continues with other targets.
 
 Code signing (optional): set `ME_SIGN_CERT` and run `build_release.ps1 -Sign`.
 
