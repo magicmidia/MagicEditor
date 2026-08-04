@@ -8,9 +8,9 @@ import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6.QtWidgets import QApplication  # noqa: E402
+from PyQt6.QtWidgets import QApplication
 
-from magiceditor.services.print_engine import (  # noqa: E402
+from magiceditor.services.print_engine import (
     _document_from_plain,
     export_pdf,
     printable_css,

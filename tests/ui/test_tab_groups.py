@@ -6,10 +6,10 @@ import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6.QtWidgets import QApplication, QLabel  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QLabel
 
-from magiceditor.ui.tab_groups import GROUP_COLORS  # noqa: E402
-from magiceditor.ui.tab_manager import TabManager  # noqa: E402
+from magiceditor.ui.tab_groups import GROUP_COLORS
+from magiceditor.ui.tab_manager import TabManager
 
 
 @pytest.fixture(scope="module")

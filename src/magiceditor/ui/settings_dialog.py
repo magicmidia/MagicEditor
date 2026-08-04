@@ -260,33 +260,23 @@ class SettingsDialog(QDialog):
         self.word_wrap_box.setChecked(state.word_wrap)
         form.addRow(self.word_wrap_box)
 
-        self.line_numbers_box = QCheckBox(
-            t("settings.line_numbers", "Números de linha"), g
-        )
+        self.line_numbers_box = QCheckBox(t("settings.line_numbers", "Números de linha"), g)
         self.line_numbers_box.setChecked(state.line_numbers)
         form.addRow(self.line_numbers_box)
 
-        self.highlight_line_box = QCheckBox(
-            t("settings.highlight_line", "Destacar linha atual"), g
-        )
+        self.highlight_line_box = QCheckBox(t("settings.highlight_line", "Destacar linha atual"), g)
         self.highlight_line_box.setChecked(state.highlight_current_line)
         form.addRow(self.highlight_line_box)
 
-        self.show_ws_box = QCheckBox(
-            t("settings.show_whitespace", "Mostrar espaços e tabs"), g
-        )
+        self.show_ws_box = QCheckBox(t("settings.show_whitespace", "Mostrar espaços e tabs"), g)
         self.show_ws_box.setChecked(bool(getattr(state, "show_whitespace", False)))
         form.addRow(self.show_ws_box)
 
-        self.brace_box = QCheckBox(
-            t("settings.brace_match", "Destacar par de chaves/colchetes"), g
-        )
+        self.brace_box = QCheckBox(t("settings.brace_match", "Destacar par de chaves/colchetes"), g)
         self.brace_box.setChecked(bool(getattr(state, "brace_match", True)))
         form.addRow(self.brace_box)
 
-        self.syntax_box = QCheckBox(
-            t("settings.syntax_highlight", "Realce de sintaxe"), g
-        )
+        self.syntax_box = QCheckBox(t("settings.syntax_highlight", "Realce de sintaxe"), g)
         self.syntax_box.setChecked(bool(getattr(state, "syntax_highlight", True)))
         form.addRow(self.syntax_box)
 
@@ -320,9 +310,7 @@ class SettingsDialog(QDialog):
         a11y = QGroupBox(t("settings.a11y_group", "Acessibilidade"), page)
         a11y_form = QFormLayout(a11y)
         a11y_form.setContentsMargins(12, 16, 12, 12)
-        self.high_contrast_box = QCheckBox(
-            t("settings.high_contrast", "Alto contraste"), a11y
-        )
+        self.high_contrast_box = QCheckBox(t("settings.high_contrast", "Alto contraste"), a11y)
         self.high_contrast_box.setChecked(bool(getattr(state, "high_contrast", False)))
         a11y_form.addRow(self.high_contrast_box)
         lay.addWidget(a11y)
@@ -362,9 +350,7 @@ class SettingsDialog(QDialog):
             ("es_ES", "Español"),
         ):
             self.spell_lang_box.addItem(label, code)
-        sidx = self.spell_lang_box.findData(
-            getattr(state, "spell_language", None) or "pt_BR"
-        )
+        sidx = self.spell_lang_box.findData(getattr(state, "spell_language", None) or "pt_BR")
         self.spell_lang_box.setCurrentIndex(max(0, sidx))
         form.addRow(t("settings.spell_language", "Idioma principal"), self.spell_lang_box)
 
@@ -450,9 +436,7 @@ class SettingsDialog(QDialog):
         opac_row.addWidget(self.opacity_label)
         vis_form.addLayout(opac_row)
 
-        self.chrome_box = QCheckBox(
-            t("settings.chrome", "Chrome translúcido (efeito vidro)"), vis
-        )
+        self.chrome_box = QCheckBox(t("settings.chrome", "Chrome translúcido (efeito vidro)"), vis)
         self.chrome_box.setChecked(state.chrome_transparency)
         vis_form.addWidget(self.chrome_box)
 
@@ -475,17 +459,11 @@ class SettingsDialog(QDialog):
         gfx_form.setSpacing(6)
         gfx_form.setContentsMargins(12, 16, 12, 12)
 
-        self.gpu_box = QCheckBox(
-            t("settings.gpu", "Aceleração por GPU (composição OpenGL)"), gfx
-        )
+        self.gpu_box = QCheckBox(t("settings.gpu", "Aceleração por GPU (composição OpenGL)"), gfx)
         self.gpu_box.setChecked(state.gpu_acceleration)
-        self.msaa_box = QCheckBox(
-            t("settings.msaa", "Anti-aliasing multisample (MSAA 4x)"), gfx
-        )
+        self.msaa_box = QCheckBox(t("settings.msaa", "Anti-aliasing multisample (MSAA 4x)"), gfx)
         self.msaa_box.setChecked(state.gpu_multisample)
-        self.aa_box = QCheckBox(
-            t("settings.aa", "Anti-aliasing de texto e interface"), gfx
-        )
+        self.aa_box = QCheckBox(t("settings.aa", "Anti-aliasing de texto e interface"), gfx)
         self.aa_box.setChecked(state.antialiasing)
         self.gpu_box.toggled.connect(self._sync_gpu_deps)
         gfx_form.addWidget(self.gpu_box)
@@ -560,9 +538,7 @@ class SettingsDialog(QDialog):
             ),
             beh,
         )
-        self.confirm_close_box.setChecked(
-            bool(getattr(state, "confirm_close_unsaved", True))
-        )
+        self.confirm_close_box.setChecked(bool(getattr(state, "confirm_close_unsaved", True)))
         bform.addRow(self.confirm_close_box)
 
         info = QLabel(

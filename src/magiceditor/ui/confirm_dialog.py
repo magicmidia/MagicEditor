@@ -117,20 +117,14 @@ class ConfirmDialog(QDialog):
             btn_save.setDefault(True)
             btn_save.setAutoDefault(True)
         elif buttons == "yes_no":
-            btn_yes = bbox.addButton(
-                t("dialog.yes", "Sim"), QDialogButtonBox.ButtonRole.YesRole
-            )
-            btn_no = bbox.addButton(
-                t("dialog.no", "Não"), QDialogButtonBox.ButtonRole.NoRole
-            )
+            btn_yes = bbox.addButton(t("dialog.yes", "Sim"), QDialogButtonBox.ButtonRole.YesRole)
+            btn_no = bbox.addButton(t("dialog.no", "Não"), QDialogButtonBox.ButtonRole.NoRole)
             btn_yes.clicked.connect(lambda: self._finish(ConfirmResult.YES))
             btn_no.clicked.connect(lambda: self._finish(ConfirmResult.NO))
             btn_yes.setDefault(True)
             btn_yes.setAutoDefault(True)
         else:
-            btn_ok = bbox.addButton(
-                t("dialog.ok", "OK"), QDialogButtonBox.ButtonRole.AcceptRole
-            )
+            btn_ok = bbox.addButton(t("dialog.ok", "OK"), QDialogButtonBox.ButtonRole.AcceptRole)
             btn_ok.clicked.connect(lambda: self._finish(ConfirmResult.OK))
             btn_ok.setDefault(True)
             btn_ok.setAutoDefault(True)
@@ -166,9 +160,7 @@ class ConfirmDialog(QDialog):
         dlg = ConfirmDialog(
             parent,
             title=t("app.name", "MagicEditor"),
-            text=t("msg.save_changes", 'Salvar alterações em "{name}"?').format(
-                name=name
-            ),
+            text=t("msg.save_changes", 'Salvar alterações em "{name}"?').format(name=name),
             informative=t(
                 "msg.save_changes_hint",
                 "Se não salvar, as alterações serão perdidas.",

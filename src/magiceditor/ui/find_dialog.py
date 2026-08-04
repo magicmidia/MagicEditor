@@ -126,7 +126,9 @@ class FindDialog(QDialog):
         self.find_input.returnPressed.connect(self.find_next)
         self.find_input.textChanged.connect(self._on_find_text_changed)
         self.case_box.toggled.connect(lambda _c: self._on_find_text_changed(self.find_input.text()))
-        self.regex_box.toggled.connect(lambda _c: self._on_find_text_changed(self.find_input.text()))
+        self.regex_box.toggled.connect(
+            lambda _c: self._on_find_text_changed(self.find_input.text())
+        )
         QShortcut(QKeySequence("Esc"), self, activated=self.reject)
 
         if not self._virtual:
@@ -174,9 +176,7 @@ class FindDialog(QDialog):
             else:
                 sample = ""
             total = len(list(pattern.finditer(sample)))
-            self._status.setText(
-                self._tt("find.match_count", "{n} ocorrências").format(n=total)
-            )
+            self._status.setText(self._tt("find.match_count", "{n} ocorrências").format(n=total))
         except Exception:
             pass
 

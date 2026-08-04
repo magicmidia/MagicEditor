@@ -404,9 +404,7 @@ class TabManager(QTabWidget):
             else:
                 bar.setTabVisible(i, True)
                 title = self.tabText(i)
-                if (title.startswith("▸ ") or title.startswith("▾ ")) and isinstance(
-                    w, EditorTab
-                ):
+                if (title.startswith("▸ ") or title.startswith("▾ ")) and isinstance(w, EditorTab):
                     star = " *" if w.document.modified else ""
                     self.setTabText(i, f"{w.document.title}{star}")
         self._refresh_group_paint()
@@ -426,11 +424,7 @@ class TabManager(QTabWidget):
 
     def _refresh_group_paint(self) -> None:
         bar = self.tabBar()
-        idx_map = {
-            i: id(w)
-            for i in range(self.count())
-            if (w := self.widget(i)) is not None
-        }
+        idx_map = {i: id(w) for i in range(self.count()) if (w := self.widget(i)) is not None}
         mapping = self._store.color_map_for_indices(idx_map)
         if isinstance(bar, _MagicTabBar):
             bar.set_group_colors(mapping)
@@ -489,9 +483,7 @@ class TabManager(QTabWidget):
             self.remove_from_group(index)
             return
         if chosen is act_rename and group is not None:
-            name, ok = QInputDialog.getText(
-                self, "Renomear grupo", "Nome:", text=group.name
-            )
+            name, ok = QInputDialog.getText(self, "Renomear grupo", "Nome:", text=group.name)
             if ok and name.strip():
                 self.rename_group(group.group_id, name)
             return

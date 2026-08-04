@@ -475,9 +475,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             self._menu_tools.addAction(self._actions[key])
 
         # Format: encoding + EOL
-        self._menu_encoding = self._menu_format.addMenu(
-            self._tr.t("menu.encoding", "Codificação")
-        )
+        self._menu_encoding = self._menu_format.addMenu(self._tr.t("menu.encoding", "Codificação"))
         self._enc_group = QActionGroup(self)
         self._enc_group.setExclusive(True)
         for enc, label in ENCODING_CATALOG:
@@ -490,7 +488,11 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._menu_eol = self._menu_format.addMenu(self._tr.t("menu.eol", "Fim de linha"))
         self._eol_group = QActionGroup(self)
         self._eol_group.setExclusive(True)
-        for eol, label in (("LF", "Unix (LF)"), ("CRLF", "Windows (CRLF)"), ("CR", "Classic Mac (CR)")):
+        for eol, label in (
+            ("LF", "Unix (LF)"),
+            ("CRLF", "Windows (CRLF)"),
+            ("CR", "Classic Mac (CR)"),
+        ):
             a = QAction(label, self)
             a.setCheckable(True)
             a.setData(eol)
@@ -761,9 +763,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
                 self._actions[key].setText(label)
                 # Tooltip without mnemonic ampersand (&& → literal &)
                 tip = label.replace("&&", "\0").replace("&", "").replace("\0", "&")
-                sc = self._actions[key].shortcut().toString(
-                    QKeySequence.SequenceFormat.NativeText
-                )
+                sc = self._actions[key].shortcut().toString(QKeySequence.SequenceFormat.NativeText)
                 self._actions[key].setToolTip(f"{tip} ({sc})" if sc else tip)
         # Theme menu labels
         for tid, action in self._theme_actions.items():
@@ -786,9 +786,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         opened = False
         active_index = 0
         active_key = (
-            normalize_path(self._session.active_file)
-            if self._session.active_file
-            else None
+            normalize_path(self._session.active_file) if self._session.active_file else None
         )
         for path_str in self._session.open_files:
             path = Path(path_str)
@@ -1013,10 +1011,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._apply_chrome_visibility()
         self._persist_session()
         self.apply_graphics_preferences()
-        if (
-            self._session.gpu_acceleration != old_gpu
-            or self._session.gpu_multisample != old_msaa
-        ):
+        if self._session.gpu_acceleration != old_gpu or self._session.gpu_multisample != old_msaa:
             QMessageBox.information(
                 self,
                 self._tr.t("app.name", "MagicEditor"),
@@ -1082,11 +1077,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             if not isinstance(w, EditorTab):
                 continue
             label = w.document.display_name()
-            key = (
-                normalize_path(w.document.path)
-                if w.document.path is not None
-                else f"tab:{i}"
-            )
+            key = normalize_path(w.document.path) if w.document.path is not None else f"tab:{i}"
             items.append((label, key))
         self._sidebar.set_open_editors(items)
 
@@ -1225,15 +1216,9 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             tab.editor.set_tab_width(self._session.tab_width)
             tab.editor.set_indent_with_spaces(self._session.indent_with_spaces)
             tab.editor.set_highlight_current_line(self._session.highlight_current_line)
-            tab.editor.set_show_whitespace(
-                bool(getattr(self._session, "show_whitespace", False))
-            )
-            tab.editor.set_brace_match_enabled(
-                bool(getattr(self._session, "brace_match", True))
-            )
-            tab.editor.set_syntax_enabled(
-                bool(getattr(self._session, "syntax_highlight", True))
-            )
+            tab.editor.set_show_whitespace(bool(getattr(self._session, "show_whitespace", False)))
+            tab.editor.set_brace_match_enabled(bool(getattr(self._session, "brace_match", True)))
+            tab.editor.set_syntax_enabled(bool(getattr(self._session, "syntax_highlight", True)))
             tab.editor.set_caret_width(int(getattr(self._session, "caret_width", 1) or 1))
             tab.set_word_completion(bool(getattr(self._session, "word_completion", False)))
             self._wire_editor_context_menu(tab.editor)
@@ -1332,9 +1317,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             new = "\n".join(lines)
             if ends_nl:
                 new = new + "\n"
-        if getattr(s, "insert_final_newline", False) and new and not new.endswith(
-            ("\n", "\r")
-        ):
+        if getattr(s, "insert_final_newline", False) and new and not new.endswith(("\n", "\r")):
             new = new + "\n"
         if new != text:
             tab.document.buffer = PieceTable(new)
@@ -1560,15 +1543,18 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             return
         tab.document.set_eol(eol)  # type: ignore[arg-type]
         # Refresh classic editor text after in-buffer EOL rewrite
-        if not tab.is_huge and not isinstance(tab.editor, VirtualEditor):
-            if isinstance(tab.editor, TextEditor):
-                pos = tab.editor.textCursor().position()
-                tab.editor.blockSignals(True)
-                tab.editor.setPlainText(tab.document.text())
-                tab.editor.blockSignals(False)
-                cur = tab.editor.textCursor()
-                cur.setPosition(min(pos, len(tab.document.text())))
-                tab.editor.setTextCursor(cur)
+        if (
+            not tab.is_huge
+            and not isinstance(tab.editor, VirtualEditor)
+            and isinstance(tab.editor, TextEditor)
+        ):
+            pos = tab.editor.textCursor().position()
+            tab.editor.blockSignals(True)
+            tab.editor.setPlainText(tab.document.text())
+            tab.editor.blockSignals(False)
+            cur = tab.editor.textCursor()
+            cur.setPosition(min(pos, len(tab.document.text())))
+            tab.editor.setTextCursor(cur)
         self._refresh_tab_titles()
         self._update_status_for(tab)
         self._status.showMessage(f"EOL → {eol}", 2500)
@@ -1714,9 +1700,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         elif tab is None:
             current = [getattr(self._session, "spell_language", "pt_BR") or "pt_BR"]
 
-        act_toggle = menu.addAction(
-            self._tr.t("action.toggle_spell", "Correção ortográfica")
-        )
+        act_toggle = menu.addAction(self._tr.t("action.toggle_spell", "Correção ortográfica"))
         act_toggle.setCheckable(True)
         act_toggle.setChecked(bool(getattr(self._session, "spell_check", True)))
         menu.addSeparator()
@@ -1727,12 +1711,8 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             act.setChecked(code in current)
             lang_actions.append((act, code))
         menu.addSeparator()
-        act_ignore = menu.addAction(
-            self._tr.t("action.spell_ignore", "Ignorar palavra")
-        )
-        act_add = menu.addAction(
-            self._tr.t("action.spell_add", "Adicionar ao dicionário")
-        )
+        act_ignore = menu.addAction(self._tr.t("action.spell_ignore", "Ignorar palavra"))
+        act_add = menu.addAction(self._tr.t("action.spell_add", "Adicionar ao dicionário"))
 
         # Anchor near spell label
         pos = self._status.mapToGlobal(self._status.rect().bottomRight())

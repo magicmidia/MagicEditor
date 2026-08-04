@@ -96,9 +96,7 @@ class TabGroupStore:
         for gid in dead:
             del self.groups[gid]
 
-    def color_map_for_indices(
-        self, index_to_widget_id: dict[int, int]
-    ) -> dict[int, str]:
+    def color_map_for_indices(self, index_to_widget_id: dict[int, int]) -> dict[int, str]:
         mapping: dict[int, str] = {}
         for idx, wid in index_to_widget_id.items():
             g = self.group_of_widget(wid)

@@ -6,9 +6,9 @@ import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6.QtWidgets import QApplication, QWidget  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QWidget
 
-from magiceditor.ui.editor_context_menu import build_editor_context_menu  # noqa: E402
+from magiceditor.ui.editor_context_menu import build_editor_context_menu
 
 
 @pytest.fixture(scope="module")
@@ -48,9 +48,7 @@ def test_cut_disabled_without_selection(qapp) -> None:
         on_paste=lambda: None,
     )
     cut_acts = [
-        a
-        for a in menu.actions()
-        if a.text() and ("Recortar" in a.text() or "Cut" in a.text())
+        a for a in menu.actions() if a.text() and ("Recortar" in a.text() or "Cut" in a.text())
     ]
     assert cut_acts
     assert not cut_acts[0].isEnabled()

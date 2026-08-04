@@ -538,7 +538,8 @@ class PowerFeaturesMixin:
             self._split_secondary = None
             return
         dock = QDockWidget(
-            self._tr.t("split.title", "Split view"), self  # type: ignore[attr-defined]
+            self._tr.t("split.title", "Split view"),
+            self,  # type: ignore[attr-defined]
         )
         view = QPlainTextEdit(dock)
         if len(tab.document.buffer) < 5_000_000:
@@ -594,9 +595,7 @@ class PowerFeaturesMixin:
             editor = tab.editor
         self._show_editor_context_menu(editor, global_pos)
 
-    def _spell_word_under_cursor(
-        self, editor: VirtualEditor
-    ) -> tuple[str, int, int, int] | None:
+    def _spell_word_under_cursor(self, editor: VirtualEditor) -> tuple[str, int, int, int] | None:
         """Return (word, line, start_col, end_col) at caret, or None."""
         tab = self._current_tab()
         if tab is None:
@@ -622,9 +621,7 @@ class PowerFeaturesMixin:
         _word, line, start, end = info
         editor.replace_word_on_line(line, start, end, suggestion)
 
-    def _show_editor_context_menu(
-        self, editor: VirtualEditor, global_pos: QPoint
-    ) -> None:
+    def _show_editor_context_menu(self, editor: VirtualEditor, global_pos: QPoint) -> None:
         if not bool(getattr(self._session, "editor_context_menu", True)):  # type: ignore[attr-defined]
             return
         clipboard = QApplication.clipboard()

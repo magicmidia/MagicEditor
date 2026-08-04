@@ -23,8 +23,8 @@ _BUILTIN: list[Snippet] = [
     Snippet("log", "console.log($1);$0", "javascript"),
     Snippet(
         "html5",
-        "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n"
-        "\t<meta charset=\"UTF-8\">\n\t<title>$1</title>\n"
+        '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+        '\t<meta charset="UTF-8">\n\t<title>$1</title>\n'
         "</head>\n<body>\n\t$0\n</body>\n</html>\n",
         "html",
     ),

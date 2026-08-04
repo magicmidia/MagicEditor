@@ -319,9 +319,7 @@ class VirtualEditor(QAbstractScrollArea):
             self._anchor_line != self._cursor_line or self._anchor_col != self._cursor_col
         )
 
-    def replace_word_on_line(
-        self, line: int, start_col: int, end_col: int, new_text: str
-    ) -> None:
+    def replace_word_on_line(self, line: int, start_col: int, end_col: int, new_text: str) -> None:
         """Replace [start_col, end_col) on *line* with *new_text* (spell apply)."""
         total = self._line_count()
         if line < 0 or line >= total:
@@ -467,12 +465,8 @@ class VirtualEditor(QAbstractScrollArea):
                 a = min(c0, len(text))
                 b = min(max(c1, c0), len(text))
                 if b > a:
-                    start = self._doc.line_index().line_start(line) + self._col_to_byte(
-                        line, a
-                    )
-                    end = self._doc.line_index().line_start(line) + self._col_to_byte(
-                        line, b
-                    )
+                    start = self._doc.line_index().line_start(line) + self._col_to_byte(line, a)
+                    end = self._doc.line_index().line_start(line) + self._col_to_byte(line, b)
                     self._delete_bytes_tracked(start, end - start)
                 last_pos = (line, a)
             self._extra_cursors.clear()
@@ -665,9 +659,7 @@ class VirtualEditor(QAbstractScrollArea):
         if not needle:
             return False
         try:
-            pattern = compile_pattern(
-                needle, case_sensitive=case_sensitive, use_regex=use_regex
-            )
+            pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
         except PatternError:
             return False
         self.set_find_highlight(needle, case_sensitive=case_sensitive, use_regex=use_regex)
@@ -725,9 +717,7 @@ class VirtualEditor(QAbstractScrollArea):
         if not needle:
             return False
         try:
-            pattern = compile_pattern(
-                needle, case_sensitive=case_sensitive, use_regex=use_regex
-            )
+            pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
         except PatternError:
             return False
         self.set_find_highlight(needle, case_sensitive=case_sensitive, use_regex=use_regex)
@@ -763,9 +753,7 @@ class VirtualEditor(QAbstractScrollArea):
         if not needle:
             return 0
         try:
-            pattern = compile_pattern(
-                needle, case_sensitive=case_sensitive, use_regex=use_regex
-            )
+            pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
         except PatternError:
             return 0
         self.set_find_highlight(needle, case_sensitive=case_sensitive, use_regex=use_regex)
@@ -798,9 +786,7 @@ class VirtualEditor(QAbstractScrollArea):
             count += 1
         if count:
             self._cursor_line = min(self._cursor_line, self._line_count() - 1)
-            self._cursor_col = min(
-                self._cursor_col, len(self._doc.line_text(self._cursor_line))
-            )
+            self._cursor_col = min(self._cursor_col, len(self._doc.line_text(self._cursor_line)))
             self._emit_edit()
         return count
 
@@ -908,9 +894,7 @@ class VirtualEditor(QAbstractScrollArea):
         gutter = self._gutter_width if self._show_line_numbers else 0
         total = self._line_count()
         do_syntax = (
-            self._syntax_enabled
-            and self._language not in {"", "text"}
-            and not self._word_wrap
+            self._syntax_enabled and self._language not in {"", "text"} and not self._word_wrap
         )
         view_h = self.viewport().height()
 
@@ -960,9 +944,7 @@ class VirtualEditor(QAbstractScrollArea):
                     break
                 baseline = ry + fm.ascent() + 1
                 if sel_cols is not None:
-                    self._paint_selection_row(
-                        painter, text, sel_cols, d0, d1, base_x, ry, lh, fm
-                    )
+                    self._paint_selection_row(painter, text, sel_cols, d0, d1, base_x, ry, lh, fm)
                 if self._find_needle:
                     self._paint_find_hits_row(painter, text, d0, d1, base_x, ry, lh, fm)
                 # Spell: only current painted line (viewport-safe for huge files)
@@ -1002,9 +984,7 @@ class VirtualEditor(QAbstractScrollArea):
                         cx = base_x + fm.horizontalAdvance(prefix)
                         painter.setPen(self._caret)
                         for dx in range(self._caret_width):
-                            painter.drawLine(
-                                cx + dx, ry + 1, cx + dx, ry + lh - 2
-                            )
+                            painter.drawLine(cx + dx, ry + 1, cx + dx, ry + lh - 2)
                 # Extra multi-carets
                 for el, esc, eec in self._extra_cursors:
                     if el != line:
@@ -1085,9 +1065,7 @@ class VirtualEditor(QAbstractScrollArea):
             if d0 == 0:
                 x0 = base_x + fm.horizontalAdvance(expand_tabs(text[:a]))
             else:
-                x0 = base_x + fm.horizontalAdvance(
-                    expand_tabs(text[d0:a]) if a >= d0 else ""
-                )
+                x0 = base_x + fm.horizontalAdvance(expand_tabs(text[d0:a]) if a >= d0 else "")
             w = max(2, fm.horizontalAdvance(expand_tabs(text[a:b])))
             painter.setPen(self._spell_color)
             y_line = ry + lh - 2
@@ -1402,9 +1380,7 @@ class VirtualEditor(QAbstractScrollArea):
         return super().viewportEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
-        if self._selecting and event is not None and (
-            event.buttons() & Qt.MouseButton.LeftButton
-        ):
+        if self._selecting and event is not None and (event.buttons() & Qt.MouseButton.LeftButton):
             pos: QPoint = event.position().toPoint()
             line, col = self._hit_test(pos)
             self._cursor_line = line
@@ -1585,9 +1561,8 @@ class VirtualEditor(QAbstractScrollArea):
                 # pad line with spaces if column beyond EOL
                 if c0 > len(line_text):
                     pad = c0 - len(line_text)
-                    pad_off = (
-                        self._doc.line_index().line_start(line)
-                        + self._col_to_byte(line, len(line_text))
+                    pad_off = self._doc.line_index().line_start(line) + self._col_to_byte(
+                        line, len(line_text)
                     )
                     self._insert_bytes_tracked(pad_off, b" " * pad)
                     line_text = self._doc.line_text(line)
@@ -1595,9 +1570,7 @@ class VirtualEditor(QAbstractScrollArea):
                 b = min(max(c1, c0), len(self._doc.line_text(line)))
                 start = self._doc.line_index().line_start(line) + self._col_to_byte(line, a)
                 if b > a:
-                    end = self._doc.line_index().line_start(line) + self._col_to_byte(
-                        line, b
-                    )
+                    end = self._doc.line_index().line_start(line) + self._col_to_byte(line, b)
                     self._delete_bytes_tracked(start, end - start)
                 self._insert_bytes_tracked(start, data)
                 new_col = a + len(text)
@@ -1629,9 +1602,7 @@ class VirtualEditor(QAbstractScrollArea):
         if b"\n" in data or b"\r" in data:
             self._cursor_line = self._doc.line_index().offset_to_line(off + len(data))
             line_start = self._doc.line_index().line_start(self._cursor_line)
-            self._cursor_col = self._byte_to_col(
-                self._cursor_line, off + len(data) - line_start
-            )
+            self._cursor_col = self._byte_to_col(self._cursor_line, off + len(data) - line_start)
         else:
             self._cursor_col += len(text)
         self._emit_edit()
@@ -1647,9 +1618,7 @@ class VirtualEditor(QAbstractScrollArea):
                     start = self._doc.line_index().line_start(line) + self._col_to_byte(
                         line, c0 - 1
                     )
-                    end = self._doc.line_index().line_start(line) + self._col_to_byte(
-                        line, c0
-                    )
+                    end = self._doc.line_index().line_start(line) + self._col_to_byte(line, c0)
                     if end > start:
                         self._delete_bytes_tracked(start, end - start)
                 # rebuild carets
@@ -1657,9 +1626,7 @@ class VirtualEditor(QAbstractScrollArea):
                 rebuilt.sort(key=lambda t: (t[0], t[1]))
                 if rebuilt:
                     self._cursor_line, self._cursor_col, _ = rebuilt[-1]
-                    self._extra_cursors = [
-                        (ln, c, c) for ln, c, _ in rebuilt[:-1]
-                    ]
+                    self._extra_cursors = [(ln, c, c) for ln, c, _ in rebuilt[:-1]]
                 self._clear_selection()
                 self._emit_edit()
                 return
@@ -1680,12 +1647,8 @@ class VirtualEditor(QAbstractScrollArea):
                     text = self._doc.line_text(line)
                     if c0 >= len(text):
                         continue
-                    start = self._doc.line_index().line_start(line) + self._col_to_byte(
-                        line, c0
-                    )
-                    end = self._doc.line_index().line_start(line) + self._col_to_byte(
-                        line, c0 + 1
-                    )
+                    start = self._doc.line_index().line_start(line) + self._col_to_byte(line, c0)
+                    end = self._doc.line_index().line_start(line) + self._col_to_byte(line, c0 + 1)
                     if end > start:
                         self._delete_bytes_tracked(start, end - start)
                 self._emit_edit()

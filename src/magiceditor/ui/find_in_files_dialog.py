@@ -63,9 +63,7 @@ class FindInFilesDialog(QDialog):
         self.case_box = QCheckBox(t("find_files.match_case", "Diferenciar maiúsculas"), self)
         self.regex_box = QCheckBox(t("find_files.regex", "Regex"), self)
         self.scope_box = QComboBox(self)
-        self.scope_box.addItem(
-            t("find_files.scope_workspace", "Pasta do projeto"), "workspace"
-        )
+        self.scope_box.addItem(t("find_files.scope_workspace", "Pasta do projeto"), "workspace")
         self.scope_box.addItem(t("find_files.scope_tabs", "Abas abertas"), "tabs")
         if self._root is None or not self._root.is_dir():
             idx = self.scope_box.findData("tabs")
@@ -201,9 +199,7 @@ class FindInFilesDialog(QDialog):
                 on_progress=_progress,
             )
             if hits is None:
-                self._status.setText(
-                    self._t("find_files.cancelled", "Busca cancelada.")
-                )
+                self._status.setText(self._t("find_files.cancelled", "Busca cancelada."))
                 return
 
         if not hits:

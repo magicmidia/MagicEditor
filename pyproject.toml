@@ -72,12 +72,14 @@ ignore = [
   "SIM108",  # ternary style optional
   "N802",    # Qt overrides use camelCase (highlightBlock, etc.)
   "PLR0912", # complex key handlers / paint paths in UI widgets
+  "PLC0415", # lazy imports intentional (optional Qt, cold start, optional packs)
+  "PLW0603", # deliberate module-level icon pack singleton
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLR2004"]
-"**/__main__.py" = ["E402", "PLC0415"]
-"**/app.py" = ["PLC0415"] # lazy Qt import keeps core CLI import light
+"tests/**" = ["PLR2004", "E402"]
+"**/__main__.py" = ["E402"]
+"**/app.py" = [] # PLC0415 covered globally
 
 [tool.ruff.format]
 quote-style = "double"

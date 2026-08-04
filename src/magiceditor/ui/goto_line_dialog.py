@@ -43,9 +43,7 @@ class GoToLineDialog(QDialog):
         self._input.setText(str(max(1, min(self._max, current_line))))
         self._input.selectAll()
 
-        self._status = QLabel(
-            t("goto.range", "Linha (1-{max})").format(max=self._max), self
-        )
+        self._status = QLabel(t("goto.range", "Linha (1-{max})").format(max=self._max), self)
         self._status.setObjectName("findDialogStatus")
 
         btn_go = QPushButton(t("goto.go", "Ir"), self)

@@ -24,9 +24,7 @@ _PATTERNS: dict[str, list[tuple[str, re.Pattern[str]]]] = {
     "java": [
         (
             "class",
-            re.compile(
-                r"^\s*(?:public\s+|private\s+|protected\s+)?class\s+(\w+)", re.M
-            ),
+            re.compile(r"^\s*(?:public\s+|private\s+|protected\s+)?class\s+(\w+)", re.M),
         ),
         (
             "method",

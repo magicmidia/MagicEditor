@@ -6,10 +6,10 @@ import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6.QtWidgets import QApplication  # noqa: E402
+from PyQt6.QtWidgets import QApplication
 
-from magiceditor.services.settings import SessionState  # noqa: E402
-from magiceditor.ui.settings_dialog import SettingsDialog  # noqa: E402
+from magiceditor.services.settings import SessionState
+from magiceditor.ui.settings_dialog import SettingsDialog
 
 
 @pytest.fixture(scope="module")

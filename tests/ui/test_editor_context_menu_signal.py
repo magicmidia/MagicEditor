@@ -6,13 +6,13 @@ import pytest
 
 pytest.importorskip("PyQt6")
 
-from PyQt6.QtCore import QPoint, QPointF, Qt  # noqa: E402
-from PyQt6.QtGui import QMouseEvent  # noqa: E402
-from PyQt6.QtWidgets import QApplication  # noqa: E402
+from PyQt6.QtCore import QPoint, QPointF, Qt
+from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtWidgets import QApplication
 
-from magiceditor.core.piece_table import PieceTable  # noqa: E402
-from magiceditor.services.document import Document  # noqa: E402
-from magiceditor.ui.virtual_editor import VirtualEditor  # noqa: E402
+from magiceditor.core.piece_table import PieceTable
+from magiceditor.services.document import Document
+from magiceditor.ui.virtual_editor import VirtualEditor
 
 
 @pytest.fixture(scope="module")

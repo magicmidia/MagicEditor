@@ -52,9 +52,7 @@ class EditorTab(QWidget):
         if isinstance(self.editor, VirtualEditor):
             self.editor.textChanged.connect(self._refresh_minimap)
             self.editor.cursorPositionChanged.connect(self._refresh_minimap_viewport)
-            self.editor.verticalScrollBar().valueChanged.connect(
-                self._refresh_minimap_viewport
-            )
+            self.editor.verticalScrollBar().valueChanged.connect(self._refresh_minimap_viewport)
 
         editor_row = QWidget(self)
         row_lay = QHBoxLayout(editor_row)
@@ -347,4 +345,3 @@ class EditorTab(QWidget):
             if isinstance(self.editor, VirtualEditor)
             else self.editor.textCursor().positionInBlock() + 1
         )
-

@@ -33,9 +33,7 @@ def test_empty_strip_hit_detects_free_area(qapp) -> None:
     if local.x() >= tabs.width():
         local = QPoint(tabs.width() - 40, local.y())
     # May be outside bar widget but still empty strip
-    assert tabs._hit_empty_strip(local) is True or bar._is_empty_hit(
-        bar.mapFrom(tabs, local)
-    )
+    assert tabs._hit_empty_strip(local) is True or bar._is_empty_hit(bar.mapFrom(tabs, local))
 
 
 def test_empty_double_click_on_bar_emits(qapp) -> None:
@@ -68,7 +66,10 @@ def test_empty_double_click_on_bar_emits(qapp) -> None:
 
 def test_new_tab_corner_button_exists(qapp) -> None:
     tabs = TabManager()
-    btn = tabs.cornerWidget(Qt.Corner.TopRightCorner)
+    corner = tabs.cornerWidget(Qt.Corner.TopRightCorner)
+    assert corner is not None
+    # Corner may be a wrapper QWidget holding scroll + new buttons
+    btn = getattr(tabs, "_new_tab_btn", None)
     assert btn is not None
     hits: list[int] = []
     tabs.empty_area_double_clicked.connect(lambda: hits.append(1))

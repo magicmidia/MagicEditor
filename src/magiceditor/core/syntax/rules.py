@@ -161,7 +161,18 @@ def rules_for(lang: str) -> list[Rule]:
             *common_number,
         ]
 
-    if lang in {"shell", "powershell", "yaml", "toml", "ini", "ruby", "dockerfile", "makefile", "batch", "cmake"}:
+    if lang in {
+        "shell",
+        "powershell",
+        "yaml",
+        "toml",
+        "ini",
+        "ruby",
+        "dockerfile",
+        "makefile",
+        "batch",
+        "cmake",
+    }:
         return [
             *hash_comment,
             *common_string,

@@ -74,9 +74,7 @@ class GotoAnythingDialog(QDialog):
             needle = q[1:].casefold()
             for name, line in self._symbols:
                 if not needle or needle in name.casefold():
-                    items.append(
-                        GotoTarget(kind="symbol", label=f"{name}  :{line}", line=line)
-                    )
+                    items.append(GotoTarget(kind="symbol", label=f"{name}  :{line}", line=line))
         else:
             needle = q.casefold()
             for p in self._files:

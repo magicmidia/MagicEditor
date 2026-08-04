@@ -206,15 +206,9 @@ class MagicSplash(QWidget):
         x0, y0 = rect.x(), rect.y()
         s = rect.width()
         painter.drawLine(int(x0 + m), int(y0 + s - m), int(x0 + m), int(y0 + m * 1.1))
-        painter.drawLine(
-            int(x0 + m), int(y0 + m * 1.1), int(x0 + s / 2), int(y0 + s * 0.55)
-        )
-        painter.drawLine(
-            int(x0 + s / 2), int(y0 + s * 0.55), int(x0 + s - m), int(y0 + m * 1.1)
-        )
-        painter.drawLine(
-            int(x0 + s - m), int(y0 + m * 1.1), int(x0 + s - m), int(y0 + s - m)
-        )
+        painter.drawLine(int(x0 + m), int(y0 + m * 1.1), int(x0 + s / 2), int(y0 + s * 0.55))
+        painter.drawLine(int(x0 + s / 2), int(y0 + s * 0.55), int(x0 + s - m), int(y0 + m * 1.1))
+        painter.drawLine(int(x0 + s - m), int(y0 + m * 1.1), int(x0 + s - m), int(y0 + s - m))
         painter.restore()
 
     def finish_after_minimum(self, app: QApplication) -> None:

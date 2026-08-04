@@ -11,9 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # Word tokens: letters including common Latin accents; skip pure numbers.
-_WORD_RE = re.compile(
-    r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ']*(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?"
-)
+_WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ']*(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?")
 
 # Languages that get spell-check by default (prose). Code stays off unless forced.
 SPELL_DEFAULT_ON: frozenset[str] = frozenset(

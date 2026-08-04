@@ -64,13 +64,9 @@ def build_editor_context_menu(
     # --- Spell corrector (top, when there is a word under the caret) ------
     word = (spell_word or "").strip()
     if word and (
-        on_spell_ignore is not None
-        or on_spell_add is not None
-        or on_spell_suggestion is not None
+        on_spell_ignore is not None or on_spell_add is not None or on_spell_suggestion is not None
     ):
-        header = menu.addAction(
-            t("spell.word_header", "Ortografia: “{w}”").format(w=word)
-        )
+        header = menu.addAction(t("spell.word_header", "Ortografia: “{w}”").format(w=word))
         header.setEnabled(False)
         hf = QFont(header.font())
         hf.setBold(True)
@@ -80,16 +76,10 @@ def build_editor_context_menu(
             suggestions = list(spell_suggestions or [])
             if suggestions and on_spell_suggestion is not None and not read_only:
                 for sug in suggestions:
-                    act = menu.addAction(
-                        t("spell.suggestion", "→ {s}").format(s=sug)
-                    )
-                    act.triggered.connect(
-                        lambda _checked=False, s=sug: on_spell_suggestion(s)
-                    )
+                    act = menu.addAction(t("spell.suggestion", "→ {s}").format(s=sug))
+                    act.triggered.connect(lambda _checked=False, s=sug: on_spell_suggestion(s))
             else:
-                none = menu.addAction(
-                    t("spell.no_suggestions", "(sem sugestões)")
-                )
+                none = menu.addAction(t("spell.no_suggestions", "(sem sugestões)"))
                 none.setEnabled(False)
         else:
             ok = menu.addAction(t("spell.word_ok", "Palavra reconhecida"))

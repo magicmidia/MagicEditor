@@ -249,7 +249,9 @@ class AppSettings:
             if item.get("active"):
                 entry["active"] = True
             if isinstance(item.get("bookmarks"), list):
-                entry["bookmarks"] = [int(x) for x in item["bookmarks"] if str(x).lstrip("-").isdigit()]
+                entry["bookmarks"] = [
+                    int(x) for x in item["bookmarks"] if str(x).lstrip("-").isdigit()
+                ]
             cur = item.get("cursor")
             if isinstance(cur, (list, tuple)) and len(cur) >= 2:
                 try:
@@ -294,20 +296,14 @@ class AppSettings:
             font_size=_clamp_int(qs.value("editor/font_size", 12), 8, 48, 12),
             tab_width=_clamp_int(qs.value("editor/tab_width", 4), 2, 8, 4),
             indent_with_spaces=self._as_bool(qs.value("editor/indent_with_spaces"), True),
-            highlight_current_line=self._as_bool(
-                qs.value("editor/highlight_current_line"), True
-            ),
+            highlight_current_line=self._as_bool(qs.value("editor/highlight_current_line"), True),
             restore_session=self._as_bool(qs.value("ui/restore_session"), True),
             show_status_bar=self._as_bool(qs.value("ui/show_status_bar"), True),
             show_toolbar=self._as_bool(qs.value("ui/show_toolbar"), True),
             show_splash=self._as_bool(qs.value("ui/show_splash"), True),
             spell_check=self._as_bool(qs.value("editor/spell_check"), True),
             spell_language=qs.value("editor/spell_language", "pt_BR", str) or "pt_BR",
-            spell_force=(
-                True
-                if self._as_bool(qs.value("editor/spell_force"), False)
-                else None
-            ),
+            spell_force=(True if self._as_bool(qs.value("editor/spell_force"), False) else None),
             spell_extra_languages=qs.value("editor/spell_extra", "", str) or "",
             autosave_interval_sec=_clamp_int(qs.value("editor/autosave_sec", 0), 0, 3600, 0),
             show_minimap=self._as_bool(qs.value("ui/show_minimap"), False),
@@ -318,21 +314,15 @@ class AppSettings:
             brace_match=self._as_bool(qs.value("editor/brace_match"), True),
             syntax_highlight=self._as_bool(qs.value("editor/syntax_highlight"), True),
             caret_width=_clamp_int(qs.value("editor/caret_width", 1), 1, 4, 1),
-            trim_trailing_on_save=self._as_bool(
-                qs.value("editor/trim_trailing_on_save"), False
-            ),
-            insert_final_newline=self._as_bool(
-                qs.value("editor/insert_final_newline"), False
-            ),
+            trim_trailing_on_save=self._as_bool(qs.value("editor/trim_trailing_on_save"), False),
+            insert_final_newline=self._as_bool(qs.value("editor/insert_final_newline"), False),
             editor_context_menu=self._as_bool(qs.value("editor/context_menu"), True),
             tab_height=_clamp_int(qs.value("tabs/height", 28), 22, 40, 28),
             tab_min_width=_clamp_int(qs.value("tabs/min_width", 72), 48, 160, 72),
             tab_max_width=_clamp_int(qs.value("tabs/max_width", 220), 120, 400, 220),
             show_tab_scroll_buttons=self._as_bool(qs.value("tabs/scroll_buttons"), True),
             middle_click_close=self._as_bool(qs.value("tabs/middle_click_close"), True),
-            confirm_close_unsaved=self._as_bool(
-                qs.value("tabs/confirm_close_unsaved"), True
-            ),
+            confirm_close_unsaved=self._as_bool(qs.value("tabs/confirm_close_unsaved"), True),
             recent_files_max=_clamp_int(qs.value("session/recent_max", 15), 5, 50, 15),
             gpu_acceleration=self._as_bool(qs.value("graphics/gpu_acceleration"), True),
             gpu_multisample=self._as_bool(qs.value("graphics/gpu_multisample"), True),

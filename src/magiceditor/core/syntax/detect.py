@@ -202,7 +202,6 @@ _EXT_MAP: dict[str, str] = {
     "make": "makefile",
     "cmake": "cmake",
     "ninja": "text",
-    "gradle": "java",
     "bazel": "text",
     "bzl": "text",
     # GraphQL / API
@@ -238,7 +237,6 @@ _EXT_MAP: dict[str, str] = {
     "webp": "image",
     "ico": "image",
     "bmp": "image",
-    "svg": "xml",
     "ttf": "font",
     "otf": "font",
     "woff": "font",
@@ -323,7 +321,6 @@ _BASENAME_MAP: dict[str, str] = {
     "copying": "text",
     "changelog": "markdown",
     "changelog.md": "markdown",
-    "makefile": "makefile",
 }
 
 

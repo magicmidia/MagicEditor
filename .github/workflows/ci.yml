@@ -10,19 +10,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          # Invalidate cache when deps change (uv.lock preferred; pyproject as fallback)
+          cache-dependency-glob: |
+            **/uv.lock
+            **/pyproject.toml
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install
         run: uv sync --all-extras
+
       - name: Ruff
         run: uv run ruff check src tests
+
       - name: Format check
         run: uv run ruff format --check src tests
+
       - name: Tests (core)
         run: uv run pytest tests/core -q
         env:
           QT_QPA_PLATFORM: offscreen
+
+      - name: Tests (services + ui offscreen)
+        run: |
+          mkdir -p "$RUNNER_TEMP/pytest-tmp"
+          uv run pytest tests/services tests/ui tests/test_version.py -q
+        env:
+          QT_QPA_PLATFORM: offscreen
+          TMPDIR: ${{ runner.temp }}/pytest-tmp
+          TEMP: ${{ runner.temp }}/pytest-tmp
+          TMP: ${{ runner.temp }}/pytest-tmp

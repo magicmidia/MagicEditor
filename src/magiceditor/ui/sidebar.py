@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from magiceditor.version import version_label
+
 
 class _NavButton(QPushButton):
     """Full-width sidebar nav row (Explorer / Search / Settings)."""
@@ -54,8 +56,6 @@ class Sidebar(QWidget):
         # --- Header (Workspace) ---
         self._ws_title = QLabel("Workspace", self)
         self._ws_title.setObjectName("sidebarWorkspaceTitle")
-        from magiceditor.version import version_label
-
         self._ws_sub = QLabel(version_label(), self)
         self._ws_sub.setObjectName("sidebarWorkspaceSub")
         badge = QLabel("✦", self)
