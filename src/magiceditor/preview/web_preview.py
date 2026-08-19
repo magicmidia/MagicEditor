@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QTextBrowser, QVBoxLayout, QWidget
 
 from magiceditor.preview.markdown_preview import render_markdown
+from magiceditor.preview.preview_css import wrap_preview_html
+from magiceditor.preview.sanitize import sanitize_html
+from magiceditor.themes.tokens import chrome_tokens
 
 
 class WebPreview(QWidget):
@@ -12,25 +16,31 @@ class WebPreview(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self._theme_id = "luminous_void"
         self._view = QTextBrowser(self)
-        self._view.setOpenExternalLinks(True)
+        self._view.setObjectName("markdownPreview")
+        self._view.setOpenExternalLinks(False)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._view)
+        self.apply_theme(self._theme_id)
+
+    def apply_theme(self, theme_id: str) -> None:
+        self._theme_id = theme_id or "luminous_void"
+        tok = chrome_tokens(self._theme_id)
+        pal = self._view.palette()
+        pal.setColor(QPalette.ColorRole.Base, QColor(tok.bg))
+        pal.setColor(QPalette.ColorRole.Text, QColor(tok.fg))
+        pal.setColor(QPalette.ColorRole.Window, QColor(tok.bg))
+        pal.setColor(QPalette.ColorRole.WindowText, QColor(tok.fg))
+        self._view.setPalette(pal)
 
     def set_html(self, html: str) -> None:
+        html = sanitize_html(html)
+        if "<html" not in html[:200].lower():
+            html = wrap_preview_html(html, self._theme_id)
         self._view.setHtml(html)
 
     def set_markdown(self, source: str) -> None:
         body = render_markdown(source)
-        self.set_html(
-            "<html><head><style>"
-            "body{font-family:Segoe UI,sans-serif;padding:16px;line-height:1.5;}"
-            "pre,code{font-family:Consolas,monospace;background:rgba(127,127,127,.12);"
-            "border-radius:6px;}"
-            "pre{padding:12px;overflow:auto;}"
-            "code{padding:1px 4px;}"
-            "h1,h2,h3{margin-top:1.2em;}"
-            "</style></head><body>"
-            f"{body}</body></html>"
-        )
+        self.set_html(wrap_preview_html(body, self._theme_id))

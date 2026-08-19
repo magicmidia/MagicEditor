@@ -1,6 +1,6 @@
 /* Monokai Pro — warm charcoal + green accent (dense menus) */
 QMainWindow { background-color: #2D2A2E; color: #FCFCFA; }
-QWidget { color: #FCFCFA; background-color: transparent; }
+QWidget { color: #FCFCFA; }
 
 QMenuBar {
   background-color: #221F22; color: #FCFCFA;
@@ -80,6 +80,8 @@ QTreeView::item:hover { background-color: #403E41; }
 QTreeView::item:selected { background-color: #5B595C; color: #A9DC76; }
 
 QDialog { background-color: #221F22; color: #FCFCFA; }
+QDialog QLabel { color: #FCFCFA; background: transparent; }
+QMessageBox QLabel { color: #FCFCFA; background: transparent; }
 QLineEdit {
   background-color: #2D2A2E; color: #FCFCFA; border: 1px solid #5B595C;
   border-radius: 4px; padding: 5px 8px; min-height: 16px;
@@ -147,7 +149,7 @@ QToolTip {
 }
 QMessageBox { background-color: #221F22; }
 QMessageBox, QDialog#aboutDialog { background-color: #2D2A2E; border: 1px solid #5B595C; border-radius: 8px; }
-QDialog#aboutDialog QLabel { color: inherit; padding: 6px 4px; }
+QDialog#aboutDialog QLabel { color: #FCFCFA; padding: 6px 4px; }
 QLabel#aboutTitle { color: #FCFCFA; font-weight: 600; }
 QLabel#aboutMuted { color: #939293; font-size: 10pt; }
 QMessageBox QPushButton, QPushButton#aboutOk {

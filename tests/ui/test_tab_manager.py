@@ -7,9 +7,34 @@ from PyQt6.QtCore import QPoint, QPointF, Qt
 from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import QLabel
 
+from magiceditor.ui.magic_tab_bar import MagicTabBar
+from magiceditor.ui.tab_filters import CloseButtonFilter, StripClickFilter
 from magiceditor.ui.tab_manager import TabManager
 
 pytestmark = pytest.mark.usefixtures("qapp")
+
+
+def test_tab_manager_tooltips_follow_locale(qapp) -> None:
+    """J2.4: tab chrome strings come from locales, not hardcoded PT."""
+    from magiceditor.i18n.translator import TranslatorManager
+
+    tr = TranslatorManager()
+    tr.load("en_US")
+    tabs = TabManager()
+    tabs.set_translator(tr)
+    assert tabs._new_tab_btn.toolTip() == "New file"
+    assert "Novo arquivo" not in tabs._new_tab_btn.toolTip()
+    tr.load("pt_BR")
+    tabs.retranslate_ui()
+    assert tabs._new_tab_btn.toolTip() == "Novo arquivo"
+
+
+def test_tab_manager_uses_extracted_bar_and_filters(qapp) -> None:
+    """J1.5: TabManager composes MagicTabBar + extracted filters."""
+    tabs = TabManager()
+    assert isinstance(tabs.tabBar(), MagicTabBar)
+    assert isinstance(tabs._close_filter, CloseButtonFilter)
+    assert isinstance(tabs._strip_filter, StripClickFilter)
 
 
 def test_tab_bar_is_movable(qapp) -> None:

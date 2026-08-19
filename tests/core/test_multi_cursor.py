@@ -1,5 +1,7 @@
 from magiceditor.core.multi_cursor import (
+    find_all_in_line_source,
     find_all_occurrences,
+    find_next_in_line_source,
     find_next_occurrence,
     restore_carets_after_multi_insert,
     word_at,
@@ -13,6 +15,35 @@ def test_find_next_and_all() -> None:
     assert nxt.line == 0 and nxt.col == 6
     all_hits = find_all_occurrences(lines, "aa")
     assert len(all_hits) == 3
+
+
+def test_find_next_in_line_source_does_not_preload() -> None:
+    """K14: accessor is called per line, never handed a full list."""
+    store = {0: "aa xx", 1: "yy aa"}
+    seen: list[int] = []
+
+    def line_at(i: int) -> str:
+        seen.append(i)
+        return store[i]
+
+    hit = find_next_in_line_source(line_at, 2, "aa", after_line=0, after_col=1)
+    assert hit is not None
+    assert hit.line == 1 and hit.col == 3
+    assert seen[0] == 0
+    all_hits = find_all_in_line_source(line_at, 2, "aa", max_hits=200)
+    assert len(all_hits) == 2
+
+
+def test_ctrl_d_paths_do_not_call_full_read_lines() -> None:
+    from pathlib import Path
+
+    src = Path("src/magiceditor/ui/power_features.py").read_text(encoding="utf-8")
+    add = src.split("def multi_cursor_add_next", 1)[1].split("def multi_cursor_select_all", 1)[0]
+    all_fn = src.split("def multi_cursor_select_all", 1)[1].split("def multi_cursor_clear", 1)[0]
+    assert "read_lines(tab.document)" not in add
+    assert "read_lines(tab.document)" not in all_fn
+    assert "find_next_in_line_source" in add
+    assert "find_all_in_line_source" in all_fn
 
 
 def test_word_at() -> None:

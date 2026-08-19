@@ -118,9 +118,8 @@ class Sidebar(QWidget):
         self._tree = QTreeView(self)
         self._tree.setObjectName("sidebarTree")
         self._model = QFileSystemModel(self)
-        self._model.setRootPath("")
         self._tree.setModel(self._model)
-        self._tree.setRootIndex(self._model.index(str(Path.home())))
+        # K16: do not index the whole disk until a workspace is set.
         for col in range(1, 4):
             self._tree.hideColumn(col)
         self._tree.setHeaderHidden(True)

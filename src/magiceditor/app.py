@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from collections.abc import Sequence
@@ -13,10 +14,13 @@ from magiceditor.services.settings import AppSettings
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.version import APP_NAME, APP_ORG, SPLASH_MIN_SECONDS, version_display
 
+_log = logging.getLogger(__name__)
+
 
 def run(argv: Sequence[str] | None = None) -> int:
     """Start the Qt event loop. Returns process exit code."""
     args = list(argv if argv is not None else sys.argv)
+    _log.info("Starting %s %s", APP_NAME, version_display())
 
     from PyQt6.QtCore import Qt
     from PyQt6.QtWidgets import QApplication
@@ -42,6 +46,14 @@ def run(argv: Sequence[str] | None = None) -> int:
     app.setApplicationName(APP_NAME)
     app.setOrganizationName(APP_ORG)
     app.setApplicationVersion(version_display())
+
+    cli_paths = [a for a in args[1:] if not a.startswith("-")]
+    open_in_existing = bool(getattr(pre_session, "open_in_existing_window", True))
+    if open_in_existing:
+        from magiceditor.ui.single_instance import claim_or_forward
+
+        if not claim_or_forward(cli_paths):
+            return 0
 
     # Fusion gives consistent metrics; QSS layers the look.
     app.setStyle("Fusion")
@@ -82,29 +94,39 @@ def run(argv: Sequence[str] | None = None) -> int:
         splash.set_message("Carregando interface…")
         app.processEvents()
 
-    window = MainWindow(translator=translator, themes=themes, settings=settings)
+    try:
+        window = MainWindow(translator=translator, themes=themes, settings=settings)
+    except Exception:
+        _log.exception("Main window failed to construct")
+        raise
     window.apply_graphics_preferences()
     if splash is not None:
         splash.set_message("Pronto")
         app.processEvents()
-        # Guarantee minimum visibility (default 5s)
         remaining = SPLASH_MIN_SECONDS - (time.monotonic() - splash_t0)
         if remaining > 0:
             deadline = time.monotonic() + remaining
             while time.monotonic() < deadline:
                 app.processEvents()
-                time.sleep(0.016)
         splash.close()
         splash = None
 
     window.show()
+    if open_in_existing:
+        from magiceditor.ui.single_instance import attach_receiver, raise_window
+
+        def _open_from_other_instance(paths: list[str]) -> None:
+            for path in paths:
+                window.open_path(path)
+            raise_window(window)
+
+        attach_receiver(_open_from_other_instance)
     # First-run language/theme wizard (once) — after splash
     with suppress(Exception):
         window.maybe_show_first_run()
 
     # CLI files override / append to session
-    for arg in args[1:]:
-        if not arg.startswith("-"):
-            window.open_path(arg)
+    for path in cli_paths:
+        window.open_path(path)
 
     return app.exec()

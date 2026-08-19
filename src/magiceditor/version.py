@@ -11,22 +11,22 @@ APP_NAME: str = "MagicEditor"
 APP_ORG: str = "MagicEditor"
 
 # Semver core (keep aligned with pyproject.toml [project].version)
-VERSION: str = "0.9.1"
+VERSION: str = "0.9.2"
 
 # Marketing / channel label (empty string for stable releases)
 STAGE: str = "BETA"  # e.g. "BETA", "RC1", "" for stable
 
 # Minimum splash visibility (seconds) when splash is enabled
-SPLASH_MIN_SECONDS: float = 5.0
+SPLASH_MIN_SECONDS: float = 1.5
 
 
 def version_core() -> str:
-    """Numeric version only, e.g. ``0.9.1``."""
+    """Numeric version only, e.g. ``0.9.2``."""
     return VERSION
 
 
 def version_display() -> str:
-    """User-facing string, e.g. ``0.9.1 BETA`` or ``0.9.1``."""
+    """User-facing string, e.g. ``0.9.2 BETA`` or ``0.9.2``."""
     stage = (STAGE or "").strip()
     if stage:
         return f"{VERSION} {stage}"
@@ -34,19 +34,19 @@ def version_display() -> str:
 
 
 def version_label() -> str:
-    """Short status-bar form, e.g. ``v0.9.1 BETA``."""
+    """Short status-bar form, e.g. ``v0.9.2 BETA``."""
     return f"v{version_display()}"
 
 
 def about_version_text(*, prefix: str = "Versão") -> str:
-    """About dialog line: ``Versão 0.9.1 BETA``."""
+    """About dialog line: ``Versão 0.9.2 BETA``."""
     return f"{prefix} {version_display()}"
 
 
 def pep440() -> str:
     """Best-effort PEP 440 string for packaging tools.
 
-    BETA → ``0.9.1b0``; empty stage → ``0.9.1``.
+    BETA → ``0.9.2b0``; empty stage → ``0.9.2``.
     """
     stage = (STAGE or "").strip().upper()
     if not stage:

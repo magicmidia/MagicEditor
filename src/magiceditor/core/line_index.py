@@ -36,6 +36,12 @@ class LineIndex:
     @classmethod
     def from_buffer(cls, data: Any) -> LineIndex:
         """Build index from any buffer supporting ``len`` and int indexing."""
+        finder = getattr(data, "find", None)
+        if callable(finder) and not isinstance(data, str):
+            try:
+                return cls._from_find(data)
+            except (TypeError, ValueError):
+                pass
         starts: list[int] = []
         content_ends: list[int] = []
         start = 0
@@ -65,6 +71,39 @@ class LineIndex:
                 i += 1
             else:
                 i += 1
+        starts.append(start)
+        content_ends.append(n)
+        return cls(starts, content_ends, n)
+
+    @classmethod
+    def _from_find(cls, data: Any) -> LineIndex:
+        """Index newlines via ``bytes.find`` (no per-byte Python loop)."""
+        n = len(data)
+        starts: list[int] = []
+        content_ends: list[int] = []
+        start = 0
+        pos = 0
+        while pos < n:
+            lf = data.find(b"\n", pos)
+            cr = data.find(b"\r", pos)
+            if lf < 0 and cr < 0:
+                break
+            if cr < 0 or (0 <= lf < cr):
+                starts.append(start)
+                content_ends.append(lf)
+                start = lf + 1
+                pos = start
+            else:
+                starts.append(start)
+                content_ends.append(cr)
+                if cr + 1 < n:
+                    nxt = data[cr + 1 : cr + 2]
+                    if nxt in (b"\n", 10):
+                        start = cr + 2
+                        pos = start
+                        continue
+                start = cr + 1
+                pos = start
         starts.append(start)
         content_ends.append(n)
         return cls(starts, content_ends, n)

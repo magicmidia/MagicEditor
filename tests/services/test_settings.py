@@ -118,6 +118,7 @@ def test_editor_and_chrome_prefs_roundtrip(tmp_path: Path) -> None:
         indent_with_spaces=False,
         highlight_current_line=False,
         restore_session=False,
+        open_in_existing_window=False,
         show_status_bar=False,
         show_toolbar=False,
         word_wrap=True,
@@ -132,6 +133,7 @@ def test_editor_and_chrome_prefs_roundtrip(tmp_path: Path) -> None:
     assert loaded.indent_with_spaces is False
     assert loaded.highlight_current_line is False
     assert loaded.restore_session is False
+    assert loaded.open_in_existing_window is False
     assert loaded.show_status_bar is False
     assert loaded.show_toolbar is False
     assert loaded.word_wrap is True

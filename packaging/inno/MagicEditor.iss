@@ -11,7 +11,7 @@
 
 #define MyAppName "MagicEditor"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.9.1"
+  #define MyAppVersion "0.9.2"
 #endif
 #define MyAppPublisher "MagicEditor Contributors"
 #define MyAppURL "https://github.com/magicmidia/MagicEditor"
@@ -115,6 +115,12 @@ Root: HKLM; Subkey: "Software\MagicEditor\Capabilities"; ValueType: string; Valu
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Editor de texto e código de alto desempenho"
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; Flags: uninsdeletekeyifempty
 
+; Repair leftover hijack: .bat/.cmd must stay executable (never uninstall these).
+Root: HKCR; Subkey: ".bat"; ValueType: string; ValueName: ""; ValueData: "batfile"
+Root: HKCR; Subkey: ".cmd"; ValueType: string; ValueName: ""; ValueData: "cmdfile"
+Root: HKCU; Subkey: "Software\Classes\.bat"; ValueType: string; ValueName: ""; ValueData: "batfile"
+Root: HKCU; Subkey: "Software\Classes\.cmd"; ValueType: string; ValueName: ""; ValueData: "cmdfile"
+
 ; Generated OpenWithProgids + optional defaults + Capabilities FileAssociations
 #include "associations.issinc"
 
@@ -154,6 +160,10 @@ begin
     3: Result := 'darcula';
     4: Result := 'cobalt_blue';
     5: Result := 'monokai_pro';
+    6: Result := 'tokyo_night';
+    7: Result := 'catppuccin_mocha';
+    8: Result := 'nord';
+    9: Result := 'rose_pine';
   else
     Result := 'luminous_void';
   end;
@@ -204,6 +214,10 @@ begin
   ThemeCombo.Items.Add('Darcula');
   ThemeCombo.Items.Add('Cobalt Blue');
   ThemeCombo.Items.Add('Monokai Pro');
+  ThemeCombo.Items.Add('Tokyo Night');
+  ThemeCombo.Items.Add('Catppuccin Mocha');
+  ThemeCombo.Items.Add('Nord');
+  ThemeCombo.Items.Add('Rosé Pine');
   ThemeCombo.ItemIndex := 0;
 
   PrefsHint := TNewStaticText.Create(PrefsPage);
@@ -230,12 +244,43 @@ begin
   RegWriteDWordValue(HKCU, 'Software\MagicEditor\MagicEditor\' + SubKey, ValueName, ValueData);
 end;
 
+procedure RestoreNativeScriptHandlers;
+begin
+  { Older setups set MagicEditor.Document as the .bat/.cmd default.
+    Explorer still shows "choose a program" if FileExts OpenWithProgids
+    lists MagicEditor.Document next to batfile — wipe those leftovers. }
+  RegWriteStringValue(HKEY_CLASSES_ROOT, '.bat', '', 'batfile');
+  RegWriteStringValue(HKEY_CLASSES_ROOT, '.cmd', '', 'cmdfile');
+  RegWriteStringValue(HKEY_CURRENT_USER, 'Software\Classes\.bat', '', 'batfile');
+  RegWriteStringValue(HKEY_CURRENT_USER, 'Software\Classes\.cmd', '', 'cmdfile');
+  RegDeleteValue(HKEY_CLASSES_ROOT, '.bat\OpenWithProgids', 'MagicEditor.Document');
+  RegDeleteValue(HKEY_CLASSES_ROOT, '.cmd\OpenWithProgids', 'MagicEditor.Document');
+  RegDeleteValue(HKEY_CURRENT_USER, 'Software\Classes\.bat\OpenWithProgids', 'MagicEditor.Document');
+  RegDeleteValue(HKEY_CURRENT_USER, 'Software\Classes\.cmd\OpenWithProgids', 'MagicEditor.Document');
+  RegDeleteValue(HKEY_LOCAL_MACHINE, 'Software\MagicEditor\Capabilities\FileAssociations', '.bat');
+  RegDeleteValue(HKEY_LOCAL_MACHINE, 'Software\MagicEditor\Capabilities\FileAssociations', '.cmd');
+  { Per-user Explorer picker cache (not covered by HKCR defaults). }
+  RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.bat\UserChoice');
+  RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.cmd\UserChoice');
+  RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.bat\OpenWithProgids');
+  RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.cmd\OpenWithProgids');
+  RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.bat\OpenWithList');
+  RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER,
+    'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.cmd\OpenWithList');
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   Lang, Theme: String;
 begin
   if CurStep = ssPostInstall then
   begin
+    RestoreNativeScriptHandlers;
     Lang := LangCode(LangCombo.ItemIndex);
     Theme := ThemeCode(ThemeCombo.ItemIndex);
 
@@ -258,7 +303,7 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    { Leave user QSettings (ui/theme etc.) — only remove install marker keys if empty }
+    RestoreNativeScriptHandlers;
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
   end;
 end;

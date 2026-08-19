@@ -27,3 +27,27 @@ def test_blank_document() -> None:
     doc = Document.blank()
     assert doc.path is None
     assert len(doc.buffer) == 0
+
+
+def test_open_midsize_file_keeps_full_buffer(tmp_path: Path) -> None:
+    """K9: probe is encoding-only; 64KB < size ≤ 5MB must keep every byte."""
+    path = tmp_path / "mid.txt"
+    tail = "LAST-LINE-MARKER\n"
+    body = ("HEAD\n" + ("x" * (80 * 1024)) + "\n" + tail).encode("utf-8")
+    path.write_bytes(body)
+    size = path.stat().st_size
+    assert 64 * 1024 < size <= 5 * 1024 * 1024
+    doc = open_document(path)
+    assert len(doc.buffer) == size
+    raw = doc.buffer.get_text(0, len(doc.buffer))
+    assert raw == body
+    assert b"LAST-LINE-MARKER" in raw
+    assert raw.endswith(b"LAST-LINE-MARKER\n")
+
+
+def test_huge_save_writes_chunks(tmp_path: Path) -> None:
+    path = tmp_path / "huge.txt"
+    doc = Document.from_text("chunk-save\n")
+    doc.huge_mode = True
+    save_document(doc, path)
+    assert b"chunk-save" in path.read_bytes()

@@ -10,6 +10,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from magiceditor.core.spell_backend import is_known, suggest_words
+
 # Word tokens: letters including common Latin accents; skip pure numbers.
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ']*(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?")
 
@@ -210,6 +212,8 @@ class SpellEngine:
         key = word.casefold()
         if key in self.ignore_session or key in self._lexicon:
             return True
+        if is_known(key, self.active_languages()):
+            return True
         # Allow ALL-CAPS acronyms length <= 6
         if word.isupper() and 1 < len(word) <= 6:
             return True
@@ -238,32 +242,34 @@ class SpellEngine:
         if not w or self.is_correct(w):
             return []
         key = w.casefold()
-        # Prefer same starting letter / similar length to keep this O(lexicon) cheap
+        # Pull a wide backend set, then rank by edit distance so close
+        # words (helo→hello) are not dropped behind frequent 1-letter swaps.
+        from_backend = suggest_words(key, self.active_languages(), limit=max(24, limit * 4))
         scored: list[tuple[int, str]] = []
-        for cand in self._lexicon:
-            if abs(len(cand) - len(key)) > 2:
+        seen: set[str] = set()
+        for cand in from_backend:
+            c = cand.casefold()
+            if not c or c == key or c in seen:
                 continue
-            # Skip very short noise
-            if len(cand) < 2:
+            dist = _edit_distance_leq(key, c, max_dist=2)
+            if dist is None or dist == 0:
+                continue
+            seen.add(c)
+            boost = 0 if c[:1] == key[:1] else 1
+            scored.append((dist * 10 + boost, c))
+        for cand in self._lexicon:
+            if cand in seen or abs(len(cand) - len(key)) > 2 or len(cand) < 2:
                 continue
             dist = _edit_distance_leq(key, cand, max_dist=2)
             if dist is None or dist == 0:
                 continue
-            # Same first letter is a mild boost (lower score)
-            boost = 0 if (cand[:1] == key[:1]) else 1
+            seen.add(cand)
+            boost = 0 if cand[:1] == key[:1] else 1
             scored.append((dist * 10 + boost, cand))
         scored.sort(key=lambda t: (t[0], t[1]))
         out: list[str] = []
-        seen: set[str] = set()
         for _score, cand in scored:
-            if cand in seen:
-                continue
-            seen.add(cand)
-            # Match capitalization of original
-            if w[:1].isupper():
-                disp = cand[:1].upper() + cand[1:]
-            else:
-                disp = cand
+            disp = cand[:1].upper() + cand[1:] if w[:1].isupper() else cand
             out.append(disp)
             if len(out) >= limit:
                 break

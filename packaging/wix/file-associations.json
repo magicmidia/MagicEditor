@@ -28,8 +28,6 @@
     ".hpp",
     ".sh",
     ".ps1",
-    ".bat",
-    ".cmd",
     ".toml",
     ".env",
     ".gitignore",

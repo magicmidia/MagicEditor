@@ -65,6 +65,17 @@ class PieceTable:
             remaining_take -= take
         return bytes(out)
 
+    def iter_chunks(self, size: int = 256 * 1024):
+        """Yield buffer slices so save need not materialize the whole file (K15)."""
+        if size <= 0:
+            raise ValueError("chunk size must be positive")
+        offset = 0
+        total = self._length
+        while offset < total:
+            take = min(size, total - offset)
+            yield self.get_text(offset, take)
+            offset += take
+
     def insert(self, offset: int, data: bytes | str) -> None:
         """Insert bytes (or UTF-8 string) at logical offset."""
         if isinstance(data, str):

@@ -23,6 +23,7 @@
 [CmdletBinding()]
 param(
     [switch]$Exe,
+    [switch]$Onedir,
     [switch]$Portable,
     [switch]$Msi,
     [switch]$Inno,
@@ -35,6 +36,11 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
+. (Join-Path $PSScriptRoot "_me_log.ps1")
+trap {
+    Write-MeLog "ERROR" $_.Exception.Message
+    break
+}
 
 if ($All) {
     $Exe = $true
@@ -42,7 +48,7 @@ if ($All) {
     $Msi = $true
     $Inno = $true
 }
-if (-not ($Exe -or $Portable -or $Msi -or $Inno)) {
+if (-not ($Exe -or $Onedir -or $Portable -or $Msi -or $Inno)) {
     # Default: onefile exe (most common for local delivery)
     $Exe = $true
 }
@@ -72,8 +78,9 @@ function Write-Step([string]$Message) {
 $ProductVersion = Get-ProductVersion -Override $Version
 $DistDir = Join-Path $Root "dist"
 $WorkDir = Join-Path $Root "build\pyinstaller"
-$ExePath = Join-Path $DistDir "MagicEditor.exe"
 $RootExePath = Join-Path $Root "MagicEditor.exe"
+$ExePath = $RootExePath
+$DistExePath = Join-Path $DistDir "MagicEditor.exe"
 $SpecPath = Join-Path $Root "MagicEditor.spec"
 $IconPath = Join-Path $Root "resources\icons\app\magiceditor.ico"
 
@@ -82,17 +89,42 @@ Write-Host "  root     : $Root"
 Write-Host "  version  : $ProductVersion"
 Write-Host "  icon     : $(if(Test-Path $IconPath){ $IconPath } else { '(missing)' })"
 Write-Host "  targets  :$(if($Exe){' exe'})$(if($Portable){' portable'})$(if($Msi){' msi'})$(if($Inno){' inno'})"
+Write-Host "  log      : $(Join-Path $Root 'MagicEditor.log')"
+Write-MeLog "INFO" "Build start version=$ProductVersion targets=$(if($Exe){'exe '})$(if($Portable){'portable '})$(if($Msi){'msi '})$(if($Inno){'inno'})"
 
 # --- Dependencies -------------------------------------------------------
 if (-not $SkipDeps) {
     Write-Step "Installing package + PyInstaller (editable + dev extras)"
     python -m pip install -e ".[dev]" -q
     if ($LASTEXITCODE -ne 0) {
+        Write-MeLog "ERROR" "pip install failed (exit $LASTEXITCODE)"
         throw "pip install failed (exit $LASTEXITCODE)"
     }
 }
 
 Ensure-Dir $DistDir
+
+# --- EXE onedir (K10 daily cold-start) ----------------------------------
+if ($Onedir) {
+    $OnedirSpec = Join-Path $Root "MagicEditor-onedir.spec"
+    if (-not (Test-Path $OnedirSpec)) {
+        throw "Missing MagicEditor-onedir.spec at $OnedirSpec"
+    }
+    Write-Step "PyInstaller onedir -> dist/MagicEditor/ (daily)"
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    & python -m PyInstaller `
+        --noconfirm `
+        --clean `
+        --distpath $DistDir `
+        --workpath $WorkDir `
+        $OnedirSpec
+    $pyiExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
+    if ($pyiExit -ne 0) {
+        throw "PyInstaller onedir failed (exit $pyiExit)"
+    }
+}
 
 # --- EXE (PyInstaller onefile) ------------------------------------------
 if ($Exe -or $Portable -or $Msi) {
@@ -100,15 +132,12 @@ if ($Exe -or $Portable -or $Msi) {
         throw "Missing MagicEditor.spec at $SpecPath"
     }
 
-    Write-Step "PyInstaller onefile -> MagicEditor.exe (repo root)"
+    Write-Step "PyInstaller onefile -> MagicEditor.exe (project root)"
     if (-not (Test-Path $IconPath)) {
         Write-Warning "App icon missing at $IconPath - EXE will use default PyInstaller icon"
     }
     if (-not $KeepWork -and (Test-Path (Join-Path $Root "build"))) {
         Remove-Item -Recurse -Force (Join-Path $Root "build") -ErrorAction SilentlyContinue
-    }
-    if (Test-Path $ExePath) {
-        Remove-Item -Force $ExePath
     }
     if (Test-Path $RootExePath) {
         Remove-Item -Force $RootExePath -ErrorAction SilentlyContinue
@@ -120,35 +149,40 @@ if ($Exe -or $Portable -or $Msi) {
     & python -m PyInstaller `
         --noconfirm `
         --clean `
-        --distpath $DistDir `
+        --distpath $Root `
         --workpath $WorkDir `
         $SpecPath
     $pyiExit = $LASTEXITCODE
     $ErrorActionPreference = $prevEap
 
     if ($pyiExit -ne 0) {
+        Write-MeLog "ERROR" "PyInstaller failed (exit $pyiExit)"
         throw "PyInstaller failed (exit $pyiExit)"
     }
-    if (-not (Test-Path $ExePath)) {
-        throw "Build failed: $ExePath not found"
+    if (-not (Test-Path $RootExePath)) {
+        throw "Build failed: $RootExePath not found"
     }
 
-    # Primary deliverable: root of the project
-    Copy-Item -Force $ExePath $RootExePath
-    if (-not (Test-Path $RootExePath)) {
-        throw "Build failed: could not copy EXE to $RootExePath"
+    # Packaging scripts still look under dist\
+    if ($Portable -or $Msi -or $Inno) {
+        Ensure-Dir $DistDir
+        Copy-Item -Force $RootExePath $DistExePath
     }
 
     $sizeMb = [math]::Round((Get-Item $RootExePath).Length / 1MB, 1)
     Write-Host ("  OK: " + $RootExePath + "  " + [string]$sizeMb + " MB") -ForegroundColor Green
-    Write-Host ("  OK: " + $ExePath + " (packaging copy)") -ForegroundColor DarkGray
 }
 
 # --- Portable ZIP -------------------------------------------------------
 if ($Portable) {
     Write-Step "Portable ZIP"
-    if (-not (Test-Path $ExePath)) {
-        throw "Portable requires dist/MagicEditor.exe (run with -Exe or alone)"
+    if (-not (Test-Path $DistExePath)) {
+        if (Test-Path $RootExePath) {
+            Ensure-Dir $DistDir
+            Copy-Item -Force $RootExePath $DistExePath
+        } else {
+            throw "Portable requires MagicEditor.exe at project root (run with -Exe)"
+        }
     }
 
     $portableName = "MagicEditor-Portable-$ProductVersion-win64"
@@ -187,7 +221,7 @@ if ($Portable) {
 if ($Msi) {
     Write-Step "MSI installer (WiX)"
     if (-not (Test-Path $ExePath)) {
-        throw "MSI requires dist/MagicEditor.exe"
+        throw "MSI requires MagicEditor.exe at the project root"
     }
 
     $wixCmd = Get-Command wix -ErrorAction SilentlyContinue
@@ -195,6 +229,7 @@ if ($Msi) {
         Write-Host "  WiX CLI not found. Attempting: dotnet tool install -g wix" -ForegroundColor Yellow
         $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
         if (-not $dotnet) {
+            Write-MeLog "WARNING" "MSI skipped: neither wix nor dotnet is available"
             Write-Warning @"
 MSI skipped: neither 'wix' nor 'dotnet' is available.
 
@@ -215,6 +250,7 @@ Then re-run:
     }
 
     if (-not $wixCmd) {
+        Write-MeLog "WARNING" "MSI skipped: WiX CLI still not on PATH"
         Write-Warning "MSI skipped: WiX CLI still not on PATH."
     } else {
         $wxs = Join-Path $Root "packaging\wix\MagicEditor.wxs"
@@ -234,12 +270,15 @@ Then re-run:
             -arch x64
 
         if ($LASTEXITCODE -ne 0) {
+            Write-MeLog "ERROR" "wix build failed (exit $LASTEXITCODE)"
             throw "wix build failed (exit $LASTEXITCODE)"
         }
         if (-not (Test-Path $msiOut)) {
+            Write-MeLog "ERROR" "MSI not produced: $msiOut"
             throw "MSI not produced: $msiOut"
         }
         $mMb = [math]::Round((Get-Item $msiOut).Length / 1MB, 1)
+        Write-MeLog "INFO" "MSI OK: $msiOut ($mMb MB)"
         Write-Host ("  OK: " + $msiOut + "  " + [string]$mMb + " MB") -ForegroundColor Green
     }
 }
@@ -248,7 +287,7 @@ Then re-run:
 if ($Inno) {
     Write-Step "Inno Setup installer"
     if (-not (Test-Path $ExePath)) {
-        throw "Inno requires dist/MagicEditor.exe (run with -Exe first)"
+        throw "Inno requires MagicEditor.exe at the project root (run with -Exe first)"
     }
     $innoScript = Join-Path $Root "scripts\build_inno.ps1"
     if (-not (Test-Path $innoScript)) {
@@ -259,9 +298,17 @@ if ($Inno) {
         if ($LASTEXITCODE -ne 0) {
             throw "build_inno.ps1 failed (exit $LASTEXITCODE)"
         }
+        Write-MeLog "INFO" "Inno Setup installer built (version $ProductVersion)"
     } catch {
-        Write-Warning "Inno Setup skipped: $($_.Exception.Message)"
-        Write-Warning "Install Inno Setup 6 (winget install JRSoftware.InnoSetup) and re-run with -Inno"
+        $msg = "Inno Setup failed: $($_.Exception.Message)"
+        Write-MeLog "ERROR" $msg
+        if ($All) {
+            Write-Warning $msg
+            Write-Warning "Install Inno Setup 6 (winget install JRSoftware.InnoSetup) and re-run with -Inno"
+            Write-Warning "Note: Inno produces dist\MagicEditor-<ver>-win64-setup.exe  (not .msi - that is WiX)"
+        } else {
+            throw $msg
+        }
     }
 }
 

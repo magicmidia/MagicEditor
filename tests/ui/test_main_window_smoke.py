@@ -34,11 +34,13 @@ def test_main_window_starts(qtbot, tmp_path: Path) -> None:
     assert window.tabs.count() >= 1
     tab = window.current_tab()
     assert tab is not None
-    tab.editor.setPlainText("hello magic")
+    tab.editor.insert("hello magic")
     assert "hello" in tab.editor.toPlainText()
+    from magiceditor.ui.window_chrome import action_ids
+
+    missing = [key for key in action_ids() if key not in window._actions]
+    assert missing == []
 
     # Avoid modal "unsaved documents" dialog during teardown (blocks headless Qt).
     tab.document.modified = False
-    if not tab.is_huge:
-        tab.editor.document().setModified(False)  # type: ignore[union-attr]
     window.close()

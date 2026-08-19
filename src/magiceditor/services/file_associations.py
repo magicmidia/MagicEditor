@@ -33,8 +33,6 @@ DEFAULT_EXTENSIONS: tuple[str, ...] = (
     ".hpp",
     ".sh",
     ".ps1",
-    ".bat",
-    ".cmd",
     ".toml",
     ".env",
     ".gitignore",
@@ -43,6 +41,12 @@ DEFAULT_EXTENSIONS: tuple[str, ...] = (
 
 PROGID = "MagicEditor.Document"
 APP_DESCRIPTION = "MagicEditor Document"
+
+# Windows executable scripts — never steal the default open verb.
+NATIVE_SCRIPT_PROGIDS: dict[str, str] = {
+    ".bat": "batfile",
+    ".cmd": "cmdfile",
+}
 
 
 def association_extensions() -> list[str]:

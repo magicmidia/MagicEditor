@@ -43,7 +43,7 @@ src/magiceditor/
   ui/       # windows, tabs, viewport widgets — thin, no I/O policy
   themes/   # QSS load/switch
   i18n/     # TranslatorManager + locales
-  preview/  # MD/HTML WebEngine preview
+  preview/  # MD/HTML QTextBrowser preview
   services/ # print/PDF, config, sessions
 tests/      # mirrors src; unit tests for core without Qt when possible
 locales/    # pt_BR.json, en_US.json

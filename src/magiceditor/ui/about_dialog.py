@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QColor, QFont, QPainter, QPalette, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -14,6 +14,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from magiceditor.themes.tokens import chrome_tokens
 
 
 def _monogram_pixmap(size: int = 64, accent: str = "#FFD700", bg: str = "#1C1B1B") -> QPixmap:
@@ -40,6 +42,17 @@ def _monogram_pixmap(size: int = 64, accent: str = "#FFD700", bg: str = "#1C1B1B
     return pm
 
 
+def _paint_label(label: QLabel, color: str) -> None:
+    """Force readable text: QSS is ignored on RichText QLabel."""
+    pal = label.palette()
+    qcolor = QColor(color)
+    pal.setColor(QPalette.ColorRole.WindowText, qcolor)
+    pal.setColor(QPalette.ColorRole.Text, qcolor)
+    label.setPalette(pal)
+    label.setForegroundRole(QPalette.ColorRole.WindowText)
+    label.setAutoFillBackground(False)
+
+
 class AboutDialog(QDialog):
     def __init__(
         self,
@@ -58,15 +71,17 @@ class AboutDialog(QDialog):
 
         self.setWindowTitle(t("msg.about_title", "Sobre o MagicEditor"))
 
-        accent = {
-            "luminous_void": "#FFD700",
-            "clean_light": "#2563EB",
-            "midnight_dark": "#22D3EE",
-            "darcula": "#6897BB",
-            "cobalt_blue": "#FFCC00",
-            "monokai_pro": "#A9DC76",
-        }.get(theme_id, "#FFD700")
-        bg = "#2A2929" if theme_id != "clean_light" else "#F1F5F9"
+        tok = chrome_tokens(theme_id)
+        accent = tok.accent
+        bg = tok.code_bg
+        self.setStyleSheet(
+            f"QDialog#aboutDialog {{ background-color: {tok.surface}; color: {tok.fg}; }}"
+            f"QDialog#aboutDialog QLabel {{ color: {tok.fg}; background: transparent; }}"
+            f"QLabel#aboutTitle {{ color: {tok.heading}; }}"
+            f"QLabel#aboutMuted {{ color: {tok.muted}; }}"
+            f"QLabel#aboutBody {{ color: {tok.fg}; }}"
+            f"QPushButton#aboutOk {{ color: {tok.heading}; }}"
+        )
 
         logo = QLabel(self)
         try:
@@ -88,6 +103,7 @@ class AboutDialog(QDialog):
         title.setFont(tf)
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setObjectName("aboutTitle")
+        _paint_label(title, tok.heading)
 
         from magiceditor.version import about_version_text
 
@@ -97,6 +113,7 @@ class AboutDialog(QDialog):
         )
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         version.setObjectName("aboutMuted")
+        _paint_label(version, tok.muted)
 
         body = QLabel(
             t(
@@ -111,6 +128,10 @@ class AboutDialog(QDialog):
         body.setAlignment(Qt.AlignmentFlag.AlignCenter)
         body.setObjectName("aboutBody")
         body.setOpenExternalLinks(True)
+        # Qt rich-text ignores QSS color — wrap HTML so dark themes stay readable.
+        raw = body.text()
+        body.setText(f'<div style="color:{tok.fg};">{raw}</div>')
+        _paint_label(body, tok.fg)
 
         tagline = QLabel(
             t(
@@ -122,6 +143,7 @@ class AboutDialog(QDialog):
         tagline.setWordWrap(True)
         tagline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tagline.setObjectName("aboutMuted")
+        _paint_label(tagline, tok.muted)
 
         btn = QPushButton(t("dialog.ok", "OK"), self)
         btn.setObjectName("aboutOk")

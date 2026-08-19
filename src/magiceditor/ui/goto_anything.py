@@ -36,7 +36,12 @@ class GotoAnythingDialog(QDialog):
         on_accept: Callable[[GotoTarget], None] | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Go to Anything")
+        title = "Go to Anything"
+        if parent is not None:
+            tr = getattr(parent, "_tr", None)
+            if tr is not None and hasattr(tr, "t"):
+                title = tr.t("goto_anything.title", title)
+        self.setWindowTitle(title)
         self.setModal(True)
         self.resize(520, 380)
         self._files = files

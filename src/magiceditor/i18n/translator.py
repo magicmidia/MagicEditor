@@ -35,7 +35,10 @@ class TranslatorManager(QObject):
         return sorted(p.stem for p in self._locales_dir.glob("*.json"))
 
     def load(self, lang: str) -> None:
-        path = self._locales_dir / f"{lang}.json"
+        safe = Path(lang).name
+        if safe != lang or ".." in lang or "/" in lang or "\\" in lang:
+            raise ValueError(f"invalid locale id: {lang!r}")
+        path = self._locales_dir / f"{safe}.json"
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError(f"Invalid locale file: {path}")

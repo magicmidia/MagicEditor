@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.2 BETA — Footer, single instance, spell dictionaries
+
+- Last editor line stays above the status footer (viewport pad + scroll range)
+- Opening a file reuses the running editor as a new tab (Settings → General; default on)
+- Bundle `resources/spell/{pt,en,es}.json.gz` so installed EXE recognizes common words and suggestions
+- Installer still restores `.bat`/`.cmd` and clears Explorer FileExts leftovers
+
 ## 0.9.1 BETA — Inno Setup installer
 
 - Inno Setup package: `packaging/inno/MagicEditor.iss` + `scripts/build_inno.ps1`

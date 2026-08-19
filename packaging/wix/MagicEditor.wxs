@@ -139,8 +139,6 @@
       <RegistryValue Root="HKCR" Key=".hpp\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
       <RegistryValue Root="HKCR" Key=".sh\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
       <RegistryValue Root="HKCR" Key=".ps1\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
-      <RegistryValue Root="HKCR" Key=".bat\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
-      <RegistryValue Root="HKCR" Key=".cmd\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
       <RegistryValue Root="HKCR" Key=".toml\OpenWithProgids" Name="MagicEditor.Document" Value="" Type="string" />
     </Component>
 

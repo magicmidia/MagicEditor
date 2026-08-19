@@ -1,6 +1,6 @@
 /* Clean Light — zinc neutrals + blue accent */
 QMainWindow { background-color: #F8FAFC; color: #0F172A; }
-QWidget { color: #0F172A; background-color: transparent; }
+QWidget { color: #0F172A; }
 QMenuBar {
   background-color: #FFFFFF; color: #0F172A;
   border-bottom: 1px solid #E2E8F0; padding: 2px 6px; spacing: 0px; min-height: 26px;
@@ -74,6 +74,8 @@ QTreeView::item { min-height: 22px; padding: 3px 6px; border-radius: 4px; }
 QTreeView::item:hover { background-color: #F1F5F9; }
 QTreeView::item:selected { background-color: #DBEAFE; color: #1E3A8A; }
 QDialog { background-color: #FFFFFF; color: #0F172A; }
+QDialog QLabel { color: #0F172A; background: transparent; }
+QMessageBox QLabel { color: #0F172A; background: transparent; }
 QLineEdit {
   background-color: #FFFFFF; color: #0F172A; border: 1px solid #CBD5E1;
   border-radius: 6px; padding: 6px 10px; min-height: 18px;
@@ -118,7 +120,7 @@ QMessageBox, QDialog#aboutDialog {
   border: 1px solid #E2E8F0;
   border-radius: 8px;
 }
-QDialog#aboutDialog QLabel { color: inherit; padding: 6px 4px; }
+QDialog#aboutDialog QLabel { color: #0F172A; padding: 6px 4px; }
 QLabel#aboutTitle { color: #0F172A; font-weight: 600; }
 QLabel#aboutMuted { color: #64748B; font-size: 10pt; }
 QMessageBox QPushButton, QPushButton#aboutOk {

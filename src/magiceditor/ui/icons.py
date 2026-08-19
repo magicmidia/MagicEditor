@@ -236,6 +236,10 @@ def toolbar_icon_color(theme_id: str) -> str:
         "darcula": "#A8B4C0",
         "cobalt_blue": "#B8D4F0",
         "monokai_pro": "#D0CED2",
+        "tokyo_night": "#C0CAF5",
+        "catppuccin_mocha": "#CDD6F4",
+        "nord": "#D8DEE9",
+        "rose_pine": "#E0DEF4",
     }.get(theme_id, "#94A3B8")
 
 
@@ -247,6 +251,10 @@ def accent_icon_color(theme_id: str) -> str:
         "darcula": "#6897BB",
         "cobalt_blue": "#FFCC00",
         "monokai_pro": "#A9DC76",
+        "tokyo_night": "#7AA2F7",
+        "catppuccin_mocha": "#CBA6F7",
+        "nord": "#88C0D0",
+        "rose_pine": "#EBBCBA",
     }.get(theme_id, "#FFD700")
 
 

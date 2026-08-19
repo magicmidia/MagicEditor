@@ -21,8 +21,24 @@ def _compile(kind: str, pattern: str, flags: int = 0, group: int = 0) -> Rule:
     return Rule(kind=kind, pattern=re.compile(pattern, flags), group=group)
 
 
+_RULES_CACHE: dict[str, list[Rule]] = {}
+
+
 def rules_for(lang: str) -> list[Rule]:
-    """Return ordered rules (later rules can overlap; first match wins in highlighters)."""
+    """Return ordered rules (cached — regex compiled once per language)."""
+    cached = _RULES_CACHE.get(lang)
+    if cached is not None:
+        return cached
+    built = _build_rules(lang)
+    _RULES_CACHE[lang] = built
+    return built
+
+
+def clear_rules_cache() -> None:
+    _RULES_CACHE.clear()
+
+
+def _build_rules(lang: str) -> list[Rule]:
     common_string = [
         _compile("string", r'"""[\s\S]*?"""'),
         _compile("string", r"'''[\s\S]*?'''"),
@@ -241,30 +257,30 @@ def rules_for(lang: str) -> list[Rule]:
 
 
 def tokenize_line(text: str, lang: str) -> list[tuple[int, int, TokenKind]]:
-    """Return (start, length, kind) spans for a single line (or block text).
+    """Return (start, length, kind) spans. First match at each position wins.
 
-    Non-overlapping: first rule that claims a character wins.
+    Does not allocate a per-character claimed array.
     """
     rules = rules_for(lang)
     if not text or not rules:
         return []
-    n = len(text)
-    claimed = [False] * n
-    spans: list[tuple[int, int, TokenKind]] = []
-
-    for rule in rules:
+    hits: list[tuple[int, int, int, TokenKind]] = []
+    for prio, rule in enumerate(rules):
         for m in rule.pattern.finditer(text):
             try:
                 start, end = m.span(rule.group)
             except IndexError:
                 start, end = m.span(0)
-            if start >= end:
-                continue
-            if any(claimed[i] for i in range(start, min(end, n))):
-                continue
-            for i in range(start, min(end, n)):
-                claimed[i] = True
-            spans.append((start, end - start, rule.kind))
-
-    spans.sort(key=lambda s: s[0])
+            if start < end:
+                hits.append((start, prio, end, rule.kind))
+    if not hits:
+        return []
+    hits.sort()
+    spans: list[tuple[int, int, TokenKind]] = []
+    cursor = 0
+    for start, _prio, end, kind in hits:
+        if start < cursor:
+            continue
+        spans.append((start, end - start, kind))
+        cursor = end
     return spans

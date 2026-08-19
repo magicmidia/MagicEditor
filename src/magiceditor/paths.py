@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -53,3 +54,49 @@ def icons_dir() -> Path:
 def app_icon_path() -> Path:
     """Windows multi-size application icon (``.ico``)."""
     return icons_dir() / "app" / "magiceditor.ico"
+
+
+def user_data_dir(*, local_app_data: str | Path | None = None) -> Path:
+    """Per-user writable dir (``%LOCALAPPDATA%\\MagicEditor`` on Windows)."""
+    raw = local_app_data
+    if raw is None:
+        raw = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
+    if raw:
+        return Path(raw) / "MagicEditor"
+    return Path.home() / ".magiceditor"
+
+
+def _looks_portable(exe_dir: Path) -> bool:
+    return (exe_dir / "portable.ini").is_file() or (exe_dir / "config" / "portable.flag").is_file()
+
+
+def _dir_writable(directory: Path) -> bool:
+    probe = directory / ".me-write-probe"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def log_file_path(
+    *,
+    frozen: bool | None = None,
+    exe_dir: Path | None = None,
+    local_app_data: str | Path | None = None,
+) -> Path:
+    """Dev: repo root. Installed EXE: ``%LOCALAPPDATA%\\MagicEditor``.
+
+    Portable (``portable.ini`` beside the EXE) stays next to the EXE when that
+    folder is writable; otherwise it falls back to the user data dir.
+    """
+    name = "MagicEditor.log"
+    use_frozen = is_frozen() if frozen is None else frozen
+    if not use_frozen:
+        return repo_root() / name
+    parent = exe_dir if exe_dir is not None else Path(sys.executable).resolve().parent
+    if _looks_portable(parent) and _dir_writable(parent):
+        return parent / name
+    return user_data_dir(local_app_data=local_app_data) / name

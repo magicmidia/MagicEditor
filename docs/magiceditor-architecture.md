@@ -31,7 +31,7 @@ A arquitetura adota um modelo Híbrido, isolando a interface gráfica da manipul
 *   **Linguagem:** Python 3.12+
 *   **Framework:** PyQt6 (Qt 6). Fornece o ecossistema ideal para MDI (Multiple Document Interface), abas dinâmicas e painéis acopláveis (`QDockWidget`).
 *   **Componente de Texto:** Embora o PyQt6 forneça o `QsciScintilla` (ótimo para código), para arquivos extremos (1GB+), utilizaremos um **Virtual Viewport**. O editor renderiza apenas as 50-100 linhas visíveis na tela atual, mantendo o uso da GPU/CPU em ~1%.
-*   **Web Engine:** `PyQt6.QtWebEngineCore` para renderização em tempo real de HTML e visualização de Markdown parsing.
+*   **Preview:** `QTextBrowser` (sem WebEngine) com HTML sanitizado para Markdown/HTML.
 
 ### 2.2. Core Engine (Gestão de Memória e Arquivos)
 Para que o editor abra um arquivo `.sql` de 5GB em 1 segundo:
@@ -111,7 +111,7 @@ graph TD
     
     C --> G[TabManager QTabWidget]
     G --> H[TextEditor Widget]
-    G --> I[Preview QWebEngineView]
+    G --> I[Preview QTextBrowser]
     
     H --> J[Viewport Render / Sintaxe]
     H --> K[Piece Table / Mmap Engine]

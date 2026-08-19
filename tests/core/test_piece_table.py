@@ -18,3 +18,10 @@ def test_original_text_roundtrip() -> None:
 def test_get_text_slice() -> None:
     table = PieceTable("abcdef")
     assert table.get_text(1, 3) == b"bcd"
+
+
+def test_iter_chunks_covers_buffer() -> None:
+    table = PieceTable("abcdefghij")
+    parts = list(table.iter_chunks(size=3))
+    assert b"".join(parts) == b"abcdefghij"
+    assert all(len(p) <= 3 for p in parts)

@@ -12,6 +12,17 @@ from magiceditor.ui.virtual_editor import VirtualEditor
 
 
 @pytest.mark.ui
+def test_insert_uses_extracted_edit_path(qtbot) -> None:
+    """J1.1: VirtualEditor.insert delegates to virtual_edit.insert_at_cursor."""
+    doc = Document.from_text("ab")
+    ed = VirtualEditor(doc)
+    qtbot.addWidget(ed)
+    ed.goto_line(0, 1)
+    ed.insert("X")
+    assert doc.text() == "aXb"
+
+
+@pytest.mark.ui
 def test_virtual_replace_all(qtbot) -> None:
     doc = Document.from_text("aa x aa x aa")
     doc.huge_mode = True

@@ -5,7 +5,7 @@
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1
-  powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1 -Version 0.9.1
+  powershell -ExecutionPolicy Bypass -File scripts/build_inno.ps1 -Version 0.9.2
 #>
 [CmdletBinding()]
 param(
@@ -17,6 +17,11 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
+. (Join-Path $PSScriptRoot "_me_log.ps1")
+trap {
+    Write-MeLog "ERROR" $_.Exception.Message
+    break
+}
 
 function Get-ProductVersion {
     param([string]$Override)
@@ -26,7 +31,7 @@ function Get-ProductVersion {
         $m = Select-String -Path $toml -Pattern '^\s*version\s*=\s*"([^"]+)"' | Select-Object -First 1
         if ($m) { return $m.Matches.Groups[1].Value }
     }
-    return "0.9.1"
+    return "0.9.2"
 }
 
 function Find-ISCC {
@@ -56,6 +61,7 @@ if (-not (Test-Path $ExePath)) {
     if (Test-Path $alt) { $ExePath = $alt }
 }
 if (-not (Test-Path $ExePath)) {
+    Write-MeLog "ERROR" "Missing MagicEditor.exe (looked in dist/ and root)"
     throw "Missing MagicEditor.exe. Build with: scripts/build.ps1 -Exe  (looked in dist/ and root)"
 }
 
@@ -77,14 +83,17 @@ if (-not $SkipGenerate) {
 
 $iscc = Find-ISCC
 if (-not $iscc) {
-    throw @"
-Inno Setup Compiler (ISCC.exe) not found.
-
-Install Inno Setup 6:
-  winget install JRSoftware.InnoSetup
-
-Or set ISCC_PATH to the full path of ISCC.exe.
-"@
+    Write-MeLog "WARNING" "ISCC.exe not found - attempting winget install JRSoftware.InnoSetup"
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        & winget install --id JRSoftware.InnoSetup -e --accept-package-agreements --accept-source-agreements
+        $iscc = Find-ISCC
+    }
+}
+if (-not $iscc) {
+    $msg = "ISCC.exe not found. Install: winget install JRSoftware.InnoSetup  (Inno makes setup.exe, not .msi)"
+    Write-MeLog "ERROR" $msg
+    throw $msg
 }
 
 $outName = "MagicEditor-$ProductVersion-win64-setup"
@@ -105,6 +114,7 @@ $IconAbs = (Resolve-Path $IconPath).Path
     $Iss
 
 if ($LASTEXITCODE -ne 0) {
+    Write-MeLog "ERROR" "ISCC failed (exit $LASTEXITCODE)"
     throw "ISCC failed (exit $LASTEXITCODE)"
 }
 
@@ -120,4 +130,5 @@ if (-not (Test-Path $setup)) {
 }
 
 $mb = [math]::Round((Get-Item $setup).Length / 1MB, 1)
+Write-MeLog "INFO" ("Inno OK: {0} ({1} MB)" -f $setup, $mb)
 Write-Host ("  OK: {0} ({1} MB)" -f $setup, $mb) -ForegroundColor Green

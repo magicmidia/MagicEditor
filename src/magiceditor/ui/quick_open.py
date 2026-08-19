@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -102,28 +101,19 @@ class QuickOpenDialog(QDialog):
 
         if self._root is None or not self._root.is_dir():
             return
+        from magiceditor.services.quick_open_scan import iter_workspace_files
+
         root = self._root
-        count = 0
-        for dirpath, dirnames, filenames in os.walk(root):
-            dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
-            base = Path(dirpath)
-            for name in filenames:
-                if count >= _MAX_FILES:
-                    return
-                p = base / name
-                try:
-                    key = str(p.resolve())
-                except OSError:
-                    continue
-                if key in seen:
-                    continue
-                seen.add(key)
-                try:
-                    rel = p.relative_to(root).as_posix()
-                except ValueError:
-                    rel = p.name
-                self._all.append((rel, key))
-                count += 1
+        for key in iter_workspace_files(root, max_files=_MAX_FILES):
+            if key in seen:
+                continue
+            seen.add(key)
+            p = Path(key)
+            try:
+                rel = p.relative_to(root).as_posix()
+            except ValueError:
+                rel = p.name
+            self._all.append((rel, key))
 
     def _filter(self, text: str) -> None:
         self._list.clear()

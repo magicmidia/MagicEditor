@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from magiceditor.paths import themes_dir
-from magiceditor.ui.fonts import qss_font_family
+from magiceditor.paths import icons_dir, themes_dir
+from magiceditor.themes.fonts import qss_font_family
 
 NATIVE_THEMES: dict[str, str] = {
     "luminous_void": "Luminous Void",
@@ -14,6 +14,10 @@ NATIVE_THEMES: dict[str, str] = {
     "darcula": "Darcula Mode",
     "cobalt_blue": "Cobalt Blue",
     "monokai_pro": "Monokai Pro",
+    "tokyo_night": "Tokyo Night",
+    "catppuccin_mocha": "Catppuccin Mocha",
+    "nord": "Nord",
+    "rose_pine": "Rosé Pine",
 }
 
 
@@ -58,5 +62,47 @@ QPlainTextEdit, QTextEdit, QTextBrowser {{
             raise TypeError("app does not support setStyleSheet")
         # Clear first so residual rules from previous theme do not stack.
         set_style("")
-        set_style(qss + font_block)
+        set_style(qss + font_block + _chrome_extras())
         self._current = theme_id
+
+
+def _chrome_extras() -> str:
+    """Checkbox checkmark + larger settings nav (all themes)."""
+    check = icons_dir() / "app" / "check.svg"
+    check_rule = ""
+    if check.is_file():
+        uri = check.resolve().as_posix()
+        check_rule = f"""
+QCheckBox::indicator {{
+  width: 16px;
+  height: 16px;
+}}
+QCheckBox::indicator:checked {{
+  image: url("{uri}");
+}}
+"""
+    return (
+        check_rule
+        + """
+QDialog#settingsDialog QListWidget#settingsNav {
+  font-size: 11pt;
+}
+QDialog#settingsDialog QListWidget#settingsNav::item {
+  min-height: 40px;
+  padding: 12px 16px;
+}
+QDialog#settingsDialog QGroupBox {
+  font-size: 10.5pt;
+  padding-top: 16px;
+}
+QDialog#settingsDialog QSpinBox,
+QDialog#settingsDialog QComboBox,
+QDialog#settingsDialog QSlider {
+  min-height: 28px;
+}
+QDialog#settingsDialog QCheckBox {
+  min-height: 22px;
+  spacing: 10px;
+}
+"""
+    )

@@ -2,6 +2,8 @@
 
 Release artifacts are written to **`dist/`** and are **gitignored**. Never commit `.exe`, `.msi`, or portable `.zip`.
 
+Runtime and build diagnostics go to **`MagicEditor.log`**: repo root in development; **`%LOCALAPPDATA%\MagicEditor\MagicEditor.log`** for an installed EXE (Program Files is not writable). Portable builds still log next to the EXE when that folder is writable. The windowed EXE has no console — open that file if the app exits immediately.
+
 ## Quick commands
 
 ```powershell
@@ -36,9 +38,11 @@ powershell -ExecutionPolicy Bypass -File scripts/smoke_dist.ps1
 # Regenerate app icon (.ico)
 python scripts/generate_app_icon.py
 
-# Wrappers
-scripts\build_exe.bat
-scripts\build_all.bat
+# Thin wrappers (all delegate to scripts/build.ps1)
+scripts\build_exe.bat      # -> build.ps1 -Exe
+scripts\build_all.bat      # -> build.ps1 -All
+powershell -File scripts/build_exe.ps1
+powershell -File scripts/build_all.ps1
 powershell -File scripts/build_portable.ps1
 powershell -File scripts/build_msi.ps1
 ```
@@ -50,16 +54,18 @@ Optional flags:
 | `-Version 0.2.0` | Override version (default: `pyproject.toml`) |
 | `-SkipDeps` | Skip `pip install -e ".[dev]"` |
 | `-KeepWork` | Keep `build/` PyInstaller workdir |
+| `-Onedir` | Daily-use folder build (`dist/MagicEditor/`) — faster cold start (K10) |
 
 ## Outputs
 
 | Artifact | Path |
 |----------|------|
-| Onefile EXE (primary) | **`MagicEditor.exe`** (repo root) |
-| Onefile EXE (packaging copy) | `dist/MagicEditor.exe` |
+| Onefile EXE (primary) | **`MagicEditor.exe`** (project root — not `dist/`) |
+| Onefile EXE (packaging copy) | `dist/MagicEditor.exe` (only when building Portable/MSI/Inno) |
 | Portable | `dist/MagicEditor-Portable-<ver>-win64.zip` |
 | Installer (MSI / WiX) | `dist/MagicEditor-<ver>-win64.msi` |
-| Installer (Inno Setup) | `dist/MagicEditor-<ver>-win64-setup.exe` |
+| Installer (Inno Setup) | `dist/MagicEditor-<ver>-win64-setup.exe` (**not** `.msi`) |
+| Diagnostic log | **`MagicEditor.log`** (repo root) |
 | App icon source | `resources/icons/app/magiceditor.ico` |
 
 The root EXE embeds `resources/icons/app/magiceditor.ico` (taskbar / Explorer).  

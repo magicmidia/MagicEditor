@@ -216,6 +216,5 @@ class MagicSplash(QWidget):
         deadline = self._t0 + SPLASH_MIN_SECONDS
         while time.monotonic() < deadline:
             app.processEvents()
-            time.sleep(0.016)
         self._pulse.stop()
         self.close()

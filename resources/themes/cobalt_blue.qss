@@ -1,6 +1,6 @@
 /* Cobalt Blue — classic deep blue + yellow (dense menus) */
 QMainWindow { background-color: #002240; color: #FFFFFF; }
-QWidget { color: #FFFFFF; background-color: transparent; }
+QWidget { color: #FFFFFF; }
 
 QMenuBar {
   background-color: #001B33; color: #FFFFFF;
@@ -80,6 +80,8 @@ QTreeView::item:hover { background-color: #0A3D6B; }
 QTreeView::item:selected { background-color: #0A4A80; color: #FFCC00; }
 
 QDialog { background-color: #001B33; color: #FFFFFF; }
+QDialog QLabel { color: #FFFFFF; background: transparent; }
+QMessageBox QLabel { color: #FFFFFF; background: transparent; }
 QLineEdit {
   background-color: #002240; color: #FFFFFF; border: 1px solid #0A4A80;
   border-radius: 4px; padding: 5px 8px; min-height: 16px;
@@ -147,7 +149,7 @@ QToolTip {
 }
 QMessageBox { background-color: #001B33; }
 QMessageBox, QDialog#aboutDialog { background-color: #002240; border: 1px solid #0A4A80; border-radius: 8px; }
-QDialog#aboutDialog QLabel { color: inherit; padding: 6px 4px; }
+QDialog#aboutDialog QLabel { color: #FFFFFF; padding: 6px 4px; }
 QLabel#aboutTitle { color: #FFFFFF; font-weight: 600; }
 QLabel#aboutMuted { color: #7BA3C9; font-size: 10pt; }
 QMessageBox QPushButton, QPushButton#aboutOk {

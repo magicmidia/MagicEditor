@@ -25,7 +25,12 @@ class CompareDialog(QDialog):
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Compare")
+        title = "Compare"
+        if parent is not None:
+            tr = getattr(parent, "_tr", None)
+            if tr is not None and hasattr(tr, "t"):
+                title = tr.t("compare.title", title)
+        self.setWindowTitle(title)
         self.resize(900, 560)
         self.setModal(True)
 
@@ -57,8 +62,8 @@ class CompareDialog(QDialog):
 
     @classmethod
     def from_paths(cls, left: Path, right: Path, parent: QWidget | None = None) -> CompareDialog:
-        lt = left.read_text(encoding="utf-8", errors="replace") if left.is_file() else ""
-        rt = right.read_text(encoding="utf-8", errors="replace") if right.is_file() else ""
-        # Cap for UI safety
-        cap = 2_000_000
-        return cls(str(left), lt[:cap], str(right), rt[:cap], parent)
+        from magiceditor.services.compare_io import read_compare_text
+
+        lt = read_compare_text(left)
+        rt = read_compare_text(right)
+        return cls(str(left), lt, str(right), rt, parent)

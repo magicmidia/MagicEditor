@@ -18,7 +18,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from magiceditor.core.text_match import PatternError, compile_pattern, expand_replacement
+from magiceditor.core.safe_regex import compile_user_pattern
+from magiceditor.core.text_match import PatternError, expand_replacement
 
 
 def _t(tr: Any | None, key: str, default: str) -> str:
@@ -154,7 +155,7 @@ class FindDialog(QDialog):
             self._status.setText("")
             return
         try:
-            pattern = compile_pattern(
+            pattern = compile_user_pattern(
                 needle,
                 case_sensitive=self.case_box.isChecked(),
                 use_regex=self.regex_box.isChecked(),
@@ -164,18 +165,18 @@ class FindDialog(QDialog):
                 self._tt("find.invalid_regex", "Regex inválida: {err}").format(err=exc)
             )
             return
-        # Count matches in a bounded sample (viewport-friendly for huge files)
         try:
+            from magiceditor.ui.virtual_find import count_matches_in_lines
+
             if self._virtual and hasattr(self._editor, "document_model"):
                 doc = self._editor.document_model()
-                sample = doc.text() if len(doc.buffer) <= 2_000_000 else doc.text()[:2_000_000]
-            elif hasattr(self._editor, "toPlainText"):
-                sample = self._editor.toPlainText()
-                if len(sample) > 2_000_000:
-                    sample = sample[:2_000_000]
+                total = count_matches_in_lines(
+                    doc.line_text,
+                    doc.line_index().line_count,
+                    pattern,
+                )
             else:
-                sample = ""
-            total = len(list(pattern.finditer(sample)))
+                total = 0
             self._status.setText(self._tt("find.match_count", "{n} ocorrências").format(n=total))
         except Exception:
             pass
@@ -199,7 +200,7 @@ class FindDialog(QDialog):
         if not self.regex_box.isChecked():
             return True
         try:
-            compile_pattern(
+            compile_user_pattern(
                 needle,
                 case_sensitive=self.case_box.isChecked(),
                 use_regex=True,
@@ -279,7 +280,7 @@ class FindDialog(QDialog):
             selected = cursor.selectedText().replace("\u2029", "\n")
             if self.regex_box.isChecked():
                 try:
-                    pat = compile_pattern(
+                    pat = compile_user_pattern(
                         needle,
                         case_sensitive=self.case_box.isChecked(),
                         use_regex=True,
@@ -316,52 +317,11 @@ class FindDialog(QDialog):
             self._status.setText(self._tt(key, default).format(n=count))
             return
 
-        if self.regex_box.isChecked():
-            try:
-                pat = compile_pattern(
-                    needle,
-                    case_sensitive=self.case_box.isChecked(),
-                    use_regex=True,
-                )
-            except PatternError as exc:
-                self._status.setText(
-                    self._tt("find.invalid_regex", "Regex inválida: {err}").format(err=exc)
-                )
-                return
-            plain = self._editor.toPlainText()
-            new_text, count = pat.subn(repl, plain)
-            if count:
-                cursor = self._editor.textCursor()
-                cursor.beginEditBlock()
-                cursor.select(QTextCursor.SelectionType.Document)
-                cursor.insertText(new_text)
-                cursor.endEditBlock()
-            self._status.setText(
-                self._tt("find.replaced_n", "{n} ocorrência(s) substituída(s).").format(n=count)
-            )
-            return
-
-        doc = self._editor.document()
-        cursor = QTextCursor(doc)
-        cursor.beginEditBlock()
-        count = 0
-        flags = self._flags()
-        while True:
-            cursor = doc.find(needle, cursor, flags)
-            if cursor.isNull():
-                break
-            cursor.insertText(repl)
-            count += 1
-        cursor.endEditBlock()
-        self._status.setText(
-            self._tt("find.replaced_n", "{n} ocorrência(s) substituída(s).").format(n=count)
-        )
-
     def _selection_matches(self, cursor: QTextCursor, needle: str) -> bool:
         selected = cursor.selectedText().replace("\u2029", "\n")
         if self.regex_box.isChecked():
             try:
-                pat = compile_pattern(
+                pat = compile_user_pattern(
                     needle,
                     case_sensitive=self.case_box.isChecked(),
                     use_regex=True,

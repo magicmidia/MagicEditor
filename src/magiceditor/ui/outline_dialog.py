@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from PyQt6.QtCore import pyqtSignal
@@ -18,17 +17,9 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-_MD_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
+from magiceditor.core.outline_scan import extract_markdown_outline
 
-
-def extract_markdown_outline(text: str) -> list[tuple[int, int, str]]:
-    """Return list of (1-based line, level, title)."""
-    out: list[tuple[int, int, str]] = []
-    for i, line in enumerate(text.splitlines(), start=1):
-        m = _MD_HEADING.match(line)
-        if m:
-            out.append((i, len(m.group(1)), m.group(2).strip()))
-    return out
+__all__ = ["OutlineDialog", "extract_markdown_outline"]
 
 
 class OutlineDialog(QDialog):

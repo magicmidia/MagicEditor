@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QMouseEvent, QPainter, QPaintEvent
+from PyQt6.QtCore import QPoint, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
@@ -17,145 +17,13 @@ from PyQt6.QtWidgets import (
 
 from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.icons import icon as make_icon
+from magiceditor.ui.magic_tab_bar import MagicTabBar
+from magiceditor.ui.tab_filters import CloseButtonFilter, StripClickFilter
 from magiceditor.ui.tab_groups import GROUP_COLORS, TabGroup, TabGroupStore
 
-
-class _CloseButtonFilter(QObject):
-    """Swap close icon to white on hover (danger QSS paints red background)."""
-
-    def __init__(self, owner: TabManager) -> None:
-        super().__init__(owner)
-        self._owner = owner
-
-    def eventFilter(self, obj: QObject | None, event: QEvent | None) -> bool:
-        if obj is None or event is None or not isinstance(obj, QToolButton):
-            return False
-        if event.type() == QEvent.Type.Enter:
-            obj.setIcon(make_icon("tab_close", "#FFFFFF"))
-            return False
-        if event.type() == QEvent.Type.Leave:
-            obj.setIcon(make_icon("tab_close", self._owner._close_color))
-            return False
-        return False
-
-
-class _MagicTabBar(QTabBar):
-    """Tab bar: empty double-click, group color stripe, reliable movable drag."""
-
-    empty_double_clicked = pyqtSignal()
-    tab_context_menu = pyqtSignal(int, QPoint)  # index, global pos
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setMovable(True)
-        self.setExpanding(False)
-        self.setElideMode(Qt.TextElideMode.ElideRight)
-        self.setDrawBase(True)
-        self.setUsesScrollButtons(True)
-        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setAutoFillBackground(True)
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._on_context_menu)
-        self._group_colors: dict[int, str] = {}
-        self._pref_height = 28
-        self._pref_min_width = 72
-        self._pref_max_width = 220
-
-    def set_group_colors(self, mapping: dict[int, str]) -> None:
-        self._group_colors = dict(mapping)
-        self.update()
-
-    def _on_context_menu(self, pos: QPoint) -> None:
-        idx = self.tabAt(pos)
-        self.tab_context_menu.emit(idx, self.mapToGlobal(pos))
-
-    def mouseDoubleClickEvent(self, event: QMouseEvent | None) -> None:
-        if event is not None and event.button() == Qt.MouseButton.LeftButton:
-            pos = event.position().toPoint()
-            if self._is_empty_hit(pos):
-                self.empty_double_clicked.emit()
-                event.accept()
-                return
-        super().mouseDoubleClickEvent(event)
-
-    def mousePressEvent(self, event: QMouseEvent | None) -> None:
-        if event is not None and event.button() == Qt.MouseButton.MiddleButton:
-            idx = self.tabAt(event.position().toPoint())
-            if idx >= 0:
-                parent = self.parentWidget()
-                if isinstance(parent, TabManager) and parent._middle_click_close:
-                    parent.tabCloseRequested.emit(idx)
-                    event.accept()
-                    return
-        super().mousePressEvent(event)
-
-    def paintEvent(self, event: QPaintEvent | None) -> None:
-        super().paintEvent(event)
-        if not self._group_colors:
-            return
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        for index, hex_color in self._group_colors.items():
-            if index < 0 or index >= self.count() or not self.isTabVisible(index):
-                continue
-            rect = self.tabRect(index)
-            if rect.isEmpty():
-                continue
-            color = QColor(hex_color)
-            stripe = QRect(rect.left() + 1, rect.top() + 4, 3, rect.height() - 8)
-            painter.fillRect(stripe, color)
-            painter.fillRect(rect.left(), rect.top(), rect.width(), 2, color)
-        painter.end()
-
-    def set_chrome_metrics(self, height: int, min_width: int, max_width: int) -> None:
-        self._pref_height = max(22, min(40, height))
-        self._pref_min_width = max(48, min(160, min_width))
-        self._pref_max_width = max(self._pref_min_width, min(400, max_width))
-        self.updateGeometry()
-        self.update()
-
-    def tabSizeHint(self, index: int) -> QSize:
-        size = super().tabSizeHint(index)
-        size.setHeight(self._pref_height)
-        w = max(self._pref_min_width, min(self._pref_max_width, size.width()))
-        size.setWidth(w)
-        return size
-
-    def _is_empty_hit(self, pos: QPoint) -> bool:
-        if self.tabAt(pos) >= 0:
-            return False
-        if self.count() == 0:
-            return True
-        last = self.tabRect(self.count() - 1)
-        if pos.x() > last.right() and 0 <= pos.y() <= max(last.height(), self.height()):
-            return True
-        first = self.tabRect(0)
-        if pos.x() < first.left() and 0 <= pos.y() <= max(first.height(), self.height()):
-            return True
-        return 0 <= pos.y() <= self.height() and (
-            pos.x() < 0 or pos.x() >= self.width() or self.tabAt(pos) < 0
-        )
-
-
-class _StripClickFilter(QObject):
-    def __init__(self, owner: TabManager) -> None:
-        super().__init__(owner)
-        self._owner = owner
-
-    def eventFilter(self, obj: QObject | None, event: QEvent | None) -> bool:
-        if event is None or obj is not self._owner:
-            return False
-        if event.type() != QEvent.Type.MouseButtonDblClick:
-            return False
-        if not isinstance(event, QMouseEvent):
-            return False
-        if event.button() != Qt.MouseButton.LeftButton:
-            return False
-        if self._owner._hit_empty_strip(event.position().toPoint()):
-            self._owner.empty_area_double_clicked.emit()
-            return True
-        return False
+_MagicTabBar = MagicTabBar
+_CloseButtonFilter = CloseButtonFilter
+_StripClickFilter = StripClickFilter
 
 
 class TabManager(QTabWidget):
@@ -187,9 +55,10 @@ class TabManager(QTabWidget):
         self._store = TabGroupStore()
         self._middle_click_close = True
         self._show_scroll_buttons = True
+        self._tr = None
 
-        self._scroll_left = self._make_nav_button("◀", "Abas anteriores")
-        self._scroll_right = self._make_nav_button("▶", "Próximas abas")
+        self._scroll_left = self._make_nav_button("◀", self._t("tabs.prev", "Previous tabs"))
+        self._scroll_right = self._make_nav_button("▶", self._t("tabs.next", "Next tabs"))
         self._scroll_left.clicked.connect(lambda: self._scroll_tabs(-1))
         self._scroll_right.clicked.connect(lambda: self._scroll_tabs(1))
 
@@ -200,7 +69,7 @@ class TabManager(QTabWidget):
         self._new_tab_btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._new_tab_btn.setFixedSize(22, 22)
         self._new_tab_btn.setIconSize(QSize(14, 14))
-        self._new_tab_btn.setToolTip("Novo arquivo")
+        self._new_tab_btn.setToolTip(self._t("tabs.new_file", "New file"))
         self._new_tab_btn.clicked.connect(self.empty_area_double_clicked.emit)
 
         left_wrap = QWidget(self)
@@ -223,6 +92,25 @@ class TabManager(QTabWidget):
         self._refresh_new_tab_icon()
         self.currentChanged.connect(lambda _i: self._update_scroll_buttons())
         self._update_scroll_buttons()
+
+    def _t(self, key: str, default: str, **kwargs: object) -> str:
+        tr = self._tr
+        text = tr.t(key, default) if tr is not None and hasattr(tr, "t") else default
+        return text.format(**kwargs) if kwargs else text
+
+    def set_translator(self, tr: object | None) -> None:
+        self._tr = tr
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        self._scroll_left.setToolTip(self._t("tabs.prev", "Previous tabs"))
+        self._scroll_right.setToolTip(self._t("tabs.next", "Next tabs"))
+        self._new_tab_btn.setToolTip(self._t("tabs.new_file", "New file"))
+        bar = self.tabBar()
+        for i in range(bar.count()):
+            btn = bar.tabButton(i, QTabBar.ButtonPosition.RightSide)
+            if isinstance(btn, QToolButton):
+                btn.setToolTip(self._t("tabs.close", "Close"))
 
     def _make_nav_button(self, text: str, tip: str) -> QToolButton:
         btn = QToolButton(self)
@@ -301,7 +189,7 @@ class TabManager(QTabWidget):
         btn.setFixedSize(16, 16)
         btn.setIconSize(QSize(10, 10))
         btn.setIcon(make_icon("tab_close", self._close_color))
-        btn.setToolTip("Fechar")
+        btn.setToolTip(self._t("tabs.close", "Close"))
         btn.setAttribute(Qt.WidgetAttribute.WA_LayoutUsesWidgetRect, True)
         btn.installEventFilter(self._close_filter)
         btn.clicked.connect(self._on_close_clicked)
@@ -438,15 +326,15 @@ class TabManager(QTabWidget):
     def _on_tab_context_menu(self, index: int, global_pos: QPoint) -> None:
         menu = QMenu(self)
         if index < 0:
-            act_new = menu.addAction("Nova aba")
+            act_new = menu.addAction(self._t("tabs.new_tab", "New tab"))
             chosen = menu.exec(global_pos)
             if chosen is act_new:
                 self.empty_area_double_clicked.emit()
             return
 
         group = self.group_of_index(index)
-        act_new_group = menu.addAction("Novo grupo com esta aba")
-        add_menu = menu.addMenu("Adicionar ao grupo")
+        act_new_group = menu.addAction(self._t("tabs.new_group", "New group with this tab"))
+        add_menu = menu.addMenu(self._t("tabs.add_to_group", "Add to group"))
         if self._store.groups:
             for g in self._store.groups.values():
                 act = add_menu.addAction(g.name)
@@ -457,33 +345,44 @@ class TabManager(QTabWidget):
         act_remove = act_rename = act_collapse = act_expand = None
         color_menu = None
         if group is not None:
-            act_remove = menu.addAction(f"Remover de «{group.name}»")
-            act_rename = menu.addAction("Renomear grupo…")
-            color_menu = menu.addMenu("Cor do grupo")
+            act_remove = menu.addAction(
+                self._t("tabs.remove_from_group", "Remove from “{name}”", name=group.name)
+            )
+            act_rename = menu.addAction(self._t("tabs.rename_group", "Rename group…"))
+            color_menu = menu.addMenu(self._t("tabs.group_color", "Group color"))
             for label, hex_c in GROUP_COLORS:
                 ca = color_menu.addAction(label.capitalize())
                 ca.setData(hex_c)
             if group.collapsed:
-                act_expand = menu.addAction("Expandir grupo")
+                act_expand = menu.addAction(self._t("tabs.expand_group", "Expand group"))
             else:
-                act_collapse = menu.addAction("Recolher grupo")
+                act_collapse = menu.addAction(self._t("tabs.collapse_group", "Collapse group"))
 
         menu.addSeparator()
-        act_close = menu.addAction("Fechar aba")
-        act_close_others = menu.addAction("Fechar outras")
+        act_close = menu.addAction(self._t("tabs.close_tab", "Close tab"))
+        act_close_others = menu.addAction(self._t("tabs.close_others", "Close others"))
 
         chosen = menu.exec(global_pos)
         if chosen is None:
             return
         if chosen is act_new_group:
-            name, ok = QInputDialog.getText(self, "Grupo de abas", "Nome do grupo:")
+            name, ok = QInputDialog.getText(
+                self,
+                self._t("tabs.group_title", "Tab group"),
+                self._t("tabs.group_name", "Group name:"),
+            )
             self.create_group([index], name=name if ok and name.strip() else None)
             return
         if chosen is act_remove:
             self.remove_from_group(index)
             return
         if chosen is act_rename and group is not None:
-            name, ok = QInputDialog.getText(self, "Renomear grupo", "Nome:", text=group.name)
+            name, ok = QInputDialog.getText(
+                self,
+                self._t("tabs.rename_title", "Rename group"),
+                self._t("tabs.rename_name", "Name:"),
+                text=group.name,
+            )
             if ok and name.strip():
                 self.rename_group(group.group_id, name)
             return

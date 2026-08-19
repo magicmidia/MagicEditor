@@ -6,8 +6,7 @@ QMainWindow {
 }
 QWidget {
   color: #E5E2E1;
-  background-color: transparent;
-}
+  }
 
 /* --- Menu bar (glass chrome) --- */
 QMenuBar {
@@ -389,6 +388,10 @@ QDialog QLabel {
   color: #E5E2E1;
   background: transparent;
 }
+QMessageBox QLabel {
+  color: #E5E2E1;
+  background: transparent;
+}
 QLineEdit {
   background-color: #2A2A2A;
   color: #E5E2E1;
@@ -554,7 +557,7 @@ QMessageBox, QDialog#aboutDialog {
   border: 1px solid #3A3939;
   border-radius: 8px;
 }
-QDialog#aboutDialog QLabel { color: inherit; padding: 6px 4px; }
+QDialog#aboutDialog QLabel { color: #E5E2E1; padding: 6px 4px; }
 QLabel#aboutTitle { color: #FFF6DF; font-weight: 600; }
 QLabel#aboutMuted { color: #999077; font-size: 10pt; }
 QLabel#aboutBody { color: #E5E2E1; }

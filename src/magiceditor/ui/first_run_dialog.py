@@ -71,7 +71,7 @@ class FirstRunDialog(QDialog):
             ),
             self,
         )
-        self.assoc_box.setChecked(True)
+        self.assoc_box.setChecked(False)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         buttons.accepted.connect(self.accept)

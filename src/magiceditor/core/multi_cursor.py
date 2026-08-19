@@ -25,6 +25,60 @@ class SelectionSpan:
         return SelectionSpan(start=b, end=a)
 
 
+def find_next_in_line_source(
+    line_at,
+    n_lines: int,
+    needle: str,
+    *,
+    after_line: int,
+    after_col: int,
+    wrap: bool = True,
+) -> CursorPos | None:
+    """Next occurrence via a line accessor — never materializes the file (K14)."""
+    if not needle or n_lines <= 0:
+        return None
+    start_line = max(0, min(after_line, n_lines - 1))
+    for line_i in range(start_line, n_lines):
+        text = line_at(line_i)
+        start_col = after_col if line_i == start_line else 0
+        idx = text.find(needle, start_col)
+        if idx >= 0:
+            return CursorPos(line=line_i, col=idx)
+    if wrap:
+        for line_i in range(0, start_line + 1):
+            text = line_at(line_i)
+            idx = text.find(needle, 0)
+            if idx >= 0 and (line_i < start_line or idx < after_col):
+                return CursorPos(line=line_i, col=idx)
+    return None
+
+
+def find_all_in_line_source(
+    line_at,
+    n_lines: int,
+    needle: str,
+    *,
+    max_hits: int = 200,
+) -> list[CursorPos]:
+    """Occurrences via a line accessor, capped (K14)."""
+    if not needle or n_lines <= 0:
+        return []
+    hits: list[CursorPos] = []
+    cap = max(1, int(max_hits))
+    for li in range(n_lines):
+        text = line_at(li)
+        start = 0
+        while True:
+            idx = text.find(needle, start)
+            if idx < 0:
+                break
+            hits.append(CursorPos(line=li, col=idx))
+            if len(hits) >= cap:
+                return hits
+            start = idx + max(1, len(needle))
+    return hits
+
+
 def find_next_occurrence(
     lines: list[str],
     needle: str,
@@ -34,41 +88,19 @@ def find_next_occurrence(
     wrap: bool = True,
 ) -> CursorPos | None:
     """Find next occurrence of ``needle`` after (after_line, after_col)."""
-    if not needle or not lines:
-        return None
-    start_line = max(0, after_line)
-    # search from after_col on start_line
-    for line_i in range(start_line, len(lines)):
-        text = lines[line_i]
-        start_col = after_col if line_i == start_line else 0
-        idx = text.find(needle, start_col)
-        if idx >= 0:
-            return CursorPos(line=line_i, col=idx)
-    if wrap:
-        for line_i in range(0, start_line + 1):
-            text = lines[line_i]
-            idx = text.find(needle, 0)
-            if idx >= 0 and (line_i < start_line or idx < after_col):
-                return CursorPos(line=line_i, col=idx)
-    return None
+    return find_next_in_line_source(
+        lines.__getitem__,
+        len(lines),
+        needle,
+        after_line=after_line,
+        after_col=after_col,
+        wrap=wrap,
+    )
 
 
 def find_all_occurrences(lines: list[str], needle: str, *, max_hits: int = 200) -> list[CursorPos]:
     """All occurrences of needle (capped)."""
-    if not needle:
-        return []
-    hits: list[CursorPos] = []
-    for li, text in enumerate(lines):
-        start = 0
-        while True:
-            idx = text.find(needle, start)
-            if idx < 0:
-                break
-            hits.append(CursorPos(line=li, col=idx))
-            if len(hits) >= max_hits:
-                return hits
-            start = idx + max(1, len(needle))
-    return hits
+    return find_all_in_line_source(lines.__getitem__, len(lines), needle, max_hits=max_hits)
 
 
 def restore_carets_after_multi_insert(

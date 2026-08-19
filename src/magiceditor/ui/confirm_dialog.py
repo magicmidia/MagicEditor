@@ -47,6 +47,7 @@ class ConfirmDialog(QDialog):
         super().__init__(parent)
         self.setObjectName("confirmDialog")
         self.setModal(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setWindowTitle(title)
         self.setMinimumWidth(420)
         self._result = ConfirmResult.CANCEL

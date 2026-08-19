@@ -1,6 +1,6 @@
 # MagicEditor — Roadmap de excelência (competitivo + produto premium)
 
-**Atualizado:** 2026-07-30  
+**Atualizado:** 2026-08-17  
 **Fontes:** Notepad++, Windows Notepad, Sublime Text, Adobe Brackets / Phoenix Code, VS Code, WordPad (legado), práticas de mercado 2024–2026, critérios de “produto de excelência” (polish, performance, distribuição).
 
 Este documento inventaria funcionalidades e vantagens dos editores do “tipo MagicEditor”, cruza com o estado atual do produto e define **ondas de entrega** com critérios de aceite.  
@@ -41,18 +41,18 @@ O MagicEditor não compete como IDE completa (LSP/debug/Git full). Compete como:
 | Syntax highlight | 80+ langs | Não | Excelente | Web-first | Excelente | Bom (muitas langs) |
 | Explorer lateral | Plugin | Não | Sidebar | Sim | Excelente | Sim |
 | Preview MD/HTML | Plugin | Não | Plugin | **Live Preview** | Bom | Sim (split) |
-| Temas | Styles Configurator | Claro/escuro | Excelente | Bom | Excelente | 6 temas QSS |
+| Temas | Styles Configurator | Claro/escuro | Excelente | Bom | Excelente | **10 temas QSS** |
 | i18n UI | Sim | SO | Limitado | Sim | Excelente | pt/en/es |
-| **Correção ortográfica** | Plugin | Básica | Packages | Limitado | Extensão / built-in | **Não** |
+| **Correção ortográfica** | Plugin | Básica | Packages | Limitado | Extensão / built-in | **Sim** (viewport pt/en/es) |
 | Macros | Sim | Não | Snippets | Extensões | Extensões | Não |
-| Compare files | Plugin | Não | Diff packages | Não | Diff nativo | Não |
+| Compare files | Plugin | Não | Diff packages | Não | Diff nativo | **Sim** |
 | Hex / binário | Sim | Não | Packages | Não | Extensão | Não |
-| Minimap | Não | Não | **Sim** | Não | Sim | Não |
-| Command palette | Não | Não | **Ctrl+Shift+P** | Limitado | **Ctrl+Shift+P** | Não (só Quick Open) |
+| Minimap | Não | Não | **Sim** | Não | Sim | **Sim** |
+| Command palette | Não | Não | **Ctrl+Shift+P** | Limitado | **Ctrl+Shift+P** | **Ctrl+Shift+P** |
 | Session restore | Sim | Sim | Sim | Sim | Excelente | Sim (+ drafts) |
 | Leveza / RAM | **Muito leve** | Mínimo | Leve | Médio | Pesado | Médio-leve |
 | Impressão limpa | Razoável | Simples | Limitado | Limitado | Extensão | **Forte** (clean print) |
-| Instalador + file assoc. | Excelente | SO | Bom | Bom | Excelente | **Parcial** (MSI básico, sem ProgID) |
+| Instalador + file assoc. | Excelente | SO | Bom | Bom | Excelente | MSI ProgID + Inno setup |
 
 **Diferenciais já do MagicEditor:** piece table + mmap + virtual viewport; impressão/PDF “clean”; Luminous Void + GPU/transparência; drafts de Untitled; i18n JSON; packaging scripts (`scripts/build.ps1`).
 
@@ -143,26 +143,26 @@ O MagicEditor não compete como IDE completa (LSP/debug/Git full). Compete como:
 | Duplo clique barra → nova aba | P0 | ✅ Feito | STATUS 2026-07-30 |
 | Ícones toolbar/menu modernos | P0 | ✅ Feito | Qlementine + Material opcional |
 | Diálogos (Sobre, mensagens) premium | P0 | ✅ Feito | About custom + QSS |
-| Multi-cursor / column mode | P1 | Stretch | Sublime/N++ killer feature |
-| Command palette | P1 | Falta | Ctrl+Shift+P (preview usa isso — realocar) |
-| Minimap | P2 | Falta | Sublime/VS Code |
-| Operações de linha (sort, join, delete blank) | P1 | Parcial | Tem duplicate |
-| Tabs↔spaces / trim trailing | P1 | Falta | N++ blank ops |
-| Comentário toggle | P1 | Falta | Por linguagem |
-| Brace match highlight | P1 | Falta | |
-| **Correção ortográfica** | **P1** | **Falta** | TXT/MD; dicionários pt/en/es; ignore list |
-| Auto-complete palavras do doc | P2 | Falta | |
-| Compare two files | P2 | Falta | |
-| Function/symbol list | P2 | Outline MD só | Expandir para código |
-| Macros | P3 | Falta | |
-| Hex editor | P3 | Falta | |
-| Split editor panes | P2 | Falta | |
-| Reload from disk / external change | P1 | Falta | |
-| Open folder in explorer / copy path | P1 | Falta | |
-| Autosave interval | P2 | Falta | |
-| Settings UI mais completa | P1 | Parcial | GPU/opacity; falta fonte, tab, wrap, spell |
-| First-run wizard (idioma + tema) | P1 | Falta | Instalador + 1ª execução |
-| File associations / “Open with” | P1 | Falta | MSI ProgIDs + opcional default |
+| Multi-cursor / column mode | P1 | ✅ Feito | Sublime/N++ killer feature |
+| Command palette | P1 | ✅ Feito | Ctrl+Shift+P |
+| Minimap | P2 | ✅ Feito | Sublime/VS Code |
+| Operações de linha (sort, join, delete blank) | P1 | ✅ Feito | Menu Edit + atalhos |
+| Tabs↔spaces / trim trailing | P1 | ✅ Feito | N++ blank ops |
+| Comentário toggle | P1 | ✅ Feito | Por linguagem |
+| Brace match highlight | P1 | ✅ Feito | |
+| **Correção ortográfica** | **P1** | **✅ Feito** | TXT/MD; dicionários pt/en/es; ignore list |
+| Auto-complete palavras do doc | P2 | ✅ Feito | opt-in |
+| Compare two files | P2 | ✅ Feito | |
+| Function/symbol list | P2 | ✅ Feito | symbols + outline |
+| Macros | P3 | Falta | fora do recorte J–N |
+| Hex editor | P3 | Falta | fora do recorte J–N |
+| Split editor panes | P2 | ✅ Feito | dock snapshot |
+| Reload from disk / external change | P1 | ✅ Feito | |
+| Open folder in explorer / copy path | P1 | ✅ Feito | |
+| Autosave interval | P2 | ✅ Feito | |
+| Settings UI mais completa | P1 | ✅ Feito | fonte, tab, wrap, spell, GPU |
+| First-run wizard (idioma + tema) | P1 | ✅ Feito | Instalador + 1ª execução |
+| File associations / “Open with” | P1 | ✅ Feito | MSI ProgIDs + opt-in |
 | Plugin API | P3 | Fora MVP | |
 | Telemetria | — | Não | Privacy by default |
 
@@ -379,7 +379,7 @@ Estender `packaging/wix/MagicEditor.wxs` (hoje: Program Files + Start Menu apena
 ```
 .txt .md .markdown .log .ini .cfg .conf .json .xml .yml .yaml
 .csv .sql .py .js .ts .html .css .cs .java .c .cpp .h .hpp
-.sh .ps1 .bat .cmd .toml .env .gitignore .editorconfig
+.sh .ps1 .toml .env .gitignore .editorconfig
 ```
 
 Lista completa versionada em `packaging/wix/file-associations.json` (gerada/incluída no WXS ou custom action).
@@ -517,7 +517,173 @@ A ✅  →  B (edição)  →  C (navegação)  →  D (workspace)
 |------|---------|
 | 2026-07-17 | Roadmap competitivo inicial (fases A–F) |
 | 2026-07-30 | **Incremento de excelência:** Ondas F (UI), G (spell + avançados), H (performance), I (release Windows final); gap/status A sincronizado; first-run, file assoc, build kit |
+| 2026-08-17 | **Auditoria de reengenharia:** Ondas J–N (estrutura, otimização, segurança, higiene, qualidade). Inventário de arquivos >300 LOC e gaps vs. estado real do código |
 
 ---
 
-*Próxima implementação imediata: Onda B (B1–B6) + kickoff G1 (spell) e F1/F5 (tokens/status). Preparar I2 em background. Onda I só após gates de qualidade.*
+## 11. Reengenharia (auditoria 2026-08-17)
+
+**Escopo desta revisão:** desempenho, segurança, lixo e práticas (SRP, arquivos enxutos, camadas).  
+**Estado:** Ondas J–N concluídas (2026-08-17). Inventário ID-a-ID: **nenhum Aceite J–N aberto**. Evidência em `docs/STATUS.md` e `tests/` (`test_j2_layers`, `test_theme_io`, `test_save_worker`, `test_k10_packaging`, `tests/perf/test_harness`).  
+**Números (na auditoria):** 79 módulos Python em `src/magiceditor` (~14,5 kLOC). `core/` continua **sem PyQt6**.
+
+**Princípio das ondas J–N:** um arquivo por responsabilidade; extrair **antes** de corrigir comportamento. Sem reescrita big-bang. Cada item tem aceite verificável.
+
+**Ordem:** `M (higiene barata) → J (quebrar god-files) → K (hot paths) → L (segurança) → N (testes/docs)`.  
+Higiene (M) pode começar em paralelo com J1 (extração de `virtual_editor` / `main_window`).
+
+### 11.1 Diagnóstico compacto
+
+| Área | Achado | Gravidade |
+|------|--------|-----------|
+| God-files | `main_window.py` 1859 · `virtual_editor.py` 1785 · `power_features.py` 899 · `settings_dialog.py` 676 · `tab_manager.py` 556 · `settings.py` 464 · `syntax/detect.py` 431 | Alta |
+| Paint | `tokenize_line` aloca `claimed[n]` e varre todas as regras **por linha visível a cada frame**; spell (`pyspellchecker`) no mesmo `paintEvent` | Alta |
+| Huge-file | `find_dialog` / preview / compare / outline / print usam `toPlainText()` ou `document.text()` (cópia completa) | Alta |
+| Startup | Splash **bloqueia 5 s** no thread da UI (`time.sleep` + `processEvents`) | Média |
+| Segurança | Preview MD/HTML via `QTextBrowser.setHtml` **sem sanitizar**; HTML do usuário é injetado; `subprocess` explorer OK (lista, não shell) | Alta (preview) |
+| Lixo | `tmp/qlementine-icons/` (~880 SVG + CMake); `tmp/DESIGN.md` duplicado; `build/` PyInstaller; ícones qlementine de **comida/áudio/compras** não usados no editor | Média |
+| Docs | Este ROADMAP ainda descreve “6 temas”, “spell não”, “minimap não” na matriz §1 — **desatualizado** vs. código 0.9.1 | Média |
+| Temas | 10 QSS (~750 linhas cada) com seletores duplicados; 4 temas novos gerados por template, 6 antigos manuais | Média |
+| Testes | `main_window` / `virtual_editor` / `power_features` sem cobertura proporcional; smoke UI ainda espera `setPlainText` no viewport | Média |
+
+---
+
+### Onda J — Arquitetura e código limpo (SRP)
+
+**Objetivo:** cumprir a regra ≤300 LOC; widgets finos; política de I/O só em `services/`.
+
+#### J1 — Quebrar god-files
+
+| ID | Item | Aceite |
+|----|------|--------|
+| J1.1 | Extrair `virtual_editor` em colaboradores | `paint`, `keys/indent`, `find/replace`, `undo`, `multi-cursor` em módulos ≤300 LOC; `virtual_editor.py` só orquestra |
+| J1.2 | Extrair `main_window` | Menus/actions, session, file I/O wiring, print — arquivos separados; `MainWindow` só compõe |
+| J1.3 | Desmontar mixin `power_features.py` | Controllers por domínio: `spell_controller`, `workspace_actions`, `nav_palette` — sem mixin de 900 linhas |
+| J1.4 | Fatiar `settings_dialog` | Uma página = um módulo (`settings_pages/general.py` …) + dialog shell |
+| J1.5 | Fatiar `tab_manager` | Tab bar / groups / close-filter já quase isolados — extrair `_MagicTabBar` e filtros |
+| J1.6 | Fatiar `services/settings.py` | `SessionState` vs persistência `QSettings` vs clamps em arquivos distintos |
+| J1.7 | `syntax/detect.py` | Mapa de extensões em JSON de dados (`resources/syntax/extensions.json`); módulo só carrega |
+
+#### J2 — Camadas
+
+| ID | Item | Aceite |
+|----|------|--------|
+| J2.1 | UI sem política de tamanho | `document_io.open_document` continua o único gate mmap/huge; nenhum `read_bytes` em `ui/` |
+| J2.2 | `text_editor.py` (QPlainTextEdit) | Decidir: remover caminho clássico **ou** isolar atrás de um `EditorSurface` protocol — hoje `EditorTab` ainda ramifica (`document_io` ainda documenta “classic editor”) |
+| J2.3 | `export_text` / `toPlainText` | API explícita `viewport_text()` vs `full_text(*, max_bytes=)` com fail-closed em huge mode |
+| J2.4 | Hardcoded PT/EN em widgets | Auditoria i18n: `status_bar`, `power_features` (`"Minimap: on"`), `tab_manager` menu PT, leftovers → locales |
+| J2.5 | Desinverter camadas | `core/document_edit.py` **não** pode importar `services.document` — mover `Document` para `core/document.py`; I/O fica em `document_io` |
+| J2.6 | `themes/` sem importar `ui/` | `ThemeManager` hoje importa `ui.fonts.qss_font_family` — mover família de fonte para `themes/fonts.py` ou `paths` |
+| J2.7 | I/O fora da UI | `compare_dialog.read_text`, `quick_open.os.walk`, theme JSON, `_prepare_document_for_save`, autosave → `services/` + worker |
+
+#### J3 — Contratos
+
+| ID | Item | Aceite |
+|----|------|--------|
+| J3.1 | Protocolo de editor | Interface comum (`goto_line`, `has_selection`, `insert`) para testes sem Qt pesado |
+| J3.2 | Sem `getattr` de mixin | Atributos de session/spell tipados; eliminar `type: ignore[attr-defined]` em massa em `power_features` |
+
+---
+
+### Onda K — Otimização (hot paths)
+
+**Objetivo:** UI nunca congelar >50 ms; paint estável em 100k linhas; huge file não materializa `str` inteiro.
+
+| ID | Item | Aceite |
+|----|------|--------|
+| K1 | `tokenize_line` | Sem `claimed[n]` por caractere; first-match por posição; **cachear `rules_for(lang)`** (hoje recompila regex a cada linha/frame) |
+| K2 | Cache de syntax no viewport | Tokenizar só linhas dirty / recém-visíveis; uma vez por linha, não por wrap-row |
+| K3 | Spell fora do `paintEvent` | Debounce 50–80 ms; LRU de `is_correct`; paint só desenha spans prontos; **não** forçar spell em código no toggle (`spell_force=True` hoje) |
+| K4 | `paintEvent` | Fonte já é monoespaçada — `char_width * cols` em vez de `horizontalAdvance` por prefixo; AA só se preferência ligada; não `update()` extra após `scroll()` |
+| K5 | Find in Files | Hoje `search_folder` roda **no thread da UI** (`find_in_files_dialog.run_search`) — cancel nunca dispara. Worker + sinais; `async_search` existe e **não está ligado** |
+| K6 | Find no buffer | Sem `doc.text()` / `toPlainText()`; sem `list(range(n_lines))` em 10M linhas; padrão compilado uma vez (hoje `compile_pattern` por linha no paint) |
+| K7 | Preview / compare / outline / print | Preview: debounce + worker; não criar `WebPreview` em toda aba. Compare: `stat` + cap **antes** de `read_text`. Outline: bytes[:2MB], não `text()` e depois fatiar |
+| K8 | Splash / boot | Sem `time.sleep` na UI; piso ≤1,5 s (hoje 5 s fura H1). Um único `AppSettings.load`; QSS uma vez; restaurar aba ativa primeiro |
+| K9 | Open 5–50 MB | Não `decode_bytes` do arquivo inteiro (hoje decode + descarta + PieceTable(raw) ≈ **3× RAM**). Probe ≤64 KB. Índice de linhas com `bytes.find(b"\\n")`, não loop Python byte a byte (`LineIndex.from_buffer`) |
+| K10 | Cold start EXE | Medir onefile+UPX+dicts spell; onedir para uso diário; lazy QtAwesome/spell datas |
+| K11 | QSS | Gerador único para os 10 temas; `QWidget { background: transparent }` força polish em tudo — restringir |
+| K12 | Session restore | Sem abrir N arquivos enormes antes do 1º paint; progresso; cap |
+| K13 | Minimap / brace / status | Minimap: não 4000× `line_text` a cada `textChanged`. Brace: não juntar 160 linhas a cada caret. Status: não `selected_text()` de 50k linhas |
+| K14 | Power features / `read_lines` | Ctrl+D, sort, comment, trim **não** materializam o arquivo inteiro; spell no menu só `line_text(cursor)`. Save/trim sem `document.text()` full |
+| K15 | Save | Write temp + replace em worker; `get_text()` em chunks |
+| K16 | Sidebar / Quick Open | Não `QFileSystemModel.setRootPath("")` com dock oculto; Quick Open: walk em worker (hoje `os.walk` no ctor) |
+| K17 | Harness | `@pytest.mark.perf`: scroll 60 frames, find-in-files cancel, tokenize, open 20 MB |
+| K18 | Gate 20 MB | Regra de arquitetura (syntax off >20 MB) **não está no código** — implementar flag + teste |
+
+---
+
+### Onda L — Segurança
+
+**Objetivo:** arquivo local não executa HTML/JS perigoso; I/O previsível; sem superfície extra.
+
+| ID | Item | Aceite |
+|----|------|--------|
+| L1 | Preview Markdown | Allowlist de tags; **sem** `script`/`iframe`/`on*`; desligar `md_in_html` se passar HTML cru |
+| L2 | Preview HTML cru | Não `setHtml` de `.html` do usuário sem sanitizar |
+| L3 | Links e rede | `setOpenExternalLinks(False)` + confirmar; bloquear `file:`, `javascript:`, `ms-msdt:`; **sem** `<img src="https://…">` (Qt Network fura o “Local only”) |
+| L4 | Abrir no navegador | Aviso explícito antes de `QDesktopServices` em `.html` (`file://` + JS do SO) |
+| L5 | Save atômico | `write` em temp + `replace`; autosave não engolir `OSError` nem truncar o original |
+| L6 | Associações | Defaults **opt-in** (desmarcados); não roubar `.html` / `.js` / `.bat` / `.env` na 1ª instalação; WiX hoje instala FileAssoc+ContextMenu sem toggle |
+| L7 | First-run checkbox | `want_associations()` **não é lido** — honrar ou remover; Inno já grava `first_run_done=1` e pula o wizard |
+| L8 | Pasta vs arquivo | Inno associa Directory `open` ao EXE, mas `open_document` só aceita arquivo — tratar pasta como workspace |
+| L9 | Regex do usuário | Cap / timeout em `re.compile` (Find / Find in Files) — ReDoS trava a UI |
+| L10 | Locale path | `translator.load(lang)` não interpolar `../` em nome de ficheiro |
+| L11 | Log release | Nível WARNING+ no EXE; sem paths completos em INFO (PII); I1.3 |
+| L12 | PyInstaller | Desligar **UPX** (falso positivo AV); datas só o necessário (não 685 SVG qlementine) |
+| L13 | Spec extras | Remover ou usar `scintilla` / `webengine` no `pyproject.toml` — código não importa nenhum |
+| L14 | Docs de superfície | AGENTS/architecture ainda dizem “WebEngine preview” — alinhar a `QTextBrowser` |
+
+---
+
+### Onda M — Higiene e lixo
+
+**Objetivo:** repo e working tree só com o que o produto precisa.
+
+| ID | Item | Aceite |
+|----|------|--------|
+| M1 | `tmp/` | Confirmar gitignore; apagar localmente `tmp/qlementine-icons` (~880 SVG + CMake) e `tmp/DESIGN.md` duplicado — não versionar |
+| M2 | Ícones qlementine | Manter só categorias usadas (`action`, `file`, `document`, `navigation`, `text`, `misc` mínimo); remover `food/`, `shopping/`, `audio/`, `instrument/` se não referenciados |
+| M3 | Scripts de build | Um entry (`build.ps1`) + wrappers finos; documentar ou fundir `build_all` / `build_exe` duplicados |
+| M4 | Artefatos locais | `build/pyinstaller`, `dist/*.exe`, `MagicEditor.exe`, `MagicEditor.log` continuam gitignored; não commitar |
+| M5 | Docs stale | Atualizar matriz §1 (temas agora 10; spell **sim**; minimap **sim**; palette **sim**; compare **sim**) e linha “Próxima implementação” |
+| M6 | `text_editor.py` | Se o viewport for o único caminho, deprecar ou apagar após J2.2 |
+| M7 | Locales | Remover chaves mortas; completar `es_ES` (About ainda diz “Version 0.1.0”) |
+| M8 | Orphan pyc | `ui/__pycache__/find_bar.cpython-313.pyc` sem `find_bar.py` — apagar cache morto |
+| M9 | Docs vs código | Matriz §1 e §3 (spell/palette/minimap/assoc); STATUS “CHANGELOG 0.2.0”; Inno wizard só 6 temas (app tem 10) |
+| M10 | WiX vs Inno | Alinhar listas de extensão (`.env` / `.gitignore` só no Inno) |
+
+---
+
+### Onda N — Qualidade, testes e governança
+
+**Objetivo:** extrações da J não regredirem; STATUS/ROADMAP alinhados ao código.
+
+| ID | Item | Aceite |
+|----|------|--------|
+| N1 | Espelhar testes | Cada módulo extraído em J1 ganha `tests/…` correspondente **antes** do merge |
+| N2 | Corrigir smoke UI | `test_main_window_starts` não deve chamar `setPlainText` no `VirtualEditor` |
+| N3 | Huge-file tests | Find/preview/print/compare **não** materializam arquivo >50 MB (fixture tmp) |
+| N4 | Coverage | `fail_under` por pacote: `core` alto; `ui` smoke + extrações novas |
+| N5 | STATUS.md | Data, versão 0.9.1, ondas J–N como fase atual; EXE na raiz |
+| N6 | ADR | Registrar em `.memory/decisions.md`: viewport-only editor; dicionário pyspellchecker; QSS gerado |
+| N7 | Lacunas de teste (UI) | Sem arquivo hoje: `find_dialog`, `command_palette`, `compare_dialog`, `confirm_dialog`, `first_run`, `goto_*`, `quick_open`, `sidebar`, `splash`, `translator`, `graphics` — um teste smoke por diálogo ao extrair |
+| N8 | `power_features` | Sem teste de autosave, theme bundle, split, line-ops wiring, spell controller — criar ao fatiar J1.3 |
+
+---
+
+### 11.2 Ordem de execução (reengenharia)
+
+```
+M1–M4 (lixo local)  →  J1.1 virtual_editor  →  J1.2 main_window
+                    →  K1–K4 (paint/tokenize/spell) em cima dos módulos novos
+                    →  L1–L3 (preview)
+                    →  J1.3–J1.7 + J2
+                    →  K5–K14
+                    →  N (contínuo a cada extração)
+```
+
+**Não fazer:** reescrever o piece table / mmap nesta passagem (já é o diferencial). Otimizar **em volta**.
+
+---
+
+*Ondas J–N concluídas (2026-08-17). Sem IDs abertos neste recorte de reengenharia.*

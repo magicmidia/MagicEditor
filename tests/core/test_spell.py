@@ -58,3 +58,22 @@ def test_suggest_returns_close_words() -> None:
 def test_suggest_empty_when_correct() -> None:
     eng = SpellEngine(language="en_US")
     assert eng.suggest("hello") == []
+
+
+def test_portuguese_common_words_are_known() -> None:
+    from magiceditor.core.spell_backend import backend_available
+
+    assert backend_available("pt_BR")
+    eng = SpellEngine(language="pt_BR")
+    for word in ("amanhã", "configurações", "arquivo", "obrigado", "também"):
+        assert eng.is_correct(word), word
+    assert not eng.is_correct("xyzzyqqpt")
+
+
+def test_portuguese_typo_has_suggestion() -> None:
+    from magiceditor.core.spell_backend import backend_available
+
+    assert backend_available("pt_BR")
+    eng = SpellEngine(language="pt_BR")
+    suggestions = [s.casefold() for s in eng.suggest("arquvo", limit=8)]
+    assert any(s.startswith("arquiv") for s in suggestions)

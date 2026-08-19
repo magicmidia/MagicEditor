@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
-from PyQt6.QtCore import QEvent, QSize, Qt
+from PyQt6.QtCore import QEvent, Qt
 from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
@@ -14,22 +15,20 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
-    QToolBar,
     QWidget,
 )
 
 from magiceditor.core.encoding import ENCODING_CATALOG
 from magiceditor.core.spell import SUPPORTED_SPELL_LANGS
-from magiceditor.core.syntax.detect import language_label, supported_languages
+from magiceditor.core.syntax.detect import language_label
 from magiceditor.i18n.translator import TranslatorManager
 from magiceditor.services.document import Document
-from magiceditor.services.document_io import open_document, save_document
+from magiceditor.services.document_io import open_document
 from magiceditor.services.graphics import (
     apply_translucent_chrome,
     apply_window_opacity,
     graphics_status_summary,
 )
-from magiceditor.services.print_engine import export_pdf, print_plain_text
 from magiceditor.services.settings import AppSettings, SessionState, normalize_path
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.about_dialog import AboutDialog
@@ -41,20 +40,20 @@ from magiceditor.ui.first_run_dialog import FirstRunDialog
 from magiceditor.ui.goto_line_dialog import GoToLineDialog
 from magiceditor.ui.icons import (
     get_icon_pack,
-    icon,
     language_icon,
     set_icon_pack,
     toolbar_icon_color,
 )
-from magiceditor.ui.outline_dialog import OutlineDialog, extract_markdown_outline
+from magiceditor.ui.outline_dialog import OutlineDialog
 from magiceditor.ui.power_features import PowerFeaturesMixin
 from magiceditor.ui.quick_open import QuickOpenDialog
 from magiceditor.ui.settings_dialog import SettingsDialog
 from magiceditor.ui.sidebar import Sidebar
 from magiceditor.ui.status_bar import EditorStatusBar
 from magiceditor.ui.tab_manager import TabManager
-from magiceditor.ui.text_editor import TextEditor
 from magiceditor.ui.virtual_editor import VirtualEditor
+
+_log = logging.getLogger(__name__)
 
 
 class MainWindow(PowerFeaturesMixin, QMainWindow):
@@ -94,6 +93,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             pass
 
         self.tabs = TabManager(self)
+        self.tabs.set_translator(self._tr)
         self.tabs.set_close_icon_color(self._icon_color)
         self.setCentralWidget(self.tabs)
         self.tabs.tabCloseRequested.connect(self._close_tab)
@@ -105,6 +105,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._menu_eol = None  # type: ignore[assignment]
 
         self._status = EditorStatusBar(self)
+        self._status.set_translator(self._tr)
         self.setStatusBar(self._status)
         self._status.spell_clicked.connect(self._show_spell_language_menu)
 
@@ -144,6 +145,9 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._build_toolbar()
         self._apply_icons()
 
+        # Watcher/spell/timers must exist before session restore calls watch_path.
+        self._init_power_features()
+
         self._tr.language_changed.connect(self.retranslate_ui)
 
         # Preferences from last session
@@ -181,7 +185,8 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._sync_checkables()
         self._apply_chrome_visibility()
         self.retranslate_ui()
-        self._init_power_features()
+        self._sync_spell_to_editors()
+        self.apply_minimap_to_tabs()
         self._apply_editor_prefs_to_tabs()
         self._update_status_extras()
 
@@ -199,6 +204,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         if dlg.exec():
             self._set_language(dlg.selected_language(), persist=True)
             self.apply_theme(dlg.selected_theme(), persist=True)
+            self._session.want_file_associations = bool(dlg.want_associations())
         self._session.first_run_done = True
         self._settings.save(self._session)
 
@@ -246,350 +252,19 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
     # --- chrome -------------------------------------------------------
 
     def _build_actions(self) -> None:
-        def act(
-            key: str,
-            slot,
-            shortcut: str | None = None,
-            *,
-            checkable: bool = False,
-        ) -> QAction:
-            action = QAction(key, self)
-            action.triggered.connect(slot)
-            if shortcut:
-                action.setShortcut(QKeySequence(shortcut))
-                # Survive focus in the editor canvas (QWidget shortcuts alone can fail).
-                action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-            action.setCheckable(checkable)
-            self.addAction(action)
-            self._actions[key] = action
-            return action
+        from magiceditor.ui.window_chrome import populate_actions
 
-        act("action.new", self.new_document, "Ctrl+N")
-        act("action.open", self.open_file_dialog, "Ctrl+O")
-        act("action.open_folder", self.open_folder_dialog, "Ctrl+K")
-        act("action.save", self.save_current, "Ctrl+S")
-        act("action.save_as", self.save_current_as, "Ctrl+Shift+S")
-        act("action.print", self.print_current, "Ctrl+P")
-        act("action.export_pdf", self.export_pdf_current, "Ctrl+Shift+E")
-        act("action.undo", self.undo_current, "Ctrl+Z")
-        act("action.redo", self.redo_current, "Ctrl+Y")
-        self._actions["action.redo"].setShortcuts(
-            [QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")]
-        )
-        act("action.cut", self.cut_current, "Ctrl+X")
-        act("action.copy", self.copy_current, "Ctrl+C")
-        act("action.paste", self.paste_current, "Ctrl+V")
-        act("action.select_all", self.select_all_current, "Ctrl+A")
-        act("action.indent", self.indent_current, "Ctrl+]")
-        act("action.unindent", self.unindent_current, "Ctrl+[")
-        act("action.duplicate_line", self.duplicate_line_current, "Ctrl+Shift+D")
-        act("action.move_line_up", self.move_line_up_current, "Alt+Up")
-        act("action.move_line_down", self.move_line_down_current, "Alt+Down")
-        act("action.sort_lines", self.sort_lines_current)
-        act("action.join_lines", self.join_lines_current)
-        act("action.delete_blank_lines", self.delete_blank_lines_current)
-        act("action.trim_trailing", self.trim_trailing_current)
-        act("action.tabs_to_spaces", self.tabs_to_spaces_current)
-        act("action.spaces_to_tabs", self.spaces_to_tabs_current)
-        act("action.toggle_comment", self.toggle_comment_current, "Ctrl+/")
-        act("action.add_cursor_next", self.multi_cursor_add_next, "Ctrl+D")
-        act("action.select_all_occurrences", self.multi_cursor_select_all, "Alt+F3")
-        act("action.clear_cursors", self.multi_cursor_clear)
-        act("action.matching_brace", self.goto_matching_brace, "Ctrl+M")
-        act("action.find", self.show_find, "Ctrl+F")
-        act("action.replace", self.show_replace, "Ctrl+H")
-        act("action.find_in_files", self.show_find_in_files, "Ctrl+Shift+F")
-        act("action.goto_line", self.show_goto_line, "Ctrl+G")
-        act("action.goto_anything", self.show_goto_anything, "Ctrl+P")
-        # Print moves off Ctrl+P when Goto Anything takes it — keep both via menu
-        act("action.toggle_bookmark", self.toggle_bookmark, "Ctrl+F2")
-        act("action.next_bookmark", self.next_bookmark, "F2")
-        act("action.prev_bookmark", self.prev_bookmark, "Shift+F2")
-        # Command palette owns Ctrl+Shift+P; Preview uses Ctrl+Shift+V
-        act("action.command_palette", self.show_command_palette, "Ctrl+Shift+P")
-        act("action.preview", self.toggle_preview, "Ctrl+Shift+V")
-        act("action.symbols", self.show_symbol_list, "Ctrl+Shift+O")
-        act("action.reload", self.reload_current_from_disk, "F5")
-        act("action.reveal_explorer", self.reveal_in_explorer)
-        act("action.copy_path", self.copy_path_current)
-        act("action.copy_dir", self.copy_dir_current)
-        act("action.compare", self.compare_files_dialog)
-        act("action.split_view", self.toggle_split_view)
-        act("action.toggle_spell", self.toggle_spell_check, checkable=True)
-        act("action.spell_ignore", self.spell_ignore_word)
-        act("action.spell_add", self.spell_add_word)
-        act("action.minimap", self.toggle_minimap, checkable=True)
-        act("action.performance", self.show_performance_dashboard)
-        act("action.live_browser", self.open_live_preview_browser)
-        act("action.cancel_search", self.cancel_long_search, "Ctrl+Shift+C")
-        act("action.export_theme", self.export_theme_bundle)
-        act("action.import_theme", self.import_theme_bundle)
-        act("action.toggle_sidebar", self.toggle_sidebar, "Ctrl+B", checkable=True)
-        act("action.word_wrap", self.toggle_word_wrap, "Alt+Z", checkable=True)
-        act("action.line_numbers", self.toggle_line_numbers, checkable=True)
-        act("action.zoom_in", self.zoom_in, "Ctrl+=")
-        act("action.zoom_out", self.zoom_out, "Ctrl+-")
-        act("action.zoom_reset", self.zoom_reset, "Ctrl+0")
-        act("action.fullscreen", self.toggle_fullscreen, "F11", checkable=True)
-        act("action.settings", self.show_settings, "Ctrl+,")
-        # Quick Open uses Ctrl+E (print remains Ctrl+Shift+P conflict resolved above)
-        act("action.quick_open", self.show_quick_open, "Ctrl+E")
-        act("action.outline", self.show_outline, "Ctrl+Shift+U")
-        act("action.close_tab", self.close_current_tab, "Ctrl+W")
-        act("action.close_others", self.close_other_tabs)
-        act("action.close_all", self.close_all_tabs)
-        act("action.exit", self.close, "Ctrl+Q")
-
-        self._actions["action.word_wrap"].setChecked(self._word_wrap)
-        self._actions["action.line_numbers"].setChecked(self._line_numbers)
-        self._actions["action.toggle_sidebar"].setChecked(False)
-        self._actions["action.toggle_spell"].setChecked(
-            bool(getattr(self._session, "spell_check", True))
-        )
-        self._actions["action.minimap"].setChecked(
-            bool(getattr(self._session, "show_minimap", False))
-        )
-        # Print keeps Ctrl+P for Windows convention; Goto Anything also bound above —
-        # prefer print on Ctrl+P for platform; rebind goto_anything to Ctrl+Shift+G if clash
-        self._actions["action.print"].setShortcut(QKeySequence("Ctrl+P"))
-        self._actions["action.goto_anything"].setShortcut(QKeySequence("Ctrl+Shift+G"))
+        populate_actions(self)
 
     def _build_menus(self) -> None:
-        mb = self.menuBar()
-        mb.setNativeMenuBar(False)
-        # Titles with & mnemonics come from retranslate_ui (Alt+A → Arquivo, etc.).
-        self._menu_file = mb.addMenu("&Arquivo")
-        self._menu_edit = mb.addMenu("&Editar")
-        self._menu_view = mb.addMenu("E&xibir")
-        self._menu_format = mb.addMenu("&Formatar")
-        self._menu_tools = mb.addMenu("&Ferramentas")
-        self._menu_syntax = mb.addMenu("&Sintaxe")
-        self._menu_themes = mb.addMenu("&Temas")
-        self._menu_lang = mb.addMenu("&Idioma")
-        self._menu_help = mb.addMenu("A&juda")
+        from magiceditor.ui.window_chrome import populate_menus
 
-        for key in (
-            "action.new",
-            "action.open",
-            "action.open_folder",
-            "action.save",
-            "action.save_as",
-            "action.print",
-            "action.export_pdf",
-        ):
-            self._menu_file.addAction(self._actions[key])
-        self._menu_file.addSeparator()
-        for key in (
-            "action.close_tab",
-            "action.close_others",
-            "action.close_all",
-        ):
-            self._menu_file.addAction(self._actions[key])
-        self._menu_file.addSeparator()
-        self._recent_menu = self._menu_file.addMenu(self._tr.t("menu.recent", "Arquivos recentes"))
-        self._rebuild_recent_menu()
-        self._menu_file.addSeparator()
-        self._menu_file.addAction(self._actions["action.exit"])
-
-        for key in ("action.undo", "action.redo"):
-            self._menu_edit.addAction(self._actions[key])
-        self._menu_edit.addSeparator()
-        for key in (
-            "action.cut",
-            "action.copy",
-            "action.paste",
-            "action.select_all",
-        ):
-            self._menu_edit.addAction(self._actions[key])
-        self._menu_edit.addSeparator()
-        for key in (
-            "action.indent",
-            "action.unindent",
-            "action.duplicate_line",
-            "action.move_line_up",
-            "action.move_line_down",
-            "action.sort_lines",
-            "action.join_lines",
-            "action.delete_blank_lines",
-            "action.trim_trailing",
-            "action.tabs_to_spaces",
-            "action.spaces_to_tabs",
-            "action.toggle_comment",
-            "action.add_cursor_next",
-            "action.select_all_occurrences",
-            "action.clear_cursors",
-            "action.matching_brace",
-        ):
-            self._menu_edit.addAction(self._actions[key])
-        self._menu_edit.addSeparator()
-        for key in (
-            "action.find",
-            "action.replace",
-            "action.find_in_files",
-            "action.goto_line",
-            "action.goto_anything",
-            "action.command_palette",
-        ):
-            self._menu_edit.addAction(self._actions[key])
-        self._menu_edit.addSeparator()
-        for key in (
-            "action.toggle_bookmark",
-            "action.next_bookmark",
-            "action.prev_bookmark",
-        ):
-            self._menu_edit.addAction(self._actions[key])
-
-        for key in (
-            "action.preview",
-            "action.toggle_sidebar",
-            "action.quick_open",
-            "action.outline",
-            "action.symbols",
-            "action.minimap",
-            "action.split_view",
-            "action.word_wrap",
-            "action.line_numbers",
-            "action.zoom_in",
-            "action.zoom_out",
-            "action.zoom_reset",
-            "action.fullscreen",
-            "action.settings",
-        ):
-            self._menu_view.addAction(self._actions[key])
-
-        for key in (
-            "action.reload",
-            "action.reveal_explorer",
-            "action.copy_path",
-            "action.copy_dir",
-            "action.compare",
-            "action.toggle_spell",
-            "action.spell_ignore",
-            "action.spell_add",
-            "action.performance",
-            "action.live_browser",
-            "action.cancel_search",
-            "action.export_theme",
-            "action.import_theme",
-        ):
-            self._menu_tools.addAction(self._actions[key])
-
-        # Format: encoding + EOL
-        self._menu_encoding = self._menu_format.addMenu(self._tr.t("menu.encoding", "Codificação"))
-        self._enc_group = QActionGroup(self)
-        self._enc_group.setExclusive(True)
-        for enc, label in ENCODING_CATALOG:
-            a = QAction(label, self)
-            a.setCheckable(True)
-            a.setData(enc)
-            a.triggered.connect(lambda checked=False, e=enc: self.set_current_encoding(e))
-            self._enc_group.addAction(a)
-            self._menu_encoding.addAction(a)
-        self._menu_eol = self._menu_format.addMenu(self._tr.t("menu.eol", "Fim de linha"))
-        self._eol_group = QActionGroup(self)
-        self._eol_group.setExclusive(True)
-        for eol, label in (
-            ("LF", "Unix (LF)"),
-            ("CRLF", "Windows (CRLF)"),
-            ("CR", "Classic Mac (CR)"),
-        ):
-            a = QAction(label, self)
-            a.setCheckable(True)
-            a.setData(eol)
-            a.triggered.connect(lambda checked=False, e=eol: self.set_current_eol(e))
-            self._eol_group.addAction(a)
-            self._menu_eol.addAction(a)
-
-        for lang_id, label in supported_languages():
-            action = QAction(label, self)
-            action.setCheckable(True)
-            action.setData(lang_id)
-            action.triggered.connect(
-                lambda checked=False, lid=lang_id: self.set_syntax_language(lid)
-            )
-            self._syntax_group.addAction(action)
-            self._menu_syntax.addAction(action)
-            self._syntax_actions[lang_id] = action
-
-        for theme_id, label in self._themes.list_themes():
-            action = QAction(label, self)
-            action.setCheckable(True)
-            action.setData(theme_id)
-            action.triggered.connect(
-                lambda checked=False, t=theme_id: self.apply_theme(t, persist=True)
-            )
-            self._theme_group.addAction(action)
-            self._menu_themes.addAction(action)
-            self._theme_actions[theme_id] = action
-
-        for lang in self._tr.available_languages() or ["en_US", "pt_BR"]:
-            action = QAction(lang, self)
-            action.setCheckable(True)
-            action.setData(lang)
-            action.triggered.connect(
-                lambda checked=False, code=lang: self._set_language(code, persist=True)
-            )
-            self._lang_group.addAction(action)
-            self._menu_lang.addAction(action)
-            self._lang_actions[lang] = action
-
-        about = QAction("About", self)
-        about.setObjectName("action.about")
-        about.triggered.connect(self._about)
-        self._actions["action.about"] = about
-        self._menu_help.addAction(about)
+        populate_menus(self)
 
     def _build_toolbar(self) -> None:
-        tb = QToolBar("Main", self)
-        tb.setObjectName("mainToolbar")
-        tb.setMovable(False)
-        tb.setIconSize(QSize(22, 22))
-        tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
-        self._toolbar = tb
-        self.addToolBar(tb)
-        # File
-        for key in (
-            "action.new",
-            "action.open",
-            "action.open_folder",
-            "action.save",
-            "action.print",
-        ):
-            tb.addAction(self._actions[key])
-        tb.addSeparator()
-        # History
-        for key in ("action.undo", "action.redo"):
-            tb.addAction(self._actions[key])
-        tb.addSeparator()
-        # Clipboard
-        for key in ("action.cut", "action.copy", "action.paste"):
-            tb.addAction(self._actions[key])
-        tb.addSeparator()
-        # Search / view
-        for key in (
-            "action.find",
-            "action.replace",
-            "action.find_in_files",
-            "action.goto_line",
-            "action.preview",
-            "action.toggle_sidebar",
-            "action.settings",
-        ):
-            tb.addAction(self._actions[key])
-        tb.addSeparator()
-        # Quick Open field (Ctrl+E; Ctrl+P is Print)
-        search = QLineEdit(self)
-        search.setObjectName("toolbarSearch")
-        search.setPlaceholderText("Pesquisar arquivos (Ctrl+E)")
-        search.setClearButtonEnabled(True)
-        search.setMinimumWidth(200)
-        search.setMaximumWidth(320)
-        search.setReadOnly(True)
-        search.setCursor(Qt.CursorShape.PointingHandCursor)
-        search.installEventFilter(self)
-        tb.addWidget(search)
-        self._quick_search = search
-        self._toolbar = tb
+        from magiceditor.ui.window_chrome import populate_toolbar
+
+        populate_toolbar(self)
 
     def eventFilter(self, obj, event):
         if obj is self._quick_search and event.type() == QEvent.Type.MouseButtonPress:
@@ -598,52 +273,9 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         return super().eventFilter(obj, event)
 
     def _apply_icons(self) -> None:
-        c = self._icon_color
-        mapping = {
-            "action.new": "new",
-            "action.open": "open",
-            "action.open_folder": "folder",
-            "action.save": "save",
-            "action.save_as": "save_as",
-            "action.print": "print",
-            "action.export_pdf": "export_pdf",
-            "action.undo": "undo",
-            "action.redo": "redo",
-            "action.cut": "cut",
-            "action.copy": "copy",
-            "action.paste": "paste",
-            "action.select_all": "select_all",
-            "action.find": "find",
-            "action.replace": "replace",
-            "action.find_in_files": "find_files",
-            "action.goto_line": "goto",
-            "action.toggle_bookmark": "bookmark",
-            "action.next_bookmark": "bookmark",
-            "action.prev_bookmark": "bookmark",
-            "action.preview": "preview",
-            "action.toggle_sidebar": "sidebar",
-            "action.word_wrap": "wrap",
-            "action.line_numbers": "lines",
-            "action.zoom_in": "zoom_in",
-            "action.zoom_out": "zoom_out",
-            "action.zoom_reset": "zoom_reset",
-            "action.fullscreen": "fullscreen",
-            "action.settings": "settings",
-            "action.quick_open": "quick_open",
-            "action.outline": "outline",
-            "action.indent": "indent",
-            "action.unindent": "unindent",
-            "action.duplicate_line": "duplicate_line",
-            "action.close_tab": "close_tab",
-            "action.exit": "exit",
-            "action.about": "about",
-        }
-        for key, name in mapping.items():
-            if key in self._actions:
-                self._actions[key].setIcon(icon(name, c))
-        # Syntax menu language icons
-        for lang_id, action in self._syntax_actions.items():
-            action.setIcon(language_icon(lang_id, c))
+        from magiceditor.ui.window_chrome import populate_icons
+
+        populate_icons(self)
 
     def _sync_checkables(self) -> None:
         theme = self._themes.current
@@ -664,7 +296,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         for lid, action in self._syntax_actions.items():
             action.setChecked(lid == current)
 
-    def retranslate_ui(self) -> None:
+    def retranslate_ui(self, *_args: object) -> None:
         t = self._tr.t
         self._menu_file.setTitle(t("menu.file", "&Arquivo"))
         self._menu_edit.setTitle(t("menu.edit", "&Editar"))
@@ -773,6 +405,8 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
                 t("toolbar.search_placeholder", "Pesquisar arquivos (Ctrl+E)")
             )
         self._sidebar.retranslate(self._tr)
+        self.tabs.retranslate_ui()
+        self._status.retranslate_ui()
         self._update_status_extras()
         tab = self.current_tab()
         if tab is not None:
@@ -783,60 +417,39 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
     # --- session ------------------------------------------------------
 
     def _restore_session_files(self) -> bool:
+        from magiceditor.ui.window_session import plan_session_restore
+
+        files, drafts = plan_session_restore(self._session)
         opened = False
         active_index = 0
-        active_key = (
-            normalize_path(self._session.active_file) if self._session.active_file else None
-        )
-        for path_str in self._session.open_files:
-            path = Path(path_str)
-            if not path.is_file():
-                continue
+        for op in files:
             try:
-                doc = open_document(path)
-            except OSError:
+                doc = open_document(op.path)
+            except OSError as exc:
+                _log.warning("Could not restore %s: %s", op.path, exc)
                 continue
             tab = self._add_document(doc, activate=False)
-            key = normalize_path(path)
-            # Restore bookmarks (0-based lines)
-            marks = self._session.bookmarks.get(key) or self._session.bookmarks.get(path_str)
-            if marks:
-                tab.set_bookmarks(marks)
-            # Restore caret
-            cursor = self._session.cursors.get(key) or self._session.cursors.get(path_str)
-            if cursor:
-                line, col = cursor
-                tab.goto_line(line, col)
-            if active_key and key == active_key:
+            if op.bookmarks:
+                tab.set_bookmarks(op.bookmarks)
+            if op.cursor:
+                tab.goto_line(op.cursor[0], op.cursor[1])
+            if op.activate:
                 active_index = self.tabs.indexOf(tab)
             opened = True
-
-        # Restore Untitled drafts (unsaved buffers)
-        draft_active_idx: int | None = None
-        for draft in self._session.drafts:
-            text = str(draft.get("text") or "")
-            title = str(draft.get("title") or "Untitled")
-            doc = Document.from_text(text)
-            doc.title = title
-            if text:
+        for op in drafts:
+            doc = Document.from_text(op.text)
+            doc.title = op.title
+            if op.modified:
                 doc.modified = True
             tab = self._add_document(doc, activate=False)
-            marks = draft.get("bookmarks")
-            if isinstance(marks, list):
-                tab.set_bookmarks(marks)
-            cur = draft.get("cursor")
-            if isinstance(cur, (list, tuple)) and len(cur) >= 2:
-                try:
-                    tab.goto_line(int(cur[0]), int(cur[1]))
-                except (TypeError, ValueError):
-                    pass
-            if draft.get("active"):
-                draft_active_idx = self.tabs.indexOf(tab)
+            if op.bookmarks:
+                tab.set_bookmarks(op.bookmarks)
+            if op.cursor:
+                tab.goto_line(op.cursor[0], op.cursor[1])
+            if op.activate:
+                active_index = self.tabs.indexOf(tab)
             opened = True
-
         if opened:
-            if draft_active_idx is not None and draft_active_idx >= 0:
-                active_index = draft_active_idx
             self.tabs.setCurrentIndex(max(0, active_index))
             w = self.current_tab()
             if w is not None:
@@ -844,83 +457,43 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         return opened
 
     def _collect_session(self) -> SessionState:
-        open_files: list[str] = []
-        bookmarks: dict[str, list[int]] = {}
-        cursors: dict[str, tuple[int, int]] = {}
-        drafts: list[dict] = []
-        active: str | None = None
+        from magiceditor.ui.window_session import TabSessionView, collect_tabs_into_session
+
         current = self.current_tab()
+        views: list[TabSessionView] = []
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if not isinstance(w, EditorTab):
                 continue
-            if w.document.path is not None and w.document.path.is_file():
-                p = normalize_path(w.document.path)
-                open_files.append(p)
-                marks = w.get_bookmarks()
-                if marks:
-                    bookmarks[p] = marks
-                cursors[p] = w.cursor_line_col_1based()
-                if w is current:
-                    active = p
-            else:
-                # Untitled / unsaved buffer recovery
-                try:
-                    text = w.document.text()
-                except Exception:
-                    text = ""
-                if not text and not w.document.modified:
-                    continue
-                entry: dict = {
-                    "title": w.document.title,
-                    "text": text[:400_000],
-                    "bookmarks": w.get_bookmarks(),
-                    "cursor": list(w.cursor_line_col_1based()),
-                }
-                if w is current:
-                    entry["active"] = True
-                drafts.append(entry)
-
+            try:
+                text = w.document.text()
+            except Exception:
+                text = ""
+            path = w.document.path
+            views.append(
+                TabSessionView(
+                    path=path,
+                    path_is_file=bool(path is not None and path.is_file()),
+                    title=w.document.title,
+                    text=text,
+                    modified=w.document.modified,
+                    bookmarks=w.get_bookmarks(),
+                    cursor=w.cursor_line_col_1based(),
+                    is_current=w is current,
+                )
+            )
         workspace = None
         if self._workspace is not None and self._workspace.is_dir():
             workspace = normalize_path(self._workspace)
-        # Preserve graphics prefs already loaded (updated via Settings dialog).
-        gfx = self._session
-        recent = list(self._session.recent_files)
-        return SessionState(
+        return collect_tabs_into_session(
+            views,
+            self._session,
+            workspace=workspace,
             theme=self._themes.current,
             language=self._tr.language,
             word_wrap=self._word_wrap,
             line_numbers=self._line_numbers,
-            workspace=workspace,
-            open_files=open_files,
-            active_file=active,
-            bookmarks=bookmarks,
-            cursors=cursors,
-            drafts=drafts,
-            recent_files=recent,
             icon_pack=get_icon_pack(),
-            font_size=gfx.font_size,
-            tab_width=gfx.tab_width,
-            indent_with_spaces=gfx.indent_with_spaces,
-            highlight_current_line=gfx.highlight_current_line,
-            restore_session=gfx.restore_session,
-            show_status_bar=gfx.show_status_bar,
-            show_toolbar=gfx.show_toolbar,
-            spell_check=getattr(gfx, "spell_check", True),
-            spell_language=getattr(gfx, "spell_language", "pt_BR") or "pt_BR",
-            spell_force=getattr(gfx, "spell_force", None),
-            autosave_interval_sec=int(getattr(gfx, "autosave_interval_sec", 0) or 0),
-            show_minimap=bool(getattr(gfx, "show_minimap", False)),
-            first_run_done=bool(getattr(gfx, "first_run_done", False)),
-            high_contrast=bool(getattr(gfx, "high_contrast", False)),
-            word_completion=bool(getattr(gfx, "word_completion", False)),
-            gpu_acceleration=gfx.gpu_acceleration,
-            gpu_multisample=gfx.gpu_multisample,
-            antialiasing=gfx.antialiasing,
-            window_opacity=gfx.window_opacity,
-            chrome_transparency=gfx.chrome_transparency,
-            editor_transparency=gfx.editor_transparency,
             geometry=self.saveGeometry(),
             window_state=self.saveState(),
         )
@@ -962,6 +535,12 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab) and isinstance(w.editor, VirtualEditor):
                 w.editor.apply_theme_palette(theme)
+
+    def _apply_preview_theme(self, theme_id: str) -> None:
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if isinstance(w, EditorTab):
+                w.apply_preview_theme(theme_id)
 
     def show_settings(self) -> None:
         langs = self._tr.available_languages() or ["pt_BR", "en_US", "es_ES"]
@@ -1027,18 +606,12 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         if tab is None:
             return
         try:
-            if tab.is_huge:
-                text = tab.document.text()
-            elif hasattr(tab.editor, "toPlainText"):
-                text = tab.editor.toPlainText()
-            else:
-                text = tab.document.text()
+            raw = tab.document.buffer.get_text(0, min(len(tab.document.buffer), 2_000_000))
+            from magiceditor.core.outline_scan import extract_outline_from_bytes
+
+            entries = extract_outline_from_bytes(raw)
         except Exception:
-            text = ""
-        # Cap huge-file outline scan to first ~2MB of decoded text
-        if len(text) > 2_000_000:
-            text = text[:2_000_000]
-        entries = extract_markdown_outline(text)
+            entries = []
         dlg = OutlineDialog(entries, self, tr=self._tr)
         dlg.line_chosen.connect(lambda line: tab.goto_line(line, 1))
         dlg.exec()
@@ -1107,6 +680,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
                 w.set_syntax_light_theme(light)
                 self.tabs.setTabIcon(i, language_icon(w.language, self._icon_color))
         self._apply_virtual_palette()
+        self._apply_preview_theme(theme_id)
         self._sync_checkables()
         self._status.showMessage(f"Theme: {theme_id}", 2500)
         if persist:
@@ -1182,21 +756,34 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             self._persist_session()
 
     def open_path(self, path: str | Path) -> EditorTab | None:
+        from magiceditor.ui.window_files import resolve_open_target
+
+        kind, target = resolve_open_target(path)
+        if kind == "workspace":
+            self.open_workspace(target)
+            return None
+        return self._open_file_path(target)
+
+    def _open_file_path(self, path: Path) -> EditorTab | None:
+        from magiceditor.ui.window_files import index_of_open_path
+
         path = Path(path)
-        # Reuse existing tab if already open
+        open_paths: list[Path | None] = []
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
-            if (
-                isinstance(w, EditorTab)
-                and w.document.path is not None
-                and w.document.path.resolve() == path.resolve()
-            ):
-                self.tabs.setCurrentIndex(i)
-                self._push_recent(path)
-                return w
+            if isinstance(w, EditorTab):
+                open_paths.append(w.document.path)
+            else:
+                open_paths.append(None)
+        existing = index_of_open_path(open_paths, path)
+        if existing is not None:
+            self.tabs.setCurrentIndex(existing)
+            self._push_recent(path)
+            return self.tabs.widget(existing)
         try:
             doc = open_document(path)
         except OSError as exc:
+            _log.warning("Failed to open %s: %s", path, exc)
             QMessageBox.critical(self, "MagicEditor", str(exc))
             return None
         tab = self._add_document(doc)
@@ -1250,81 +837,28 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             self._sync_spell_to_editors()
 
     def print_current(self) -> None:
-        """Open in-app print preview (avoids Win11 “no print preview” message)."""
-        tab = self.current_tab()
-        if tab is None:
-            return
-        tab.sync_document_from_editor()
-        try:
-            text = tab.export_text()
-        except Exception as exc:
-            QMessageBox.critical(self, "MagicEditor", str(exc))
-            return
-        if not text.strip():
-            QMessageBox.information(
-                self,
-                self._tr.t("app.name", "MagicEditor"),
-                self._tr.t(
-                    "msg.print_empty",
-                    "Não há conteúdo para imprimir neste documento.",
-                ),
-            )
-            return
-        ok = print_plain_text(
-            text,
-            parent=self,
-            title=tab.document.title,
-            preview=True,
-        )
-        if ok:
-            self._status.showMessage(
-                self._tr.t("msg.printed", "Enviado para impressão"),
-                2500,
-            )
+        from magiceditor.ui.window_print import print_current as _print
+
+        _print(self)
 
     def export_pdf_current(self) -> None:
-        tab = self.current_tab()
-        if tab is None:
-            return
-        tab.sync_document_from_editor()
-        default = Path.home() / f"{Path(tab.document.title).stem or 'document'}.pdf"
-        path, _ = QFileDialog.getSaveFileName(
-            self,
-            self._tr.t("action.export_pdf", "Export PDF…"),
-            str(default),
-            "PDF (*.pdf)",
-        )
-        if not path:
-            return
-        try:
-            export_pdf(tab.export_text(), path, title=tab.document.title)
-        except OSError as exc:
-            QMessageBox.critical(self, "MagicEditor", str(exc))
-            return
-        self._status.showMessage(f"PDF saved: {Path(path).name}", 3500)
+        from magiceditor.ui.window_print import export_pdf_current as _pdf
+
+        _pdf(self)
 
     def _prepare_document_for_save(self, tab: EditorTab) -> None:
         """Apply trim / final-newline prefs before writing to disk."""
-        from magiceditor.core.piece_table import PieceTable
+        from magiceditor.ui.window_files import apply_save_prefs_to_document
 
         tab.sync_document_from_editor()
         s = self._session
-        text = tab.document.text()
-        new = text
-        if getattr(s, "trim_trailing_on_save", False):
-            ends_nl = text.endswith("\n") or text.endswith("\r\n")
-            lines = [ln.rstrip(" \t") for ln in text.splitlines()]
-            new = "\n".join(lines)
-            if ends_nl:
-                new = new + "\n"
-        if getattr(s, "insert_final_newline", False) and new and not new.endswith(("\n", "\r")):
-            new = new + "\n"
-        if new != text:
-            tab.document.buffer = PieceTable(new)
-            tab.document.invalidate_line_index()
-            tab.document.mark_modified()
-            if isinstance(tab.editor, VirtualEditor):
-                tab.editor.viewport().update()
+        changed = apply_save_prefs_to_document(
+            tab.document,
+            trim=bool(s.trim_trailing_on_save),
+            final_nl=bool(s.insert_final_newline),
+        )
+        if changed and isinstance(tab.editor, VirtualEditor):
+            tab.editor.viewport().update()
 
     def save_current(self) -> None:
         tab = self.current_tab()
@@ -1334,20 +868,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         if tab.document.path is None:
             self.save_current_as()
             return
-        try:
-            save_document(tab.document)
-        except OSError as exc:
-            QMessageBox.critical(self, "MagicEditor", str(exc))
-            return
-        if not tab.is_huge:
-            tab.editor.document().setModified(False)  # type: ignore[union-attr]
-        tab.document.modified = False
-        if tab.document.path is not None:
-            self._push_recent(tab.document.path)
-        self._refresh_tab_titles()
-        self._update_status_for(tab)
-        self._status.showMessage("Saved", 2000)
-        self._persist_session()
+        self._run_save_worker(tab, tab.document.path)
 
     def save_current_as(self) -> None:
         tab = self.current_tab()
@@ -1362,18 +883,34 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         )
         if not path:
             return
-        try:
-            save_document(tab.document, path)
-        except OSError as exc:
-            QMessageBox.critical(self, "MagicEditor", str(exc))
-            return
-        if not tab.is_huge:
-            tab.editor.document().setModified(False)  # type: ignore[union-attr]
+        self._run_save_worker(tab, path)
+
+    def _run_save_worker(self, tab: EditorTab, path: Path | str) -> None:
+        from magiceditor.ui.save_worker import SaveWorker, begin_document_save
+
+        prev = getattr(self, "_save_worker", None)
+        if isinstance(prev, SaveWorker) and prev.isRunning():
+            prev.wait(200)
+        self._save_worker = begin_document_save(
+            self,
+            tab.document,
+            path,
+            lambda _p, t=tab: self._finish_save(t),
+            self._on_save_failed,
+        )
+
+    def _on_save_failed(self, message: str) -> None:
+        QMessageBox.critical(self, "MagicEditor", message)
+
+    def _finish_save(self, tab: EditorTab) -> None:
         tab.document.modified = False
         if tab.document.path is not None:
             self._push_recent(tab.document.path)
+        tab.refresh_language_from_path()
+        self._on_tab_language_changed(tab)
         self._refresh_tab_titles()
         self._update_status_for(tab)
+        self._status.showMessage("Saved", 2000)
         self._persist_session()
 
     def show_find(self) -> None:
@@ -1542,19 +1079,6 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         if eol not in {"LF", "CRLF", "CR"}:
             return
         tab.document.set_eol(eol)  # type: ignore[arg-type]
-        # Refresh classic editor text after in-buffer EOL rewrite
-        if (
-            not tab.is_huge
-            and not isinstance(tab.editor, VirtualEditor)
-            and isinstance(tab.editor, TextEditor)
-        ):
-            pos = tab.editor.textCursor().position()
-            tab.editor.blockSignals(True)
-            tab.editor.setPlainText(tab.document.text())
-            tab.editor.blockSignals(False)
-            cur = tab.editor.textCursor()
-            cur.setPosition(min(pos, len(tab.document.text())))
-            tab.editor.setTextCursor(cur)
         self._refresh_tab_titles()
         self._update_status_for(tab)
         self._status.showMessage(f"EOL → {eol}", 2500)

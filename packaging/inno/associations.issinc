@@ -27,8 +27,6 @@ Root: HKCR; Subkey: ".h\OpenWithProgids"; ValueType: string; ValueName: "MagicEd
 Root: HKCR; Subkey: ".hpp\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".sh\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".ps1\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".bat\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".cmd\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".toml\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".env\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".gitignore\OpenWithProgids"; ValueType: string; ValueName: "MagicEditor.Document"; ValueData: ""; Flags: uninsdeletevalue
@@ -61,8 +59,6 @@ Root: HKCR; Subkey: ".h"; ValueType: string; ValueName: ""; ValueData: "MagicEdi
 Root: HKCR; Subkey: ".hpp"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
 Root: HKCR; Subkey: ".sh"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
 Root: HKCR; Subkey: ".ps1"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
-Root: HKCR; Subkey: ".bat"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
-Root: HKCR; Subkey: ".cmd"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
 Root: HKCR; Subkey: ".toml"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
 Root: HKCR; Subkey: ".env"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
 Root: HKCR; Subkey: ".gitignore"; ValueType: string; ValueName: ""; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue; Tasks: assocdefaults
@@ -95,8 +91,6 @@ Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueT
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".hpp"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".sh"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".ps1"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
-Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".bat"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
-Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".cmd"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".toml"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".env"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue
 Root: HKLM; Subkey: "Software\MagicEditor\Capabilities\FileAssociations"; ValueType: string; ValueName: ".gitignore"; ValueData: "MagicEditor.Document"; Flags: uninsdeletevalue

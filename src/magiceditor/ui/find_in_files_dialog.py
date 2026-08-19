@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from magiceditor.core.safe_regex import compile_user_pattern
 from magiceditor.core.text_match import PatternError, compile_pattern
 from magiceditor.services.folder_search import SearchHit, search_folder, search_texts
 
@@ -49,6 +50,7 @@ class FindInFilesDialog(QDialog):
         self._is_cancelled = is_cancelled
         self._on_cancel_request = on_cancel_request
         self._on_search_start = on_search_start
+        self._worker = None
         self.setModal(True)
         self.setMinimumSize(560, 400)
         self.setObjectName("findInFilesDialog")
@@ -142,7 +144,7 @@ class FindInFilesDialog(QDialog):
             return
         if self.regex_box.isChecked():
             try:
-                compile_pattern(
+                compile_user_pattern(
                     needle,
                     case_sensitive=self.case_box.isChecked(),
                     use_regex=True,
@@ -190,41 +192,27 @@ class FindInFilesDialog(QDialog):
                     )
                 )
                 return
-            hits = search_folder(
+            from magiceditor.ui.find_in_files_worker import FolderSearchWorker
+
+            if self._worker is not None and self._worker.isRunning():
+                self._worker.request_cancel()
+                self._worker.wait(200)
+            worker = FolderSearchWorker(
                 self._root,
                 needle,
                 case_sensitive=case,
                 use_regex=use_re,
-                is_cancelled=self._is_cancelled,
-                on_progress=_progress,
+                parent=self,
             )
-            if hits is None:
-                self._status.setText(self._t("find_files.cancelled", "Busca cancelada."))
-                return
+            self._worker = worker
+            worker.finished_hits.connect(self._on_folder_hits)
+            worker.start()
+            return
 
         if not hits:
             self._status.setText(self._t("find_files.none", "Nenhuma ocorrência."))
             return
-
-        root_resolved: Path | None = None
-        if self._root and self._root.is_dir():
-            try:
-                root_resolved = self._root.resolve()
-            except OSError:
-                root_resolved = self._root
-
-        for hit in hits:
-            item = QListWidgetItem(self._format_hit(hit, root_resolved))
-            item.setData(Qt.ItemDataRole.UserRole, hit)
-            self._results.addItem(item)
-
-        key = "find_files.capped" if len(hits) >= 200 else "find_files.hits"
-        default = (
-            "{n} ocorrência(s) (limite). Clique duas vezes para abrir."
-            if len(hits) >= 200
-            else "{n} ocorrência(s). Clique duas vezes para abrir."
-        )
-        self._status.setText(self._t(key, default).format(n=len(hits)))
+        self._populate_hits(hits)
 
     def _format_hit(self, hit: SearchHit, root: Path | None) -> str:
         if hit.label:
@@ -238,9 +226,39 @@ class FindInFilesDialog(QDialog):
             path_s = str(hit.path)
         return f"{path_s}:{hit.line}:{hit.column}  {hit.text}"
 
+    def _on_folder_hits(self, hits) -> None:
+        if hits is None:
+            self._status.setText(self._t("find_files.cancelled", "Busca cancelada."))
+            return
+        if not hits:
+            self._status.setText(self._t("find_files.none", "Nenhuma ocorrência."))
+            return
+        self._populate_hits(hits)
+
+    def _populate_hits(self, hits) -> None:
+        root_resolved: Path | None = None
+        if self._root and self._root.is_dir():
+            try:
+                root_resolved = self._root.resolve()
+            except OSError:
+                root_resolved = self._root
+        for hit in hits:
+            item = QListWidgetItem(self._format_hit(hit, root_resolved))
+            item.setData(Qt.ItemDataRole.UserRole, hit)
+            self._results.addItem(item)
+        key = "find_files.capped" if len(hits) >= 200 else "find_files.hits"
+        default = (
+            "{n} ocorrência(s) (limite). Clique duas vezes para abrir."
+            if len(hits) >= 200
+            else "{n} ocorrência(s). Clique duas vezes para abrir."
+        )
+        self._status.setText(self._t(key, default).format(n=len(hits)))
+
     def _request_cancel(self) -> None:
         if self._on_cancel_request is not None:
             self._on_cancel_request()
+        if self._worker is not None:
+            self._worker.request_cancel()
         self._status.setText(self._t("find_files.cancelling", "Cancelando…"))
 
     def _open_item(self, item: QListWidgetItem | None) -> None:

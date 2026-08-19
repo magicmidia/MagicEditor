@@ -1,327 +1,37 @@
-"""Detect language id from file path / name — broad extension catalog."""
+"""Detect language id from file path / name — catalog lives in JSON."""
 
 from __future__ import annotations
 
+import json
+from functools import lru_cache
 from pathlib import Path
 
-# extension (lowercase, no dot) -> language id
-_EXT_MAP: dict[str, str] = {
-    # Python
-    "py": "python",
-    "pyw": "python",
-    "pyi": "python",
-    "py3": "python",
-    "pyx": "python",
-    "pxd": "python",
-    "ipynb": "json",
-    # JS / TS / web
-    "js": "javascript",
-    "mjs": "javascript",
-    "cjs": "javascript",
-    "jsx": "javascript",
-    "ts": "typescript",
-    "tsx": "typescript",
-    "mts": "typescript",
-    "cts": "typescript",
-    "vue": "vue",
-    "svelte": "svelte",
-    "astro": "html",
-    "html": "html",
-    "htm": "html",
-    "xhtml": "html",
-    "shtml": "html",
-    "css": "css",
-    "scss": "css",
-    "sass": "css",
-    "less": "css",
-    "styl": "css",
-    "pcss": "css",
-    # Data / config
-    "json": "json",
-    "jsonc": "json",
-    "json5": "json",
-    "jsonl": "json",
-    "geojson": "json",
-    "webmanifest": "json",
-    "yml": "yaml",
-    "yaml": "yaml",
-    "toml": "toml",
-    "ini": "ini",
-    "cfg": "ini",
-    "conf": "ini",
-    "config": "ini",
-    "env": "env",
-    "properties": "properties",
-    "prop": "properties",
-    "desktop": "ini",
-    "editorconfig": "ini",
-    "gitconfig": "ini",
-    "gitignore": "git",
-    "gitattributes": "git",
-    "gitmodules": "git",
-    "dockerfile": "dockerfile",
-    "containerfile": "dockerfile",
-    "tf": "terraform",
-    "tfvars": "terraform",
-    "hcl": "terraform",
-    "nginx": "nginx",
-    "apache": "apache",
-    "htaccess": "apache",
-    # Markup / docs
-    "md": "markdown",
-    "markdown": "markdown",
-    "mdown": "markdown",
-    "mkd": "markdown",
-    "mdx": "markdown",
-    "rst": "text",
-    "adoc": "text",
-    "asciidoc": "text",
-    "tex": "text",
-    "latex": "text",
-    "org": "text",
-    "txt": "text",
-    "text": "text",
-    "log": "text",
-    "nfo": "text",
-    "csv": "csv",
-    "tsv": "tsv",
-    "psv": "csv",
-    # XML family
-    "xml": "xml",
-    "xsl": "xml",
-    "xslt": "xml",
-    "xsd": "xml",
-    "dtd": "xml",
-    "svg": "xml",
-    "plist": "xml",
-    "csproj": "xml",
-    "vbproj": "xml",
-    "fsproj": "xml",
-    "vcxproj": "xml",
-    "sln": "text",
-    "xaml": "xml",
-    "resx": "xml",
-    "iml": "xml",
-    "pom": "xml",
-    # SQL / data
-    "sql": "sql",
-    "psql": "sql",
-    "pgsql": "sql",
-    "mysql": "sql",
-    "plsql": "sql",
-    "ddl": "sql",
-    "dml": "sql",
-    # C family
-    "c": "c",
-    "h": "c",
-    "cpp": "cpp",
-    "cc": "cpp",
-    "cxx": "cpp",
-    "c++": "cpp",
-    "hpp": "cpp",
-    "hh": "cpp",
-    "hxx": "cpp",
-    "ino": "cpp",
-    "cs": "csharp",
-    "csx": "csharp",
-    "fs": "fsharp",
-    "fsi": "fsharp",
-    "fsx": "fsharp",
-    "vb": "vb",
-    "vbs": "vb",
-    "m": "objectivec",
-    "mm": "objectivec",
-    # JVM / related
-    "java": "java",
-    "jav": "java",
-    "kt": "kotlin",
-    "kts": "kotlin",
-    "scala": "scala",
-    "sc": "scala",
-    "groovy": "java",
-    "gradle": "java",
-    "clj": "clojure",
-    "cljs": "clojure",
-    "cljc": "clojure",
-    # Systems
-    "go": "go",
-    "mod": "go",
-    "sum": "go",
-    "rs": "rust",
-    "zig": "zig",
-    "nim": "nim",
-    "nims": "nim",
-    "v": "text",
-    "s": "text",
-    "asm": "text",
-    "S": "text",
-    # Scripting
-    "rb": "ruby",
-    "rbw": "ruby",
-    "rake": "ruby",
-    "gemspec": "ruby",
-    "php": "php",
-    "php3": "php",
-    "php4": "php",
-    "php5": "php",
-    "phtml": "php",
-    "pl": "perl",
-    "pm": "perl",
-    "t": "perl",
-    "lua": "lua",
-    "r": "r",
-    "rmd": "r",
-    "jl": "julia",
-    "dart": "dart",
-    "swift": "swift",
-    "ex": "elixir",
-    "exs": "elixir",
-    "erl": "erlang",
-    "hrl": "erlang",
-    "hs": "haskell",
-    "lhs": "haskell",
-    "ml": "text",
-    "mli": "text",
-    # Shell
-    "sh": "shell",
-    "bash": "shell",
-    "zsh": "shell",
-    "fish": "shell",
-    "ksh": "shell",
-    "csh": "shell",
-    "tcsh": "shell",
-    "ps1": "powershell",
-    "psm1": "powershell",
-    "psd1": "powershell",
-    "bat": "batch",
-    "cmd": "batch",
-    "btm": "batch",
-    # Build
-    "mk": "makefile",
-    "mak": "makefile",
-    "make": "makefile",
-    "cmake": "cmake",
-    "ninja": "text",
-    "bazel": "text",
-    "bzl": "text",
-    # GraphQL / API
-    "graphql": "graphql",
-    "gql": "graphql",
-    "proto": "text",
-    "thrift": "text",
-    "avsc": "json",
-    # Blockchain / infra
-    "sol": "solidity",
-    "vy": "text",
-    # Diff / patch
-    "diff": "diff",
-    "patch": "diff",
-    # Misc code
-    "coffee": "javascript",
-    "litcoffee": "javascript",
-    "ls": "javascript",
-    "elm": "text",
-    "purs": "text",
-    "res": "text",
-    "resi": "text",
-    "wasm": "binary",
-    "wat": "text",
-    # Documents / assets (icon only, text when possible)
-    "pdf": "pdf",
-    "rtf": "text",
-    "lock": "lock",
-    "png": "image",
-    "jpg": "image",
-    "jpeg": "image",
-    "gif": "image",
-    "webp": "image",
-    "ico": "image",
-    "bmp": "image",
-    "ttf": "font",
-    "otf": "font",
-    "woff": "font",
-    "woff2": "font",
-    "zip": "archive",
-    "gz": "archive",
-    "tgz": "archive",
-    "7z": "archive",
-    "rar": "archive",
-    "tar": "archive",
-    "bz2": "archive",
-    "xz": "archive",
-    "exe": "binary",
-    "dll": "binary",
-    "so": "binary",
-    "dylib": "binary",
-    "o": "binary",
-    "a": "binary",
-    "class": "binary",
-    "jar": "archive",
-    "war": "archive",
-    "ear": "archive",
-}
+from magiceditor.paths import resource_root
 
-_BASENAME_MAP: dict[str, str] = {
-    "dockerfile": "dockerfile",
-    "containerfile": "dockerfile",
-    "makefile": "makefile",
-    "gnumakefile": "makefile",
-    "cmakelists.txt": "cmake",
-    "gemfile": "ruby",
-    "rakefile": "ruby",
-    "podfile": "ruby",
-    "vagrantfile": "ruby",
-    "procfile": "text",
-    "brewfile": "ruby",
-    "jenkinsfile": "java",
-    ".gitignore": "git",
-    ".gitattributes": "git",
-    ".gitmodules": "git",
-    ".dockerignore": "dockerfile",
-    ".editorconfig": "ini",
-    ".env": "env",
-    ".env.local": "env",
-    ".env.development": "env",
-    ".env.production": "env",
-    ".npmrc": "ini",
-    ".yarnrc": "yaml",
-    ".babelrc": "json",
-    ".eslintrc": "json",
-    ".prettierrc": "json",
-    "package.json": "json",
-    "package-lock.json": "lock",
-    "yarn.lock": "lock",
-    "pnpm-lock.yaml": "lock",
-    "composer.lock": "lock",
-    "cargo.lock": "lock",
-    "poetry.lock": "lock",
-    "pipfile": "toml",
-    "pipfile.lock": "lock",
-    "requirements.txt": "text",
-    "setup.py": "python",
-    "pyproject.toml": "toml",
-    "cargo.toml": "toml",
-    "go.mod": "go",
-    "go.sum": "go",
-    "tsconfig.json": "json",
-    "jsconfig.json": "json",
-    "webpack.config.js": "javascript",
-    "vite.config.ts": "typescript",
-    "vite.config.js": "javascript",
-    "next.config.js": "javascript",
-    "nuxt.config.ts": "typescript",
-    "docker-compose.yml": "yaml",
-    "docker-compose.yaml": "yaml",
-    "compose.yml": "yaml",
-    "compose.yaml": "yaml",
-    "readme": "markdown",
-    "readme.md": "markdown",
-    "license": "text",
-    "licence": "text",
-    "copying": "text",
-    "changelog": "markdown",
-    "changelog.md": "markdown",
-}
+
+@lru_cache(maxsize=1)
+def _catalog() -> tuple[dict[str, str], dict[str, str]]:
+    path = resource_root() / "resources" / "syntax" / "extensions.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    exts = {str(k): str(v) for k, v in dict(data.get("extensions") or {}).items()}
+    bases = {str(k): str(v) for k, v in dict(data.get("basenames") or {}).items()}
+    return exts, bases
+
+
+def _ext_map() -> dict[str, str]:
+    return _catalog()[0]
+
+
+def _basename_map() -> dict[str, str]:
+    return _catalog()[1]
+
+
+def __getattr__(name: str) -> dict[str, str]:
+    if name == "_EXT_MAP":
+        return _ext_map()
+    if name == "_BASENAME_MAP":
+        return _basename_map()
+    raise AttributeError(name)
 
 
 def detect_language(path: str | Path | None, title: str = "") -> str:
@@ -334,19 +44,19 @@ def detect_language(path: str | Path | None, title: str = "") -> str:
     if not name:
         return "text"
     base = name.lower()
-    if base in _BASENAME_MAP:
-        return _BASENAME_MAP[base]
-    # multi-dot configs: try full name then last suffix
+    bases = _basename_map()
+    if base in bases:
+        return bases[base]
+    exts = _ext_map()
     if base.count(".") >= 2:
-        # e.g. app.config.js
         for i in range(base.count(".")):
             part = base.split(".", i + 1)[-1]
-            if part in _EXT_MAP:
-                return _EXT_MAP[part]
+            if part in exts:
+                return exts[part]
     suffix = Path(name).suffix.lower().lstrip(".")
     if not suffix and "." in name:
         suffix = name.rsplit(".", 1)[-1].lower()
-    return _EXT_MAP.get(suffix, "text")
+    return exts.get(suffix, "text")
 
 
 def language_label(lang_id: str) -> str:
@@ -424,7 +134,10 @@ def language_label(lang_id: str) -> str:
 def supported_languages() -> list[tuple[str, str]]:
     """Return (id, label) for highlightable / menu languages (not binary assets)."""
     skip = {"image", "font", "binary", "archive", "pdf", "lock"}
-    ids = sorted((set(_EXT_MAP.values()) | set(_BASENAME_MAP.values())) - skip, key=language_label)
+    ids = sorted(
+        (set(_ext_map().values()) | set(_basename_map().values())) - skip,
+        key=language_label,
+    )
     if "text" not in ids:
         ids.append("text")
         ids.sort(key=language_label)
