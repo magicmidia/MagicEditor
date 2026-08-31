@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Smoke-check dist/MagicEditor.exe can start (or report environment limits).
