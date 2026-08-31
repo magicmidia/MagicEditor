@@ -1,5 +1,4 @@
 from magiceditor.ui.virtual_metrics import (
-    BOTTOM_PAD_LINES,
     ensure_visible,
     update_scrollbars,
     usable_line_slots,
@@ -77,21 +76,19 @@ class _Editor:
 def test_visible_and_usable_slots() -> None:
     ed = _Editor(height=200, lh=20)
     assert visible_line_slots(ed) == 10
-    assert usable_line_slots(ed) == 10 - BOTTOM_PAD_LINES
+    assert usable_line_slots(ed) == 10
 
 
-def test_scrollbar_range_keeps_footer_pad() -> None:
+def test_scrollbar_range_is_flush_with_footer() -> None:
     ed = _Editor(lines=30, height=200, lh=20)
     update_scrollbars(ed)
-    # 30 lines, 10 visible, pad 2 → max first-line = 22
-    assert ed._vsb.hi == 30 - 10 + BOTTOM_PAD_LINES
+    # 30 lines, 10 visible → last line sits on the last row (no empty pad)
+    assert ed._vsb.hi == 20
 
 
-def test_ensure_visible_last_line_stays_above_footer() -> None:
+def test_ensure_visible_last_line_flush_at_bottom() -> None:
     ed = _Editor(lines=30, height=200, lh=20)
     update_scrollbars(ed)
     ensure_visible(ed, 29)
-    usable = usable_line_slots(ed)
-    assert ed._vsb.val == 29 - usable + 1
-    # last line occupies a slot with pad rows below it
-    assert (29 - ed._vsb.val) < visible_line_slots(ed) - 1
+    assert ed._vsb.val == 20
+    assert (29 - ed._vsb.val) == visible_line_slots(ed) - 1

@@ -19,7 +19,7 @@ UI_VIRTUAL_THRESHOLD_BYTES = HUGE_UI_BYTES
 def open_document(path: Path | str) -> Document:
     """Open a file into a Document.
 
-    * ``size > 50MB`` → memory-map (no full RAM copy of the file).
+    * ``size > 5MB`` → memory-map (no full RAM copy of the file).
     * ``size > 5MB`` → huge_mode (viewport UI).
     * smaller files → full decode into the piece table (still VirtualEditor).
     """

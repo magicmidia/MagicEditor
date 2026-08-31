@@ -114,7 +114,6 @@ from magiceditor.ui.virtual_keys import (
 from magiceditor.ui.virtual_keys import (
     unindent_line as keys_unindent_line,
 )
-from magiceditor.ui.virtual_metrics import BOTTOM_PAD_PX
 from magiceditor.ui.virtual_metrics import (
     ensure_visible as metrics_ensure_visible,
 )
@@ -203,6 +202,10 @@ class VirtualEditor(QAbstractScrollArea):
         # Column (block) selection mode
         self._column_mode = False
         self._column_anchor: tuple[int, int] | None = None
+        # Auto-scroll while drag-selecting past the viewport edge
+        self._auto_scroll_dy = 0
+        self._auto_scroll_pos: QPoint | None = None
+        self._auto_scroll_timer: QTimer | None = None
         # Spell (viewport only) — spans computed off paint (K3)
         self._spell: SpellEngine | None = None
         self._spell_color = QColor(239, 68, 68, 220)
@@ -242,8 +245,7 @@ class VirtualEditor(QAbstractScrollArea):
         # via viewportEvent — policy on both self and viewport for reliability.
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
         self.viewport().setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
-        # Gap so the last painted line is not flush under the status footer.
-        self.setViewportMargins(0, 0, 0, BOTTOM_PAD_PX)
+        self.setViewportMargins(0, 0, 0, 0)
         self._recalc_metrics()
         self._update_scrollbars()
 

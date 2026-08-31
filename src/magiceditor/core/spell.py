@@ -10,7 +10,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from magiceditor.core.spell_backend import is_known, suggest_words
+from magiceditor.core.spell_backend import extra_words, is_known, suggest_words
+from magiceditor.core.spell_morph import is_known_derivation
 
 # Word tokens: letters including common Latin accents; skip pure numbers.
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ']*(?:'[A-Za-zÀ-ÖØ-öø-ÿ]+)?")
@@ -167,6 +168,7 @@ class SpellEngine:
         words: set[str] = set()
         for lang in self.active_languages():
             words |= set(_EMBEDDED.get(lang, _EMBEDDED["en_US"]))
+            words |= set(extra_words(lang))
         words |= {w.casefold() for w in self.user_words}
         if extra_path is not None and extra_path.is_file():
             try:
@@ -206,13 +208,18 @@ class SpellEngine:
         if w:
             self.ignore_session.add(w.casefold())
 
+    def _base_known(self, key: str) -> bool:
+        if key in self.ignore_session or key in self._lexicon:
+            return True
+        return is_known(key, self.active_languages())
+
     def is_correct(self, word: str) -> bool:
         if not word:
             return True
         key = word.casefold()
-        if key in self.ignore_session or key in self._lexicon:
+        if self._base_known(key):
             return True
-        if is_known(key, self.active_languages()):
+        if is_known_derivation(key, self._base_known):
             return True
         # Allow ALL-CAPS acronyms length <= 6
         if word.isupper() and 1 < len(word) <= 6:

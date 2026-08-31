@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.4 BETA — Menus, auto-scroll, window raise, huge-file fixes
+
+- Fix invalid application stylesheet: unquoted percent-encoded `url()` (non-ASCII
+  install path, e.g. "Repositórios") made Qt reject the whole QSS — menus fell
+  back to loose default metrics
+- Compact menu rows (`QMenu::item` padding, no forced `min-width: 220px`);
+  shortcuts keep right-aligned column; theme generator template synced
+- Drag-select now auto-scrolls past the viewport top/bottom with speed
+  proportional to distance; hit-test clamped (dragging above the top no longer
+  jumps the caret to end-of-document)
+- Huge files: minimap actually degrades (was a no-op `pass`); session collect no
+  longer decodes file-backed tabs (up to 2MB per tab per persist)
+- Opening a file from Explorer keeps the window maximized and brings it to the
+  foreground (`AllowSetForegroundWindow` handoff from the forwarding instance)
+- Hunspell pt_BR dictionary preload at startup; mmap threshold lowered to 5MB
+- Tests: worker-based find-in-files cancel wiring, menu style isolation,
+  drag auto-scroll coverage, line-index perf budgets
+
 ## 0.9.2 BETA — Footer, single instance, spell dictionaries
 
 - Last editor line stays above the status footer (viewport pad + scroll range)

@@ -57,6 +57,9 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     # Fusion gives consistent metrics; QSS layers the look.
     app.setStyle("Fusion")
+    from magiceditor.ui.menu_style import apply_menu_chrome
+
+    apply_menu_chrome(app)
     load_bundled_fonts()
     app.setFont(ui_font(10))
 
@@ -93,6 +96,15 @@ def run(argv: Sequence[str] | None = None) -> int:
     if splash is not None:
         splash.set_message("Carregando interface…")
         app.processEvents()
+
+    if getattr(session, "spell_language", "pt_BR") == "pt_BR" or session.language == "pt_BR":
+        if splash is not None:
+            splash.set_message("Carregando dicionário pt-BR…")
+            app.processEvents()
+        with suppress(Exception):
+            from magiceditor.core.spell_hunspell import preload
+
+            preload()
 
     try:
         window = MainWindow(translator=translator, themes=themes, settings=settings)

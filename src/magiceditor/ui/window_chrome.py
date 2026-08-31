@@ -186,14 +186,48 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.copy": "copy",
     "action.paste": "paste",
     "action.select_all": "select_all",
+    "action.indent": "indent",
+    "action.unindent": "unindent",
+    "action.duplicate_line": "duplicate_line",
+    "action.move_line_up": "move_up",
+    "action.move_line_down": "move_down",
+    "action.sort_lines": "sort",
+    "action.join_lines": "join",
+    "action.delete_blank_lines": "delete_lines",
+    "action.trim_trailing": "trim",
+    "action.tabs_to_spaces": "tabs_spaces",
+    "action.spaces_to_tabs": "spaces_tabs",
+    "action.toggle_comment": "comment",
+    "action.add_cursor_next": "add_cursor",
+    "action.select_all_occurrences": "select_occurrences",
+    "action.clear_cursors": "clear_cursors",
+    "action.matching_brace": "brace",
     "action.find": "find",
     "action.replace": "replace",
     "action.find_in_files": "find_files",
     "action.goto_line": "goto",
+    "action.goto_anything": "goto_anything",
+    "action.command_palette": "palette",
     "action.toggle_bookmark": "bookmark",
-    "action.next_bookmark": "bookmark",
-    "action.prev_bookmark": "bookmark",
+    "action.next_bookmark": "bookmark_next",
+    "action.prev_bookmark": "bookmark_prev",
     "action.preview": "preview",
+    "action.symbols": "symbols",
+    "action.reload": "reload",
+    "action.reveal_explorer": "reveal",
+    "action.copy_path": "copy_path",
+    "action.copy_dir": "copy_dir",
+    "action.compare": "compare",
+    "action.split_view": "split",
+    "action.toggle_spell": "spell",
+    "action.spell_ignore": "spell_ignore",
+    "action.spell_add": "spell_add",
+    "action.minimap": "minimap",
+    "action.performance": "performance",
+    "action.live_browser": "browser",
+    "action.cancel_search": "cancel_search",
+    "action.export_theme": "export_theme",
+    "action.import_theme": "import_theme",
     "action.toggle_sidebar": "sidebar",
     "action.word_wrap": "wrap",
     "action.line_numbers": "lines",
@@ -204,10 +238,9 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.settings": "settings",
     "action.quick_open": "quick_open",
     "action.outline": "outline",
-    "action.indent": "indent",
-    "action.unindent": "unindent",
-    "action.duplicate_line": "duplicate_line",
     "action.close_tab": "close_tab",
+    "action.close_others": "close_others",
+    "action.close_all": "close_all",
     "action.exit": "exit",
     "action.about": "about",
 }
@@ -222,6 +255,25 @@ def populate_icons(window: Any) -> None:
             window._actions[key].setIcon(icon(name, color))
     for lang_id, action in window._syntax_actions.items():
         action.setIcon(language_icon(lang_id, color))
+    for action in getattr(window, "_theme_actions", {}).values():
+        action.setIcon(icon("theme", color))
+    for action in getattr(window, "_lang_actions", {}).values():
+        action.setIcon(icon("language", color))
+    for menu, name in (
+        (getattr(window, "_recent_menu", None), "recent"),
+        (getattr(window, "_menu_encoding", None), "encoding"),
+        (getattr(window, "_menu_eol", None), "eol"),
+    ):
+        if menu is not None:
+            menu.setIcon(icon(name, color))
+    enc_group = getattr(window, "_enc_group", None)
+    if enc_group is not None:
+        for action in enc_group.actions():
+            action.setIcon(icon("encoding", color))
+    eol_group = getattr(window, "_eol_group", None)
+    if eol_group is not None:
+        for action in eol_group.actions():
+            action.setIcon(icon("eol", color))
 
 
 def populate_actions(window: Any) -> None:
@@ -231,7 +283,9 @@ def populate_actions(window: Any) -> None:
         if shortcut:
             action.setShortcut(QKeySequence(shortcut))
             action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+            action.setShortcutVisibleInContextMenu(True)
         action.setCheckable(checkable)
+        action.setIconVisibleInMenu(True)
         window.addAction(action)
         window._actions[key] = action
     window._actions["action.redo"].setShortcuts(
@@ -318,9 +372,7 @@ def populate_menus(window: Any) -> None:
         action = QAction(label, window)
         action.setCheckable(True)
         action.setData(lang_id)
-        action.triggered.connect(
-            lambda checked=False, lid=lang_id: window.set_syntax_language(lid)
-        )
+        action.triggered.connect(lambda checked=False, lid=lang_id: window.set_syntax_language(lid))
         window._syntax_group.addAction(action)
         window._menu_syntax.addAction(action)
         window._syntax_actions[lang_id] = action

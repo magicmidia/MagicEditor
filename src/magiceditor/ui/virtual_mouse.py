@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtCore import QEvent, QPoint, Qt, QTimer
 from PyQt6.QtGui import QContextMenuEvent, QWheelEvent
 
 
@@ -116,7 +116,23 @@ def handle_mouse_press(editor, event) -> bool:
 def handle_mouse_move(editor, event) -> bool:
     if editor._selecting and event is not None and (event.buttons() & Qt.MouseButton.LeftButton):
         pos: QPoint = event.position().toPoint()
-        line, col = hit_test(editor, pos)
+        height = editor.viewport().height()
+        if pos.y() < 0:
+            dy = pos.y()
+        elif pos.y() >= height:
+            dy = pos.y() - (height - 1)
+        else:
+            dy = 0
+        # Clamp into the viewport so hit_test stays O(visible) and the
+        # selection cannot jump to the document end while auto-scrolling.
+        clamped = QPoint(pos.x(), min(max(pos.y(), 0), max(0, height - 1)))
+        editor._auto_scroll_pos = clamped
+        editor._auto_scroll_dy = dy
+        if dy:
+            _auto_scroll_timer(editor).start()
+        else:
+            _stop_auto_scroll(editor)
+        line, col = hit_test(editor, clamped)
         editor._cursor_line = line
         editor._cursor_col = col
         if editor._column_mode and editor._column_anchor is not None:
@@ -129,9 +145,46 @@ def handle_mouse_move(editor, event) -> bool:
     return False
 
 
+def _auto_scroll_timer(editor) -> QTimer:
+    timer = editor._auto_scroll_timer
+    if timer is None:
+        timer = QTimer(editor)
+        timer.setInterval(30)
+        timer.timeout.connect(lambda: _auto_scroll_tick(editor))
+        editor._auto_scroll_timer = timer
+    return timer
+
+
+def _stop_auto_scroll(editor) -> None:
+    editor._auto_scroll_dy = 0
+    if editor._auto_scroll_timer is not None:
+        editor._auto_scroll_timer.stop()
+
+
+def _auto_scroll_tick(editor) -> None:
+    dy = editor._auto_scroll_dy
+    pos = editor._auto_scroll_pos
+    if not editor._selecting or dy == 0 or pos is None:
+        _stop_auto_scroll(editor)
+        return
+    lh = max(1, editor._line_height)
+    lines = max(1, abs(dy) // lh)  # faster the further past the edge
+    sb = editor.verticalScrollBar()
+    sb.setValue(sb.value() + (lines if dy > 0 else -lines))
+    line, col = hit_test(editor, pos)
+    editor._cursor_line = line
+    editor._cursor_col = col
+    if editor._column_mode and editor._column_anchor is not None:
+        editor._anchor_line = editor._column_anchor[0]
+        editor._anchor_col = editor._column_anchor[1]
+    editor.cursorPositionChanged.emit()
+    editor.viewport().update()
+
+
 def handle_mouse_release(editor, event) -> bool:
     if event is not None and event.button() == Qt.MouseButton.LeftButton:
         editor._selecting = False
+        _stop_auto_scroll(editor)
         if (
             editor._anchor_line is not None
             and editor._anchor_line == editor._cursor_line

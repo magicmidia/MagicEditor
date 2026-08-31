@@ -23,8 +23,8 @@ from PyQt6.QtWidgets import (
 )
 
 from magiceditor.core.safe_regex import compile_user_pattern
-from magiceditor.core.text_match import PatternError, compile_pattern
-from magiceditor.services.folder_search import SearchHit, search_folder, search_texts
+from magiceditor.core.text_match import PatternError
+from magiceditor.services.folder_search import SearchHit, search_texts
 
 
 class FindInFilesDialog(QDialog):

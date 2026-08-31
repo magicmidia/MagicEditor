@@ -18,6 +18,8 @@ def test_action_specs_cover_core_commands() -> None:
     assert all(len(spec) == 4 for spec in ACTION_SPECS)
     assert ACTION_ICON_MAP["action.save"] == "save"
     assert "action.new" in ACTION_ICON_MAP
+    missing_icons = [key for key in keys if key not in ACTION_ICON_MAP]
+    assert missing_icons == []
 
 
 def test_apply_save_prefs_trim_and_newline() -> None:

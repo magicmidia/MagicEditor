@@ -7,7 +7,7 @@ from pathlib import Path
 from types import TracebackType
 
 # Architecture: files larger than this use mmap instead of full RAM read.
-MMAP_THRESHOLD_BYTES = 50 * 1024 * 1024
+MMAP_THRESHOLD_BYTES = 5 * 1024 * 1024
 
 
 def should_use_mmap(path: Path | str, size_bytes: int | None = None) -> bool:
@@ -55,9 +55,13 @@ class MmapSource:
 
     def close(self) -> None:
         if self._mmap is not None:
-            self._mmap.close()
+            try:
+                self._mmap.close()
+            except BufferError:
+                pass
             self._mmap = None
-        self._file.close()
+        if hasattr(self, "_file") and not self._file.closed:
+            self._file.close()
 
     def __enter__(self) -> MmapSource:
         return self

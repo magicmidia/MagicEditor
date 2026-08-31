@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Callable
 
 from PyQt6.QtCore import QByteArray, Qt
@@ -26,6 +27,9 @@ def claim_or_forward(paths: list[str], *, timeout_ms: int = 250) -> bool:
     sock = QLocalSocket()
     sock.connectToServer(name)
     if sock.waitForConnected(timeout_ms):
+        # This process holds the foreground rights inherited from Explorer;
+        # delegate them so the primary instance can raise its window.
+        _allow_foreground_activation()
         payload = encode_open(paths)
         sock.write(QByteArray(payload))
         sock.flush()
@@ -52,11 +56,24 @@ def attach_receiver(callback: Callable[[list[str]], None]) -> None:
 
 
 def raise_window(window: QWidget) -> None:
-    window.show()
+    # Only clear Minimized — preserve Maximized/FullScreen (showNormal()
+    # would silently restore the window out of the maximized state).
     window.setWindowState(window.windowState() & ~Qt.WindowState.WindowMinimized)
-    window.showNormal()
+    window.show()
     window.raise_()
     window.activateWindow()
+
+
+def _allow_foreground_activation() -> None:
+    """Grant the primary process the right to steal the foreground (Windows)."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.user32.AllowSetForegroundWindow(-1)  # ASFW_ANY
+    except (AttributeError, OSError):
+        pass
 
 
 def _on_connection() -> None:

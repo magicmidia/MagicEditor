@@ -465,11 +465,15 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             w = self.tabs.widget(i)
             if not isinstance(w, EditorTab):
                 continue
-            try:
-                text = w.document.text()
-            except Exception:
-                text = ""
             path = w.document.path
+            # Draft text is persisted; file-backed tabs restore from disk, so
+            # never materialize their text here (up to 2MB decode per tab).
+            text = ""
+            if path is None:
+                try:
+                    text = w.document.text()
+                except Exception:
+                    text = ""
             views.append(
                 TabSessionView(
                     path=path,

@@ -93,10 +93,10 @@ class EditorTab(QWidget):
         return self._language
 
     def set_minimap_visible(self, visible: bool) -> None:
-        """Show/hide minimap; degrades (hides) for huge documents."""
-        if self._huge and visible:
-            # Still allow density sample but cap cost
-            pass
+        """Show/hide minimap; huge documents keep it off (C3/K13 cost guard)."""
+        if visible and self._huge:
+            self.minimap.set_enabled(False)
+            return
         self.minimap.set_enabled(bool(visible))
         if visible:
             self._refresh_minimap()
@@ -109,7 +109,7 @@ class EditorTab(QWidget):
         self.editor.set_word_completion(enabled)
 
     def _refresh_minimap(self) -> None:
-        if not self.minimap.isVisible():
+        if self._huge or not self.minimap.isVisible():
             return
         lines: list[str] = []
         total = self.document.line_index().line_count

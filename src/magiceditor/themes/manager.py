@@ -62,15 +62,30 @@ QPlainTextEdit, QTextEdit, QTextBrowser {{
             raise TypeError("app does not support setStyleSheet")
         # Clear first so residual rules from previous theme do not stack.
         set_style("")
-        set_style(qss + font_block + _chrome_extras())
+        set_style(qss + font_block + _chrome_extras(theme_id))
         self._current = theme_id
 
 
-def _chrome_extras() -> str:
-    """Checkbox checkmark + larger settings nav (all themes)."""
-    check = icons_dir() / "app" / "check.svg"
+def _check_svg(theme_id: str) -> Path:
+    light = theme_id == "clean_light"
+    name = "check_dark.svg" if light else "check.svg"
+    return icons_dir() / "app" / name
+
+
+def _chrome_extras(theme_id: str = "luminous_void") -> str:
+    """Checkbox check + settings nav + compact menu rows.
+
+    Once any theme QSS matches ``QMenu``, the stylesheet style (not Fusion /
+    MenuChromeStyle) computes item metrics, so the compact row padding must
+    live here. The right padding keeps the shortcut column clear; shortcuts
+    stay right-aligned (drawn by the style inside the item rect).
+    """
+    check = _check_svg(theme_id)
     check_rule = ""
     if check.is_file():
+        # Quoted POSIX path: an unquoted as_uri() percent-encodes non-ASCII
+        # (e.g. "Repositórios"), which the QSS parser rejects — and one bad
+        # rule invalidates the ENTIRE application stylesheet.
         uri = check.resolve().as_posix()
         check_rule = f"""
 QCheckBox::indicator {{
@@ -84,6 +99,12 @@ QCheckBox::indicator:checked {{
     return (
         check_rule
         + """
+QMenu {
+  padding: 4px 2px;
+}
+QMenu::item {
+  padding: 3px 28px 3px 24px;
+}
 QDialog#settingsDialog QListWidget#settingsNav {
   font-size: 11pt;
 }

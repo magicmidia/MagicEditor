@@ -122,10 +122,9 @@ QMenu {{
 QMenu::item {{
   background: transparent;
   color: {fg};
-  padding: 5px 12px 5px 8px;
+  padding: 3px 28px 3px 24px;
   margin: 0px;
   border-radius: 3px;
-  min-height: 20px;
 }}
 QMenu::item:selected {{
   background-color: {accent_a28};

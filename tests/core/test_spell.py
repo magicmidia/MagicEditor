@@ -61,11 +61,26 @@ def test_suggest_empty_when_correct() -> None:
 
 
 def test_portuguese_common_words_are_known() -> None:
-    from magiceditor.core.spell_backend import backend_available
+    from magiceditor.core.spell_backend import backend_available, clear_caches
 
+    clear_caches()
     assert backend_available("pt_BR")
     eng = SpellEngine(language="pt_BR")
-    for word in ("amanhã", "configurações", "arquivo", "obrigado", "também"):
+    for word in (
+        "amanhã",
+        "configurações",
+        "arquivo",
+        "obrigado",
+        "também",
+        "registro",
+        "Gerenciamento",
+        "Dirimir",
+        "rastreável",
+        "artefato",
+        "desbalanceamento",
+        "Reinjeção",
+        "hiperparâmetros",
+    ):
         assert eng.is_correct(word), word
     assert not eng.is_correct("xyzzyqqpt")
 

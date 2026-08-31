@@ -4,10 +4,6 @@ from __future__ import annotations
 
 from magiceditor.core.line_wrap import expand_tabs, wrap_ranges
 
-# Keep the last document line above the status/footer (not flush under it).
-BOTTOM_PAD_LINES = 2
-BOTTOM_PAD_PX = 10
-
 
 def line_count(editor) -> int:
     return max(1, editor._doc.line_index().line_count)
@@ -19,8 +15,8 @@ def visible_line_slots(editor) -> int:
 
 
 def usable_line_slots(editor) -> int:
-    """Fully visible rows that sit above the footer padding."""
-    return max(1, visible_line_slots(editor) - BOTTOM_PAD_LINES)
+    """Fully visible rows — last line sits flush against the status footer."""
+    return visible_line_slots(editor)
 
 
 def recalc_metrics(editor) -> None:
@@ -31,9 +27,9 @@ def recalc_metrics(editor) -> None:
 def update_scrollbars(editor) -> None:
     lines = line_count(editor)
     visible = visible_line_slots(editor)
-    # Extra range so the last line can sit BOTTOM_PAD_LINES above the footer.
-    editor.verticalScrollBar().setRange(0, max(0, lines - visible + BOTTOM_PAD_LINES))
-    editor.verticalScrollBar().setPageStep(max(1, visible - BOTTOM_PAD_LINES))
+    # Flush: last document line occupies the last visible row (no empty pad).
+    editor.verticalScrollBar().setRange(0, max(0, lines - visible))
+    editor.verticalScrollBar().setPageStep(visible)
     if editor._word_wrap:
         editor.horizontalScrollBar().setRange(0, 0)
     else:

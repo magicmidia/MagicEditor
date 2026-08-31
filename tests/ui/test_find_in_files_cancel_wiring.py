@@ -1,4 +1,4 @@
-"""FindInFilesDialog passes cancel hook into search_folder."""
+"""FindInFilesDialog runs folder search on a worker with cancel wiring (K5)."""
 
 from __future__ import annotations
 
@@ -24,35 +24,31 @@ def qapp():
     return app
 
 
-def test_run_search_forwards_is_cancelled(qapp) -> None:
-    cancelled = {"v": False}
-
-    def is_cancelled() -> bool:
-        return cancelled["v"]
-
+def test_run_search_starts_worker_with_cancel_hook(qapp) -> None:
     root = Path("tests") / "_tmp_fif"
     root.mkdir(parents=True, exist_ok=True)
     (root / "a.txt").write_text("hello world\n", encoding="utf-8")
     try:
-        dlg = FindInFilesDialog(
-            root,
-            is_cancelled=is_cancelled,
-            on_cancel_request=lambda: cancelled.__setitem__("v", True),
-            on_search_start=lambda: cancelled.__setitem__("v", False),
-        )
+        dlg = FindInFilesDialog(root)
         dlg.find_input.setText("hello")
         idx = dlg.scope_box.findData("workspace")
         dlg.scope_box.setCurrentIndex(max(0, idx))
 
         with patch(
-            "magiceditor.ui.find_in_files_dialog.search_folder",
+            "magiceditor.ui.find_in_files_worker.search_folder",
             return_value=[],
         ) as mocked:
             dlg.run_search()
+            worker = dlg._worker
+            assert worker is not None
+            worker.wait(5000)
             assert mocked.called
             kwargs = mocked.call_args.kwargs
             assert "is_cancelled" in kwargs
-            assert kwargs["is_cancelled"] is is_cancelled
+            is_cancelled = kwargs["is_cancelled"]
+            assert is_cancelled() is False
+            dlg._request_cancel()
+            assert is_cancelled() is True
     finally:
         for p in root.glob("*"):
             p.unlink(missing_ok=True)

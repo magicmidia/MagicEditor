@@ -11,7 +11,7 @@
 
 #define MyAppName "MagicEditor"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.9.2"
+  #define MyAppVersion "0.9.4"
 #endif
 #define MyAppPublisher "MagicEditor Contributors"
 #define MyAppURL "https://github.com/magicmidia/MagicEditor"

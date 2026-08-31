@@ -18,13 +18,10 @@ QMenu {
 }
 QMenu::item {
   background: transparent; color: #FCFCFA;
-  padding: 5px 12px 5px 8px; margin: 0px; border-radius: 3px; min-height: 20px;
+  border-radius: 3px;
 }
 QMenu::item:selected { background-color: #403E41; color: #FCFCFA; }
 QMenu::item:checked { color: #A9DC76; }
-QMenu::indicator { width: 12px; height: 12px; left: 6px; }
-QMenu::indicator:checked { background-color: #A9DC76; border-radius: 2px; }
-QMenu::icon { left: 4px; }
 QMenu::separator { height: 1px; background: #403E41; margin: 3px 6px; }
 
 QToolBar {
