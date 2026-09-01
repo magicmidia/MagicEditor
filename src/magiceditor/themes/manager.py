@@ -100,10 +100,25 @@ QCheckBox::indicator:checked {{
         check_rule
         + """
 QMenu {
-  padding: 4px 2px;
+  padding: 5px 4px;
 }
 QMenu::item {
-  padding: 3px 28px 3px 24px;
+  padding: 4px 28px 4px 24px;
+}
+QToolBar {
+  padding: 3px 12px;
+  min-height: 30px;
+}
+QTabBar::tab {
+  padding: 5px 12px 5px 10px;
+}
+QToolButton#tabScrollButton, QToolButton#tabNewButton {
+  min-width: 22px;
+  max-width: 22px;
+  min-height: 22px;
+  max-height: 22px;
+  padding: 0px;
+  margin: 0px;
 }
 QDialog#settingsDialog QListWidget#settingsNav {
   font-size: 11pt;

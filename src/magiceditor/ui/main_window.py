@@ -224,7 +224,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._actions["action.line_numbers"].setChecked(self._line_numbers)
         if hasattr(self.tabs, "apply_chrome_prefs"):
             self.tabs.apply_chrome_prefs(
-                height=int(getattr(s, "tab_height", 28) or 28),
+                height=int(getattr(s, "tab_height", 30) or 30),
                 min_width=int(getattr(s, "tab_min_width", 72) or 72),
                 max_width=int(getattr(s, "tab_max_width", 220) or 220),
                 show_scroll_buttons=bool(getattr(s, "show_tab_scroll_buttons", True)),

@@ -36,7 +36,7 @@ class TabsPage(QWidget):
         self.tab_height_spin = QSpinBox(g)
         self.tab_height_spin.setRange(22, 40)
         self.tab_height_spin.setSuffix(" px")
-        self.tab_height_spin.setValue(int(state.tab_height or 28))
+        self.tab_height_spin.setValue(int(state.tab_height or 30))
         form.addRow(t("settings.tab_height", "Altura da aba"), self.tab_height_spin)
 
         self.tab_min_spin = QSpinBox(g)

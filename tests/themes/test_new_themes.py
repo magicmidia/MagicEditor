@@ -36,11 +36,13 @@ def test_new_theme_tokens_are_distinct() -> None:
 
 def test_chrome_extras_checkbox_and_compact_menu() -> None:
     qss = _chrome_extras("luminous_void")
-    assert "QMenu {" in qss
-    assert "min-width" not in qss
+    assert "QMenu {\n  padding: 5px 4px;\n}" in qss
+    assert "min-width: 220px" not in qss  # menus size to content
     assert "min-height: 26px" not in qss
     assert "QMenu::item" in qss
-    assert "padding: 3px 28px 3px 24px" in qss
+    assert "padding: 4px 28px 4px 24px" in qss
+    # Corner tab buttons pinned to 22px (theme QToolButton min-size overflows)
+    assert "QToolButton#tabScrollButton" in qss
     assert "check.svg" in qss
     light = _chrome_extras("clean_light")
     assert "check_dark.svg" in light

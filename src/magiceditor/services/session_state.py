@@ -49,7 +49,7 @@ class SessionState:
     trim_trailing_on_save: bool = False
     insert_final_newline: bool = False
     editor_context_menu: bool = True
-    tab_height: int = 28
+    tab_height: int = 30
     tab_min_width: int = 72
     tab_max_width: int = 220
     show_tab_scroll_buttons: bool = True

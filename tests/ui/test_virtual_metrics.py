@@ -92,3 +92,60 @@ def test_ensure_visible_last_line_flush_at_bottom() -> None:
     ensure_visible(ed, 29)
     assert ed._vsb.val == 20
     assert (29 - ed._vsb.val) == visible_line_slots(ed) - 1
+
+
+class _WrapDoc(_Doc):
+    def line_text(self, i: int) -> str:
+        return "x"
+
+
+class _WrapEditor(_Editor):
+    """Editor fake com word wrap: ``rows`` = display rows por linha."""
+
+    def __init__(self, rows: list[int], *, height: int = 200, lh: int = 20) -> None:
+        super().__init__(lines=len(rows), height=height, lh=lh)
+        self._word_wrap = True
+        self._rows = rows
+        self._doc = _WrapDoc(len(rows))
+
+    def _wrap_display_rows(self, text: str) -> list[tuple[int, int, str]]:
+        # Chamado apenas com o texto da linha corrente no walk do tail; o
+        # índice é inferido pelo contador de chamadas em ordem reversa.
+        n = self._rows[self._call_line]
+        return [(0, 1, "x")] * n
+
+    _call_line = 0
+
+
+def _wrapped_update(ed: _WrapEditor) -> None:
+    # _wrapped_max_scroll chama line_text(v) e depois _wrap_display_rows(text);
+    # o fake precisa saber a linha — intercepte via line_text.
+    original = ed._doc.line_text
+
+    def line_text(i: int) -> str:
+        ed._call_line = i
+        return original(i)
+
+    ed._doc.line_text = line_text  # type: ignore[method-assign]
+    update_scrollbars(ed)
+
+
+def test_wrap_max_scroll_accounts_for_wrapped_tail() -> None:
+    # 30 linhas; a última ocupa 4 display rows; 10 slots visíveis.
+    ed = _WrapEditor([1] * 29 + [4])
+    _wrapped_update(ed)
+    # Sem wrap seria 20; a cauda com wrap precisa de 3 posições extras.
+    assert ed._vsb.hi == 23
+
+
+def test_wrap_whole_document_fits() -> None:
+    ed = _WrapEditor([1] * 5)
+    _wrapped_update(ed)
+    assert ed._vsb.hi == 0
+
+
+def test_wrap_single_giant_line_scrollable_to_it() -> None:
+    ed = _WrapEditor([1] * 4 + [40])
+    _wrapped_update(ed)
+    # Linha gigante (40 rows > 10 slots): pode rolar até ela (line 4).
+    assert ed._vsb.hi == 4

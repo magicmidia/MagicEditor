@@ -77,6 +77,7 @@ class TabManager(QTabWidget):
         ll = QHBoxLayout(left_wrap)
         ll.setContentsMargins(2, 0, 2, 0)
         ll.setSpacing(0)
+        ll.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         ll.addWidget(self._scroll_left)
 
         right_wrap = QWidget(self)
@@ -84,6 +85,7 @@ class TabManager(QTabWidget):
         rl = QHBoxLayout(right_wrap)
         rl.setContentsMargins(2, 0, 4, 0)
         rl.setSpacing(2)
+        rl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         rl.addWidget(self._scroll_right)
         rl.addWidget(self._new_tab_btn)
 
@@ -135,7 +137,7 @@ class TabManager(QTabWidget):
     def apply_chrome_prefs(
         self,
         *,
-        height: int = 28,
+        height: int = 30,
         min_width: int = 72,
         max_width: int = 220,
         show_scroll_buttons: bool = True,

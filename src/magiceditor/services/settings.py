@@ -241,7 +241,7 @@ class AppSettings:
             trim_trailing_on_save=self._as_bool(qs.value("editor/trim_trailing_on_save"), False),
             insert_final_newline=self._as_bool(qs.value("editor/insert_final_newline"), False),
             editor_context_menu=self._as_bool(qs.value("editor/context_menu"), True),
-            tab_height=_clamp_int(qs.value("tabs/height", 28), 22, 40, 28),
+            tab_height=_clamp_int(qs.value("tabs/height", 30), 22, 40, 30),
             tab_min_width=_clamp_int(qs.value("tabs/min_width", 72), 48, 160, 72),
             tab_max_width=_clamp_int(qs.value("tabs/max_width", 220), 120, 400, 220),
             show_tab_scroll_buttons=self._as_bool(qs.value("tabs/scroll_buttons"), True),

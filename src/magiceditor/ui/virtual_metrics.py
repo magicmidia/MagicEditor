@@ -27,14 +27,41 @@ def recalc_metrics(editor) -> None:
 def update_scrollbars(editor) -> None:
     lines = line_count(editor)
     visible = visible_line_slots(editor)
-    # Flush: last document line occupies the last visible row (no empty pad).
-    editor.verticalScrollBar().setRange(0, max(0, lines - visible))
+    if editor._word_wrap:
+        max_scroll = _wrapped_max_scroll(editor, lines, visible)
+    else:
+        # Flush: last document line occupies the last visible row (no empty pad).
+        max_scroll = max(0, lines - visible)
+    editor.verticalScrollBar().setRange(0, max_scroll)
     editor.verticalScrollBar().setPageStep(visible)
     if editor._word_wrap:
         editor.horizontalScrollBar().setRange(0, 0)
     else:
         editor.horizontalScrollBar().setRange(0, 200)
         editor.horizontalScrollBar().setPageStep(20)
+
+
+def _wrapped_max_scroll(editor, lines: int, visible: int) -> int:
+    """First scroll value where the wrapped document end is fully visible.
+
+    With word wrap on, one document line can occupy several display rows, so
+    ``lines - visible`` under-scrolls: the tail (incl. the last line) renders
+    past the viewport bottom, clipped against the status footer. Walk the tail
+    accumulating display rows until the viewport is covered; the result keeps
+    the last line flush at the bottom with no synthetic padding.
+    """
+    acc = 0
+    v = lines
+    while v > 0 and acc <= visible:
+        v -= 1
+        try:
+            text = editor._doc.line_text(v)
+        except IndexError:
+            break
+        acc += max(1, len(editor._wrap_display_rows(text)))
+    if acc <= visible:
+        return 0  # whole document fits in the viewport
+    return min(v + 1, max(0, lines - 1))
 
 
 def text_area_width(editor) -> int:

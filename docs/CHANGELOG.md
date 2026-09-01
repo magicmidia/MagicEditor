@@ -5,8 +5,13 @@
 - Fix invalid application stylesheet: unquoted percent-encoded `url()` (non-ASCII
   install path, e.g. "Repositórios") made Qt reject the whole QSS — menus fell
   back to loose default metrics
-- Compact menu rows (`QMenu::item` padding, no forced `min-width: 220px`);
-  shortcuts keep right-aligned column; theme generator template synced
+- Compact menu rows with breathing room (`QMenu::item` padding, no forced
+  `min-width: 220px`); shortcuts keep right-aligned column; generator synced
+- Word wrap: scroll range now counts display rows — the last line renders fully,
+  flush above the status bar (was clipped/hidden with wrapped tail lines)
+- Toolbar slimmer (30px); tabs default 30px with fuller padding; tab corner
+  buttons (◀ ▶ New) pinned to 22px and vertically centered (theme `QToolButton`
+  min-size was overflowing the tab strip)
 - Drag-select now auto-scrolls past the viewport top/bottom with speed
   proportional to distance; hit-test clamped (dragging above the top no longer
   jumps the caret to end-of-document)

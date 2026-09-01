@@ -26,7 +26,7 @@ class MagicTabBar(QTabBar):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_context_menu)
         self._group_colors: dict[int, str] = {}
-        self._pref_height = 28
+        self._pref_height = 30
         self._pref_min_width = 72
         self._pref_max_width = 220
 

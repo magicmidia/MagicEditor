@@ -122,7 +122,7 @@ QMenu {{
 QMenu::item {{
   background: transparent;
   color: {fg};
-  padding: 3px 28px 3px 24px;
+  padding: 4px 28px 4px 24px;
   margin: 0px;
   border-radius: 3px;
 }}
@@ -152,8 +152,8 @@ QToolBar {{
   border: none;
   border-bottom: 1px solid {border};
   spacing: 2px;
-  padding: 4px 12px;
-  min-height: 36px;
+  padding: 3px 12px;
+  min-height: 30px;
 }}
 QToolBar::separator {{
   background: {border};
