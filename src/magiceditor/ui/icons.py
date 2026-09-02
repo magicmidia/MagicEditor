@@ -126,6 +126,8 @@ _ACTION_QLEMENTINE: dict[str, str] = {
     "insert_timestamp": "clock",
     "checksum": "file-text",
     "doc_stats": "gauge-high",
+    "filter": "filter",
+    "log_summary": "gauge-middle",
     "always_on_top": "pin-fill",
     "read_only": "lock",
 }
@@ -227,6 +229,8 @@ _ACTION_MDI: dict[str, str] = {
     "insert_timestamp": "mdi6.clock-outline",
     "checksum": "mdi6.fingerprint",
     "doc_stats": "mdi6.chart-box-outline",
+    "filter": "mdi6.filter-outline",
+    "log_summary": "mdi6.chart-timeline-variant",
     "always_on_top": "mdi6.pin-outline",
     "read_only": "mdi6.lock-outline",
 }

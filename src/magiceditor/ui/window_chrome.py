@@ -90,6 +90,8 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.import_theme", "import_theme_bundle", None, False),
     ("action.file_checksum", "show_checksum_dialog", None, False),
     ("action.doc_stats", "show_stats_dialog", None, False),
+    ("action.filter_lines", "show_filter_lines", None, False),
+    ("action.log_summary", "show_log_summary", None, False),
     ("action.toggle_sidebar", "toggle_sidebar", "Ctrl+B", True),
     ("action.word_wrap", "toggle_word_wrap", "Alt+Z", True),
     ("action.line_numbers", "toggle_line_numbers", None, True),
@@ -204,6 +206,8 @@ TOOLS_KEYS = (
     "action.import_theme",
     "action.file_checksum",
     "action.doc_stats",
+    "action.filter_lines",
+    "action.log_summary",
 )
 TOOLBAR_FILE = ("action.new", "action.open", "action.open_folder", "action.save", "action.print")
 TOOLBAR_HISTORY = ("action.undo", "action.redo")
@@ -300,6 +304,8 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.import_theme": "import_theme",
     "action.file_checksum": "checksum",
     "action.doc_stats": "doc_stats",
+    "action.filter_lines": "filter",
+    "action.log_summary": "log_summary",
     "action.toggle_sidebar": "sidebar",
     "action.word_wrap": "wrap",
     "action.line_numbers": "lines",

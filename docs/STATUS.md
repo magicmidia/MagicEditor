@@ -2,11 +2,12 @@
 
 **Updated:** 2026-09-01  
 **Branch:** `main`  
-**Version:** 0.9.5 BETA
+**Version:** 0.9.6 BETA
 
 ## Current phase
 **Reengenharia J–N concluída** — Inventário de todos os IDs §11 contra o código enviado: **zero Aceites abertos** (2026-08-17).  
-**Varredura competitiva 2026-09 (0.9.5):** case conversion, Base64/URL, line ops extras (dedupe/reverse/sort-by-length), inserir data/hora, checksum (MD5/SHA-1/SHA-256) com worker, estatísticas do documento (cap em huge files), Save All, always-on-top, read-only por aba (🔒). Perf: hit-test O(1) sem wrap, wrap O(N) monoespaçado, paint clipado em linhas longas. Propostas criativas documentadas em ROADMAP §9.5.
+**Varredura competitiva 2026-09 (0.9.5):** case conversion, Base64/URL, line ops extras (dedupe/reverse/sort-by-length), inserir data/hora, checksum (MD5/SHA-1/SHA-256) com worker, estatísticas do documento (cap em huge files), Save All, always-on-top, read-only por aba (🔒). Perf: hit-test O(1) sem wrap, wrap O(N) monoespaçado, paint clipado em linhas longas. Propostas criativas documentadas em ROADMAP §9.5.  
+**Onda criativa 0.9.6:** P1 Filter Lines (grep interno streaming → nova aba, worker + cancel + cap) e P6 Log Lens (sintaxe `log` por severidade + resumo com contagem/navegação por nível). Próximas candidatas: P2 (change history), P3 (time machine de drafts).
 
 J1 extrações + J2 camadas (`viewport_text`/`full_text`, sem `read_bytes` em `ui/`, I/O de tema em `services/theme_io`) + J3 `EditorSurface`.  
 K10 `measure_packaging()`; K14 Ctrl+D via `line_text`; sort huge `c\\nb\\na\\n` → `a\\nb\\nc\\n`; K15 `SaveWorker`; K17 harness.  

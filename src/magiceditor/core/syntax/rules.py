@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from magiceditor.core.log_levels import LEVEL_PATTERNS
+
 # rule name -> used by UI for colors
 TokenKind = str
 
@@ -76,6 +78,13 @@ def _build_rules(lang: str) -> list[Rule]:
             r"protected|readonly|namespace)\b"
         )
         return [*block_c, *line_slash, *common_string, _compile("keyword", kws), *common_number]
+
+    if lang == "log":
+        # Severity keywords only (same regexes as core.log_levels) + numbers.
+        return [
+            *[Rule(kind=f"log_{level}", pattern=pattern) for level, pattern in LEVEL_PATTERNS],
+            *common_number,
+        ]
 
     if lang == "json":
         return [

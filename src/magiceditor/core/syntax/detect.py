@@ -84,6 +84,7 @@ def language_label(lang_id: str) -> str:
         "toml": "TOML",
         "ini": "INI",
         "text": "Plain Text",
+        "log": "Log",
         "kotlin": "Kotlin",
         "swift": "Swift",
         "lua": "Lua",

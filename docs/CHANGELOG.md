@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.6 BETA — Filter Lines + Log Lens (roadmap §9.5, P1 e P6)
+
+- Filter Lines (Tools): extract lines matching a pattern (substring/regex, case,
+  invert) into a new tab, with original line numbers (`N: text`) — streaming
+  worker (10k-line chunks), real progress + cancel, 1M-match cap with explicit
+  truncation note; syntax off for results >20MB
+- Log Lens: new `log` syntax language with severity highlighting
+  (ERROR/FATAL/Traceback, WARN, INFO, DEBUG/TRACE) — word-boundary safe
+  (`information` no longer lights up), colors tuned for dark and light themes;
+  `.log` files auto-detect it
+- Log summary dialog (Tools): per-level line counts on a worker thread plus
+  "go to next" per level with wrap-around — works on huge files without
+  materializing the document
+
 ## 0.9.5 BETA — Text transforms, document tools, editor perf
 
 - Case conversion on selection: UPPERCASE, lowercase (Ctrl+U), Title, Sentence, Invert

@@ -517,15 +517,15 @@ Varredura fresca sobre Notepad (Win 11 2024–25: spell/autocorrect, char count,
 
 | ID | Proposta | Problema que resolve | Ideia central |
 |----|----------|----------------------|---------------|
-| P1 | **Filter Lines → nova aba** | Analisar log de GB exige grep externo; N++ "Mark" só marca, não extrai | Extrair linhas que casam com padrão (texto/regex) para uma aba nova, streaming + worker + progresso; cada linha extraída com número original, clique volta para a posição no arquivo-fonte. Grep interno, huge-file nativo |
+| P1 | ~~Filter Lines → nova aba~~ ✅ **0.9.6** | Analisar log de GB exige grep externo; N++ "Mark" só marca, não extrai | Extrair linhas que casam com padrão (texto/regex) para uma aba nova, streaming + worker + progresso; cada linha extraída com número original. **Entregue sem o click-to-jump (fica para iteração futura)** |
 | P2 | **Change History no gutter** | "O que eu mudei desde que abri?" — N++ 8.5 tem básico; ninguém faz bem em huge files | Marcadores de margem para linhas modificadas desde o open/save (verde=nova, âmbar=editada), derivados do piece table (já sabe o que é add vs. original) sem diff custoso |
 | P3 | **Time Machine de drafts** | Perder um rascunho Untitled ou uma versão intermediária | Snapshots automáticos deduplicados (por hash) de buffers em pontos de parada (idle 30s, save, fechar aba); timeline lateral para restaurar/comparar qualquer snapshot. Local only, cap de espaço |
 | P4 | **Smart Paste** | Colar JSON/SQL/minified amassado e ter que formatar à mão | Ao colar, detectar payload (JSON, SQL, XML, lista separada por vírgula) e oferecer badge não-intrusivo "Formatar?" (1 clique ou atalho); nunca formata sem consentimento |
 | P5 | **Copy with Highlight** | Colar código em e-mail/Slack/docs perde a cor | Copiar seleção como HTML/RTF com as cores do tema atual (clipboard multi-formato: text/plain + text/html) |
-| P6 | **Log Lens** | Logs gigantes são parede de texto homogênea | Highlight por severidade (ERROR/WARN/INFO/DEBUG) + painel de resumo com contagem por nível e salto para próxima ocorrência do nível; tudo viewport/streaming — casa com P1 |
+| P6 | ~~Log Lens~~ ✅ **0.9.6** | Logs gigantes são parede de texto homogênea | Highlight por severidade (ERROR/WARN/INFO/DEBUG) + painel de resumo com contagem por nível e salto para próxima ocorrência do nível; tudo viewport/streaming — casa com P1 |
 | P7 | **Diff de abas vivas** | Compare hoje é arquivo-a-arquivo estático | "Comparar com…" entre duas abas abertas (inclusive Untitled), re-diff ao editar com debounce, scroll sync |
 
-**Priorização sugerida:** P1 + P6 (sinergia com o motor huge-file, diferencial real) → P2 (barato, alto valor diário) → P3 (produto, risco de escopo) → P4/P5 (polish) → P7.
+**Priorização sugerida:** P1 + P6 ✅ (0.9.6) → P2 (barato, alto valor diário) → P3 (produto, risco de escopo) → P4/P5 (polish) → P7.
 
 ---
 
@@ -533,7 +533,7 @@ Varredura fresca sobre Notepad (Win 11 2024–25: spell/autocorrect, char count,
 
 | Data | Mudança |
 |------|---------|
-| 2026-09-01 | **Varredura competitiva fresca:** paridades N++/Notepad absorvidas na 0.9.5; nova seção §9.5 com 7 propostas criativas (P1–P7) priorizadas |
+| 2026-09-01 | **Varredura competitiva fresca:** paridades N++/Notepad absorvidas na 0.9.5; nova seção §9.5 com 7 propostas criativas (P1–P7) priorizadas; P1 (Filter Lines) e P6 (Log Lens) implementadas na 0.9.6 |
 | 2026-07-17 | Roadmap competitivo inicial (fases A–F) |
 | 2026-07-30 | **Incremento de excelência:** Ondas F (UI), G (spell + avançados), H (performance), I (release Windows final); gap/status A sincronizado; first-run, file assoc, build kit |
 | 2026-08-17 | **Auditoria de reengenharia:** Ondas J–N (estrutura, otimização, segurança, higiene, qualidade). Inventário de arquivos >300 LOC e gaps vs. estado real do código |

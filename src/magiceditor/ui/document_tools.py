@@ -119,6 +119,8 @@ class DocumentToolsMixin:
         path = getattr(getattr(tab, "document", None), "path", None)
         acts["action.file_checksum"].setEnabled(path is not None)
         acts["action.doc_stats"].setEnabled(has_tab)
+        acts["action.filter_lines"].setEnabled(has_tab)
+        acts["action.log_summary"].setEnabled(has_tab)
         on_top = bool(self.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
         acts["action.always_on_top"].setChecked(on_top)
 

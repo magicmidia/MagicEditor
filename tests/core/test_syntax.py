@@ -40,6 +40,34 @@ def test_tokenize_string() -> None:
 
 def test_language_label() -> None:
     assert language_label("python") == "Python"
+    assert language_label("log") == "Log"
+
+
+def test_detect_log_extension() -> None:
+    assert detect_language("server.log") == "log"
+
+
+def test_tokenize_log_severities() -> None:
+    spans = tokenize_line("2026-09-01 10:00:00 ERROR disk full", "log")
+    kinds = [k for _, _, k in spans]
+    assert "log_error" in kinds
+    # The ERROR span covers the keyword itself.
+    err = next(s for s in spans if s[2] == "log_error")
+    assert "2026-09-01 10:00:00 ERROR disk full"[err[0] : err[0] + err[1]] == "ERROR"
+
+
+def test_tokenize_log_all_levels_and_no_false_positive() -> None:
+    cases = {
+        "[WARN] x": "log_warn",
+        "INFO: y": "log_info",
+        "DEBUG detail": "log_debug",
+        "Traceback (most recent call last):": "log_error",
+    }
+    for line, kind in cases.items():
+        kinds = {k for _, _, k in tokenize_line(line, "log")}
+        assert kind in kinds, line
+    assert tokenize_line("information processed", "log") == []
+
 
 
 def test_tokenize_does_not_allocate_claimed_and_caches_rules() -> None:

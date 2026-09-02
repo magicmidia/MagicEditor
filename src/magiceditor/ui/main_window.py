@@ -35,6 +35,7 @@ from magiceditor.ui.about_dialog import AboutDialog
 from magiceditor.ui.confirm_dialog import ConfirmDialog, ConfirmResult
 from magiceditor.ui.document_tools import READ_ONLY_SUFFIX, DocumentToolsMixin
 from magiceditor.ui.editor_tab import EditorTab
+from magiceditor.ui.filter_lines_actions import FilterLinesMixin
 from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
 from magiceditor.ui.first_run_dialog import FirstRunDialog
@@ -45,6 +46,7 @@ from magiceditor.ui.icons import (
     set_icon_pack,
     toolbar_icon_color,
 )
+from magiceditor.ui.log_summary_actions import LogSummaryMixin
 from magiceditor.ui.outline_dialog import OutlineDialog
 from magiceditor.ui.power_features import PowerFeaturesMixin
 from magiceditor.ui.quick_open import QuickOpenDialog
@@ -57,7 +59,9 @@ from magiceditor.ui.virtual_editor import VirtualEditor
 _log = logging.getLogger(__name__)
 
 
-class MainWindow(DocumentToolsMixin, PowerFeaturesMixin, QMainWindow):
+class MainWindow(
+    LogSummaryMixin, FilterLinesMixin, DocumentToolsMixin, PowerFeaturesMixin, QMainWindow
+):
     def __init__(
         self,
         translator: TranslatorManager | None = None,
@@ -409,6 +413,8 @@ class MainWindow(DocumentToolsMixin, PowerFeaturesMixin, QMainWindow):
             "action.import_theme": t("action.import_theme", "Importar tema…"),
             "action.file_checksum": t("action.file_checksum", "Checksum do arquivo…"),
             "action.doc_stats": t("action.doc_stats", "Estatísticas do documento…"),
+            "action.filter_lines": t("action.filter_lines", "Filtrar linhas…"),
+            "action.log_summary": t("action.log_summary", "Resumo do log…"),
             "action.toggle_sidebar": t("action.toggle_sidebar", "Alternar e&xplorador"),
             "action.word_wrap": t("action.word_wrap", "&Quebra de linha"),
             "action.line_numbers": t("action.line_numbers", "&Números de linha"),
