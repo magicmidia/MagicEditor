@@ -7,46 +7,68 @@ from PyQt6.QtGui import QContextMenuEvent, QWheelEvent
 
 
 def hit_test(editor, pos: QPoint) -> tuple[int, int]:
-    """Map viewport point to (doc_line, char_col)."""
+    """Map viewport point to (doc_line, char_col) in O(1) or O(visible)."""
     first = editor.verticalScrollBar().value()
-    lh = editor._line_height
+    lh = max(1, int(getattr(editor, "_line_height", 18) or 18))
     gutter = editor._gutter_width if editor._show_line_numbers else 0
     fm = editor.fontMetrics()
-    space_w = fm.horizontalAdvance(" ")
+    space_w = max(1, fm.horizontalAdvance(" "))
     h_off = 0 if editor._word_wrap else editor.horizontalScrollBar().value() * space_w
     x = pos.x() - gutter - editor._pad_x + h_off
-    y = 0
     total = editor._line_count()
+    if total <= 0:
+        return 0, 0
+
+    if not editor._word_wrap:
+        rel_row = max(0, pos.y() // lh) if pos.y() >= 0 else 0
+        line = min(total - 1, max(0, first + rel_row))
+        try:
+            text = editor._doc.line_text(line)
+        except IndexError:
+            return line, 0
+
+        target_col = max(0, round(x / space_w)) if x > 0 else 0
+        if "\t" not in text:
+            col = min(len(text), target_col)
+            return line, col
+
+        disp = 0
+        col = 0
+        for ch in text:
+            step = 4 if ch == "\t" else 1
+            if disp + step > target_col:
+                break
+            disp += step
+            col += 1
+        return line, min(len(text), col)
+
+    y = 0
     line = first
-    while line < total:
+    view_h = editor.viewport().height()
+    target_y = pos.y()
+
+    while line < total and y <= max(view_h, target_y):
         try:
             text = editor._doc.line_text(line)
         except IndexError:
             text = ""
         rows = editor._wrap_display_rows(text)
-        for d0, _d1, row in rows:
-            if y <= pos.y() < y + lh:
-                col_disp = 0
-                acc = 0
-                for ch in row:
-                    w = fm.horizontalAdvance(ch)
-                    if acc + w / 2 >= x:
-                        break
-                    acc += w
-                    col_disp += 1
-                target_disp = d0 + col_disp
-                col = 0
+        for d0, _d1, _row in rows:
+            if y <= target_y < y + lh:
+                target_col = max(0, round(x / space_w)) if x > 0 else 0
+                target_disp = d0 + target_col
                 disp = 0
+                col = 0
                 for ch in text:
                     step = 4 if ch == "\t" else 1
                     if disp + step > target_disp:
                         break
                     disp += step
                     col += 1
-                return line, col
+                return line, min(len(text), col)
             y += lh
         line += 1
-    return max(0, total - 1), 0
+    return min(total - 1, max(0, line - 1)), 0
 
 
 def handle_wheel(editor, event: QWheelEvent | None) -> bool:

@@ -18,6 +18,7 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.open_folder", "open_folder_dialog", "Ctrl+K", False),
     ("action.save", "save_current", "Ctrl+S", False),
     ("action.save_as", "save_current_as", "Ctrl+Shift+S", False),
+    ("action.save_all", "save_all", None, False),
     ("action.print", "print_current", "Ctrl+P", False),
     ("action.export_pdf", "export_pdf_current", "Ctrl+Shift+E", False),
     ("action.undo", "undo_current", "Ctrl+Z", False),
@@ -32,6 +33,10 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.move_line_up", "move_line_up_current", "Alt+Up", False),
     ("action.move_line_down", "move_line_down_current", "Alt+Down", False),
     ("action.sort_lines", "sort_lines_current", None, False),
+    ("action.sort_by_length", "sort_by_length_current", None, False),
+    ("action.reverse_lines", "reverse_lines_current", None, False),
+    ("action.remove_duplicate_lines", "remove_duplicate_lines_current", None, False),
+    ("action.remove_consecutive_duplicates", "remove_consecutive_duplicates_current", None, False),
     ("action.join_lines", "join_lines_current", None, False),
     ("action.delete_blank_lines", "delete_blank_lines_current", None, False),
     ("action.trim_trailing", "trim_trailing_current", None, False),
@@ -42,6 +47,21 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.select_all_occurrences", "multi_cursor_select_all", "Alt+F3", False),
     ("action.clear_cursors", "multi_cursor_clear", None, False),
     ("action.matching_brace", "goto_matching_brace", "Ctrl+M", False),
+    # Selection case transforms (Ctrl+Shift+U is taken by outline → upper has none)
+    ("action.case_upper", "case_upper_current", None, False),
+    ("action.case_lower", "case_lower_current", "Ctrl+U", False),
+    ("action.case_title", "case_title_current", None, False),
+    ("action.case_sentence", "case_sentence_current", None, False),
+    ("action.case_invert", "case_invert_current", None, False),
+    ("action.base64_encode", "base64_encode_current", None, False),
+    ("action.base64_decode", "base64_decode_current", None, False),
+    ("action.url_encode", "url_encode_current", None, False),
+    ("action.url_decode", "url_decode_current", None, False),
+    ("action.insert_datetime_iso", "insert_datetime_iso", None, False),
+    ("action.insert_date_short", "insert_date_short", None, False),
+    ("action.insert_datetime_local", "insert_datetime_local", None, False),
+    ("action.insert_timestamp", "insert_timestamp", None, False),
+    ("action.toggle_read_only", "toggle_read_only", None, True),
     ("action.find", "show_find", "Ctrl+F", False),
     ("action.replace", "show_replace", "Ctrl+H", False),
     ("action.find_in_files", "show_find_in_files", "Ctrl+Shift+F", False),
@@ -68,6 +88,8 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.cancel_search", "cancel_long_search", "Ctrl+Shift+C", False),
     ("action.export_theme", "export_theme_bundle", None, False),
     ("action.import_theme", "import_theme_bundle", None, False),
+    ("action.file_checksum", "show_checksum_dialog", None, False),
+    ("action.doc_stats", "show_stats_dialog", None, False),
     ("action.toggle_sidebar", "toggle_sidebar", "Ctrl+B", True),
     ("action.word_wrap", "toggle_word_wrap", "Alt+Z", True),
     ("action.line_numbers", "toggle_line_numbers", None, True),
@@ -75,6 +97,7 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.zoom_out", "zoom_out", "Ctrl+-", False),
     ("action.zoom_reset", "zoom_reset", "Ctrl+0", False),
     ("action.fullscreen", "toggle_fullscreen", "F11", True),
+    ("action.always_on_top", "toggle_always_on_top", None, True),
     ("action.settings", "show_settings", "Ctrl+,", False),
     ("action.quick_open", "show_quick_open", "Ctrl+E", False),
     ("action.outline", "show_outline", "Ctrl+Shift+U", False),
@@ -90,12 +113,33 @@ FILE_MENU_KEYS = (
     "action.open_folder",
     "action.save",
     "action.save_as",
+    "action.save_all",
     "action.print",
     "action.export_pdf",
 )
 FILE_CLOSE_KEYS = ("action.close_tab", "action.close_others", "action.close_all")
 EDIT_HISTORY_KEYS = ("action.undo", "action.redo")
 EDIT_CLIP_KEYS = ("action.cut", "action.copy", "action.paste", "action.select_all")
+EDIT_CASE_KEYS = (
+    "action.case_upper",
+    "action.case_lower",
+    "action.case_title",
+    "action.case_sentence",
+    "action.case_invert",
+)
+EDIT_CONVERT_KEYS = (
+    "action.base64_encode",
+    "action.base64_decode",
+    "action.url_encode",
+    "action.url_decode",
+)
+EDIT_INSERT_KEYS = (
+    "action.insert_datetime_iso",
+    "action.insert_date_short",
+    "action.insert_datetime_local",
+    "action.insert_timestamp",
+)
+EDIT_STATE_KEYS = ("action.toggle_read_only",)
 EDIT_POWER_KEYS = (
     "action.indent",
     "action.unindent",
@@ -103,8 +147,12 @@ EDIT_POWER_KEYS = (
     "action.move_line_up",
     "action.move_line_down",
     "action.sort_lines",
+    "action.sort_by_length",
+    "action.reverse_lines",
     "action.join_lines",
     "action.delete_blank_lines",
+    "action.remove_duplicate_lines",
+    "action.remove_consecutive_duplicates",
     "action.trim_trailing",
     "action.tabs_to_spaces",
     "action.spaces_to_tabs",
@@ -137,6 +185,7 @@ VIEW_KEYS = (
     "action.zoom_out",
     "action.zoom_reset",
     "action.fullscreen",
+    "action.always_on_top",
     "action.settings",
 )
 TOOLS_KEYS = (
@@ -153,6 +202,8 @@ TOOLS_KEYS = (
     "action.cancel_search",
     "action.export_theme",
     "action.import_theme",
+    "action.file_checksum",
+    "action.doc_stats",
 )
 TOOLBAR_FILE = ("action.new", "action.open", "action.open_folder", "action.save", "action.print")
 TOOLBAR_HISTORY = ("action.undo", "action.redo")
@@ -178,6 +229,7 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.open_folder": "folder",
     "action.save": "save",
     "action.save_as": "save_as",
+    "action.save_all": "save_all",
     "action.print": "print",
     "action.export_pdf": "export_pdf",
     "action.undo": "undo",
@@ -192,6 +244,10 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.move_line_up": "move_up",
     "action.move_line_down": "move_down",
     "action.sort_lines": "sort",
+    "action.sort_by_length": "sort_length",
+    "action.reverse_lines": "reverse_lines",
+    "action.remove_duplicate_lines": "remove_duplicates",
+    "action.remove_consecutive_duplicates": "remove_consecutive",
     "action.join_lines": "join",
     "action.delete_blank_lines": "delete_lines",
     "action.trim_trailing": "trim",
@@ -202,6 +258,20 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.select_all_occurrences": "select_occurrences",
     "action.clear_cursors": "clear_cursors",
     "action.matching_brace": "brace",
+    "action.case_upper": "case_upper",
+    "action.case_lower": "case_lower",
+    "action.case_title": "case_title",
+    "action.case_sentence": "case_sentence",
+    "action.case_invert": "case_invert",
+    "action.base64_encode": "b64_encode",
+    "action.base64_decode": "b64_decode",
+    "action.url_encode": "url_encode",
+    "action.url_decode": "url_decode",
+    "action.insert_datetime_iso": "insert_datetime",
+    "action.insert_date_short": "insert_date",
+    "action.insert_datetime_local": "insert_datetime",
+    "action.insert_timestamp": "insert_timestamp",
+    "action.toggle_read_only": "read_only",
     "action.find": "find",
     "action.replace": "replace",
     "action.find_in_files": "find_files",
@@ -228,6 +298,8 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.cancel_search": "cancel_search",
     "action.export_theme": "export_theme",
     "action.import_theme": "import_theme",
+    "action.file_checksum": "checksum",
+    "action.doc_stats": "doc_stats",
     "action.toggle_sidebar": "sidebar",
     "action.word_wrap": "wrap",
     "action.line_numbers": "lines",
@@ -235,6 +307,7 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.zoom_out": "zoom_out",
     "action.zoom_reset": "zoom_reset",
     "action.fullscreen": "fullscreen",
+    "action.always_on_top": "always_on_top",
     "action.settings": "settings",
     "action.quick_open": "quick_open",
     "action.outline": "outline",
@@ -333,11 +406,20 @@ def populate_menus(window: Any) -> None:
     window._menu_edit.addSeparator()
     _add_keys(window._menu_edit, window, EDIT_CLIP_KEYS)
     window._menu_edit.addSeparator()
+    window._menu_convert = window._menu_edit.addMenu(window._tr.t("menu.convert", "Converter"))
+    _add_keys(window._menu_convert, window, EDIT_CASE_KEYS)
+    window._menu_convert.addSeparator()
+    _add_keys(window._menu_convert, window, EDIT_CONVERT_KEYS)
+    window._menu_insert = window._menu_edit.addMenu(window._tr.t("menu.insert", "Inserir"))
+    _add_keys(window._menu_insert, window, EDIT_INSERT_KEYS)
+    window._menu_edit.addSeparator()
     _add_keys(window._menu_edit, window, EDIT_POWER_KEYS)
     window._menu_edit.addSeparator()
     _add_keys(window._menu_edit, window, EDIT_FIND_KEYS)
     window._menu_edit.addSeparator()
     _add_keys(window._menu_edit, window, EDIT_MARK_KEYS)
+    window._menu_edit.addSeparator()
+    _add_keys(window._menu_edit, window, EDIT_STATE_KEYS)
     _add_keys(window._menu_view, window, VIEW_KEYS)
     _add_keys(window._menu_tools, window, TOOLS_KEYS)
 

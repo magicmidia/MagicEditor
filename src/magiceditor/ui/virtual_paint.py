@@ -111,7 +111,15 @@ def paint_event(editor, event: QPaintEvent | None) -> None:
                 )
             else:
                 painter.setPen(editor._fg)
-                painter.drawText(base_x, baseline, row)
+                if not editor._word_wrap and len(row) > 300:
+                    vis_col_start = max(0, int((h_off - editor._pad_x) // space_w))
+                    vis_cols = (editor.viewport().width() - gutter) // space_w + 4
+                    vis_col_end = vis_col_start + int(vis_cols)
+                    sub_row = row[vis_col_start:vis_col_end]
+                    sub_x = base_x + mono_advance(row[:vis_col_start], space_w)
+                    painter.drawText(sub_x, baseline, sub_row)
+                else:
+                    painter.drawText(base_x, baseline, row)
             if editor._show_whitespace and row:
                 paint_whitespace(editor, painter, row, base_x, ry, lh, fm)
             if (

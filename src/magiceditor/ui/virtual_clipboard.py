@@ -56,7 +56,7 @@ def selection_cols_on_line(editor, line: int) -> tuple[int, int] | None:
     if line < s_line or line > e_line:
         return None
     a = s_col if line == s_line else 0
-    b = e_col if line == e_line else len(editor._doc.line_text(line))
+    b = e_col if line == e_line else editor._doc.line_index().line_length(line)
     if a >= b:
         return None
     return a, b
@@ -81,6 +81,8 @@ def selected_text(editor) -> str:
 
 
 def delete_selection(editor, *, emit: bool = True) -> bool:
+    if editor._read_only:
+        return False
     if not has_selection(editor) and not editor._extra_cursors:
         return False
     spans = editor._multi_edit_spans()
@@ -127,6 +129,8 @@ def copy_selection(editor) -> None:
 
 
 def cut_selection(editor) -> None:
+    if editor._read_only:
+        return
     if has_selection(editor):
         text = selected_text(editor)
         if text:
@@ -152,6 +156,8 @@ def cut_selection(editor) -> None:
 
 
 def paste_clipboard(editor) -> None:
+    if editor._read_only:
+        return
     text = QGuiApplication.clipboard().text()
     if not text:
         return

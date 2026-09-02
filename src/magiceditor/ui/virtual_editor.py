@@ -190,6 +190,9 @@ class VirtualEditor(QAbstractScrollArea):
         self._caret_width = 1
         self._context_menu_enabled = True
         self._context_menu_from_mouse = False
+        # Per-tab read-only flag (View/Edit "Somente leitura"): blocks text
+        # mutation at the key/clipboard/insert chokepoints; navigation stays on.
+        self._read_only = False
 
         self._find_needle = ""
         self._find_case = False
@@ -252,6 +255,13 @@ class VirtualEditor(QAbstractScrollArea):
     def set_context_menu_enabled(self, enabled: bool) -> None:
         """Enable/disable right-click menu emission (settings toggle)."""
         self._context_menu_enabled = bool(enabled)
+
+    def set_read_only(self, enabled: bool) -> None:
+        """Block text mutation (keys, paste, cut, insert) for this editor."""
+        self._read_only = bool(enabled)
+
+    def is_read_only(self) -> bool:
+        return self._read_only
 
     def _emit_context_menu(self, global_pos: QPoint) -> None:
         if self._context_menu_enabled:
@@ -538,9 +548,13 @@ class VirtualEditor(QAbstractScrollArea):
         )
 
     def undo(self) -> None:
+        if self._read_only:
+            return
         undo_editor(self)
 
     def redo(self) -> None:
+        if self._read_only:
+            return
         redo_editor(self)
 
     def centerCursor(self) -> None:

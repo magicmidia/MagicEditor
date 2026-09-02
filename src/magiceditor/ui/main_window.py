@@ -33,6 +33,7 @@ from magiceditor.services.settings import AppSettings, SessionState, normalize_p
 from magiceditor.themes.manager import ThemeManager
 from magiceditor.ui.about_dialog import AboutDialog
 from magiceditor.ui.confirm_dialog import ConfirmDialog, ConfirmResult
+from magiceditor.ui.document_tools import READ_ONLY_SUFFIX, DocumentToolsMixin
 from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.find_dialog import FindDialog
 from magiceditor.ui.find_in_files_dialog import FindInFilesDialog
@@ -56,7 +57,7 @@ from magiceditor.ui.virtual_editor import VirtualEditor
 _log = logging.getLogger(__name__)
 
 
-class MainWindow(PowerFeaturesMixin, QMainWindow):
+class MainWindow(DocumentToolsMixin, PowerFeaturesMixin, QMainWindow):
     def __init__(
         self,
         translator: TranslatorManager | None = None,
@@ -103,6 +104,8 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         self._menu_format = None  # type: ignore[assignment]
         self._menu_encoding = None  # type: ignore[assignment]
         self._menu_eol = None  # type: ignore[assignment]
+        self._menu_convert = None  # type: ignore[assignment]
+        self._menu_insert = None  # type: ignore[assignment]
 
         self._status = EditorStatusBar(self)
         self._status.set_translator(self._tr)
@@ -147,6 +150,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
 
         # Watcher/spell/timers must exist before session restore calls watch_path.
         self._init_power_features()
+        self._init_document_tools()
 
         self._tr.language_changed.connect(self.retranslate_ui)
 
@@ -315,6 +319,10 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             self._menu_encoding.setTitle(t("menu.encoding", "Codificação"))
         if self._menu_eol is not None:
             self._menu_eol.setTitle(t("menu.eol", "Fim de linha"))
+        if getattr(self, "_menu_convert", None) is not None:
+            self._menu_convert.setTitle(t("menu.convert", "Converter"))
+        if getattr(self, "_menu_insert", None) is not None:
+            self._menu_insert.setTitle(t("menu.insert", "Inserir"))
         self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorador"))
         labels = {
             "action.new": t("action.new", "&Novo"),
@@ -322,6 +330,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             "action.open_folder": t("action.open_folder", "Abrir &pasta…"),
             "action.save": t("action.save", "&Salvar"),
             "action.save_as": t("action.save_as", "Salvar &como…"),
+            "action.save_all": t("action.save_all", "Salvar &tudo"),
             "action.print": t("action.print", "&Imprimir…"),
             "action.export_pdf": t("action.export_pdf", "&Exportar PDF…"),
             "action.undo": t("action.undo", "&Desfazer"),
@@ -336,6 +345,14 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             "action.move_line_up": t("action.move_line_up", "Mover linha para &cima"),
             "action.move_line_down": t("action.move_line_down", "Mover linha para &baixo"),
             "action.sort_lines": t("action.sort_lines", "Ordenar linhas"),
+            "action.sort_by_length": t("action.sort_by_length", "Ordenar por comprimento"),
+            "action.reverse_lines": t("action.reverse_lines", "Inverter ordem das linhas"),
+            "action.remove_duplicate_lines": t(
+                "action.remove_duplicate_lines", "Remover linhas duplicadas"
+            ),
+            "action.remove_consecutive_duplicates": t(
+                "action.remove_consecutive_duplicates", "Remover duplicadas consecutivas"
+            ),
             "action.join_lines": t("action.join_lines", "Unir linhas"),
             "action.delete_blank_lines": t("action.delete_blank_lines", "Remover linhas em branco"),
             "action.trim_trailing": t("action.trim_trailing", "Remover espaços finais"),
@@ -348,6 +365,22 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             ),
             "action.clear_cursors": t("action.clear_cursors", "Limpar multi-cursores"),
             "action.matching_brace": t("action.matching_brace", "Ir ao colchete correspondente"),
+            "action.case_upper": t("action.case_upper", "MAIÚSCULAS"),
+            "action.case_lower": t("action.case_lower", "minúsculas"),
+            "action.case_title": t("action.case_title", "Tipo Título"),
+            "action.case_sentence": t("action.case_sentence", "Tipo sentença"),
+            "action.case_invert": t("action.case_invert", "Inverter caixa"),
+            "action.base64_encode": t("action.base64_encode", "Codificar Base64"),
+            "action.base64_decode": t("action.base64_decode", "Decodificar Base64"),
+            "action.url_encode": t("action.url_encode", "Codificar URL"),
+            "action.url_decode": t("action.url_decode", "Decodificar URL"),
+            "action.insert_datetime_iso": t("action.insert_datetime_iso", "Data/hora ISO"),
+            "action.insert_date_short": t("action.insert_date_short", "Data (local)"),
+            "action.insert_datetime_local": t(
+                "action.insert_datetime_local", "Data e hora (local)"
+            ),
+            "action.insert_timestamp": t("action.insert_timestamp", "Timestamp Unix"),
+            "action.toggle_read_only": t("action.toggle_read_only", "Somente leitura"),
             "action.find": t("action.find", "&Localizar"),
             "action.replace": t("action.replace", "&Substituir"),
             "action.find_in_files": t("action.find_in_files", "Localizar nos a&rquivos"),
@@ -374,6 +407,8 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             "action.cancel_search": t("action.cancel_search", "Cancelar busca"),
             "action.export_theme": t("action.export_theme", "Exportar tema…"),
             "action.import_theme": t("action.import_theme", "Importar tema…"),
+            "action.file_checksum": t("action.file_checksum", "Checksum do arquivo…"),
+            "action.doc_stats": t("action.doc_stats", "Estatísticas do documento…"),
             "action.toggle_sidebar": t("action.toggle_sidebar", "Alternar e&xplorador"),
             "action.word_wrap": t("action.word_wrap", "&Quebra de linha"),
             "action.line_numbers": t("action.line_numbers", "&Números de linha"),
@@ -381,6 +416,7 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             "action.zoom_out": t("action.zoom_out", "Diminuir z&oom"),
             "action.zoom_reset": t("action.zoom_reset", "Zoom &padrão"),
             "action.fullscreen": t("action.fullscreen", "&Tela cheia"),
+            "action.always_on_top": t("action.always_on_top", "Sempre no &topo"),
             "action.settings": t("action.settings", "Confi&gurações…"),
             "action.quick_open": t("action.quick_open", "Abrir rapi&damente"),
             "action.outline": t("action.outline", "Estru&tura do documento"),
@@ -818,6 +854,10 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
             tab.editor.setObjectName("translucentEditor")
         tab.modification_changed.connect(self._refresh_tab_titles)
         tab.cursor_info_changed.connect(self._status.set_cursor)
+        # Selection-dependent actions (Convert submenu) track caret/selection.
+        tab.cursor_info_changed.connect(
+            lambda *_args, t=tab: self._sync_doc_tool_actions(t)
+        )
         tab.language_changed.connect(lambda _lang: self._on_tab_language_changed(tab))
         idx = self.tabs.addTab(tab, doc.display_name())
         self.tabs.setTabIcon(idx, language_icon(tab.language, self._icon_color))
@@ -1296,9 +1336,12 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if isinstance(w, EditorTab):
-                self.tabs.setTabText(i, w.document.display_name())
+                name = w.document.display_name()
+                if w.editor.is_read_only():
+                    name += READ_ONLY_SUFFIX
+                self.tabs.setTabText(i, name)
                 if w is self.current_tab():
-                    self.setWindowTitle(f"{w.document.display_name()} — MagicEditor")
+                    self.setWindowTitle(f"{name} — MagicEditor")
         self._refresh_open_editors_sidebar()
 
     def _on_tab_changed(self, index: int) -> None:
@@ -1319,11 +1362,16 @@ class MainWindow(PowerFeaturesMixin, QMainWindow):
         if getattr(doc, "_mmap", None) is not None:
             label = f"{label} · mmap"
         self._status.set_filetype(label)
-        self.setWindowTitle(f"{doc.display_name()} — MagicEditor")
+        title = doc.display_name()
+        if tab.editor.is_read_only():
+            title += READ_ONLY_SUFFIX
+        self.setWindowTitle(f"{title} — MagicEditor")
         self._sync_syntax_check()
         self._sync_format_menus(tab)
         if hasattr(self, "_update_status_extras"):
             self._update_status_extras()
+        if hasattr(self, "_sync_doc_tool_actions"):
+            self._sync_doc_tool_actions(tab)
         if doc.path is not None and hasattr(self, "watch_path"):
             self.watch_path(str(doc.path))
 

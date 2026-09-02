@@ -50,11 +50,13 @@ def handle_key_press(editor, event: QKeyEvent | None) -> bool:
     shift = bool(mod & Qt.KeyboardModifier.ShiftModifier)
 
     if ctrl and key == Qt.Key.Key_Z and not shift:
-        editor.undo()
+        if not editor._read_only:
+            editor.undo()
         event.accept()
         return True
     if ctrl and (key == Qt.Key.Key_Y or (key == Qt.Key.Key_Z and shift)):
-        editor.redo()
+        if not editor._read_only:
+            editor.redo()
         event.accept()
         return True
 
@@ -70,6 +72,11 @@ def handle_key_press(editor, event: QKeyEvent | None) -> bool:
     }
     if key in nav_keys:
         editor._begin_selection_if_needed(shift)
+
+    # Read-only: navigation/selection allowed; every editing key is a no-op.
+    if editor._read_only and key not in nav_keys:
+        event.accept()
+        return True
 
     if key == Qt.Key.Key_Up:
         editor._cursor_line = max(0, editor._cursor_line - 1)

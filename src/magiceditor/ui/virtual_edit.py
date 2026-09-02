@@ -67,6 +67,8 @@ def emit_edit(editor) -> None:
 
 
 def insert_at_cursor(editor, text: str) -> None:
+    if getattr(editor, "_read_only", False):
+        return
     enc = codec_name(editor._doc.encoding)
     data = text.encode(enc, errors="replace")
     if insert_at_multi_spans(editor, text, data):

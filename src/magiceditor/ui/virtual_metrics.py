@@ -75,7 +75,8 @@ def wrap_display_rows(editor, text: str) -> list[tuple[int, int, str]]:
         return [(0, len(display), display)]
     fm = editor.fontMetrics()
     max_w = text_area_width(editor)
-    ranges = wrap_ranges(display, max_w, fm.horizontalAdvance)
+    char_w = max(1, fm.horizontalAdvance(" "))
+    ranges = wrap_ranges(display, max_w, char_w)
     return [(a, b, display[a:b]) for a, b in ranges]
 
 

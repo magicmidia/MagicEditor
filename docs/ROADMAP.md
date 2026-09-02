@@ -1,6 +1,6 @@
 # MagicEditor — Roadmap de excelência (competitivo + produto premium)
 
-**Atualizado:** 2026-08-17  
+**Atualizado:** 2026-09-01  
 **Fontes:** Notepad++, Windows Notepad, Sublime Text, Adobe Brackets / Phoenix Code, VS Code, WordPad (legado), práticas de mercado 2024–2026, critérios de “produto de excelência” (polish, performance, distribuição).
 
 Este documento inventaria funcionalidades e vantagens dos editores do “tipo MagicEditor”, cruza com o estado atual do produto e define **ondas de entrega** com critérios de aceite.  
@@ -511,10 +511,29 @@ A ✅  →  B (edição)  →  C (navegação)  →  D (workspace)
 
 ---
 
+## 9.5 Propostas criativas (varredura competitiva 2026-09)
+
+Varredura fresca sobre Notepad (Win 11 2024–25: spell/autocorrect, char count, AI), Notepad++ 8.x (change history, multi-edit), Sublime, VS Code, CudaText/Kate. Paridades absorvidas na **0.9.5** (case conversion, Base64/URL, dedupe/reverse/sort-by-length, inserir data/hora, checksum, estatísticas, Save All, always-on-top, read-only). Abaixo: propostas **que nenhum desses editores tem hoje** (ou têm mal), aproveitando o DNA huge-file do MagicEditor. Nenhuma implementada — são candidatas a próximas ondas.
+
+| ID | Proposta | Problema que resolve | Ideia central |
+|----|----------|----------------------|---------------|
+| P1 | **Filter Lines → nova aba** | Analisar log de GB exige grep externo; N++ "Mark" só marca, não extrai | Extrair linhas que casam com padrão (texto/regex) para uma aba nova, streaming + worker + progresso; cada linha extraída com número original, clique volta para a posição no arquivo-fonte. Grep interno, huge-file nativo |
+| P2 | **Change History no gutter** | "O que eu mudei desde que abri?" — N++ 8.5 tem básico; ninguém faz bem em huge files | Marcadores de margem para linhas modificadas desde o open/save (verde=nova, âmbar=editada), derivados do piece table (já sabe o que é add vs. original) sem diff custoso |
+| P3 | **Time Machine de drafts** | Perder um rascunho Untitled ou uma versão intermediária | Snapshots automáticos deduplicados (por hash) de buffers em pontos de parada (idle 30s, save, fechar aba); timeline lateral para restaurar/comparar qualquer snapshot. Local only, cap de espaço |
+| P4 | **Smart Paste** | Colar JSON/SQL/minified amassado e ter que formatar à mão | Ao colar, detectar payload (JSON, SQL, XML, lista separada por vírgula) e oferecer badge não-intrusivo "Formatar?" (1 clique ou atalho); nunca formata sem consentimento |
+| P5 | **Copy with Highlight** | Colar código em e-mail/Slack/docs perde a cor | Copiar seleção como HTML/RTF com as cores do tema atual (clipboard multi-formato: text/plain + text/html) |
+| P6 | **Log Lens** | Logs gigantes são parede de texto homogênea | Highlight por severidade (ERROR/WARN/INFO/DEBUG) + painel de resumo com contagem por nível e salto para próxima ocorrência do nível; tudo viewport/streaming — casa com P1 |
+| P7 | **Diff de abas vivas** | Compare hoje é arquivo-a-arquivo estático | "Comparar com…" entre duas abas abertas (inclusive Untitled), re-diff ao editar com debounce, scroll sync |
+
+**Priorização sugerida:** P1 + P6 (sinergia com o motor huge-file, diferencial real) → P2 (barato, alto valor diário) → P3 (produto, risco de escopo) → P4/P5 (polish) → P7.
+
+---
+
 ## 10. Changelog deste documento
 
 | Data | Mudança |
 |------|---------|
+| 2026-09-01 | **Varredura competitiva fresca:** paridades N++/Notepad absorvidas na 0.9.5; nova seção §9.5 com 7 propostas criativas (P1–P7) priorizadas |
 | 2026-07-17 | Roadmap competitivo inicial (fases A–F) |
 | 2026-07-30 | **Incremento de excelência:** Ondas F (UI), G (spell + avançados), H (performance), I (release Windows final); gap/status A sincronizado; first-run, file assoc, build kit |
 | 2026-08-17 | **Auditoria de reengenharia:** Ondas J–N (estrutura, otimização, segurança, higiene, qualidade). Inventário de arquivos >300 LOC e gaps vs. estado real do código |

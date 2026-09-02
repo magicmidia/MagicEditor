@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.5 BETA — Text transforms, document tools, editor perf
+
+- Case conversion on selection: UPPERCASE, lowercase (Ctrl+U), Title, Sentence, Invert
+- Base64 / URL encode-decode on selection; invalid decode warns and never destroys text
+- Line ops: remove duplicate lines, remove consecutive duplicates, reverse line order,
+  sort by length (same huge-file guardrails as existing line ops)
+- Insert date/time submenu (ISO, local short, local date+time, Unix timestamp)
+- File checksum dialog (MD5 / SHA-1 / SHA-256) on a worker thread with cancel;
+  warns when hashing the on-disk file while the buffer is dirty
+- Document statistics dialog (chars, words, lines, encoding/EOL); capped to the
+  first 2MB on huge files with a visible "partial" note
+- Save All (dirty tabs with paths); Always on top toggle; per-tab read-only mode
+  with a 🔒 tab badge (blocks typing, paste, cut, undo/redo)
+- Editor perf: O(1) mouse hit-test when wrap is off, O(N) monospace wrapping
+  (no per-character font shaping), clipped painting of rows >300 chars,
+  selection extents via the line index instead of full line materialization
+- New pure core modules: `text_transform`, `checksum`, `text_stats`
+  (streaming, split-CRLF-safe) with full unit coverage
+
 ## 0.9.4 BETA — Menus, auto-scroll, window raise, huge-file fixes
 
 - Fix invalid application stylesheet: unquoted percent-encoded `url()` (non-ASCII

@@ -31,6 +31,39 @@ def sort_lines(lines: list[str], *, reverse: bool = False, ignore_case: bool = F
     return sorted(lines, key=key, reverse=reverse)
 
 
+def sort_lines_by_length(lines: list[str], *, reverse: bool = False) -> list[str]:
+    """Return lines sorted by length (stable: ties keep original order)."""
+    return sorted(lines, key=len, reverse=reverse)
+
+
+def remove_duplicate_lines(lines: list[str]) -> list[str]:
+    """Remove duplicate lines, keeping the first occurrence (stable).
+
+    Blank lines are treated as normal lines: removed only when duplicated.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for line in lines:
+        if line not in seen:
+            seen.add(line)
+            out.append(line)
+    return out
+
+
+def remove_consecutive_duplicates(lines: list[str]) -> list[str]:
+    """Remove only consecutive duplicate lines."""
+    out: list[str] = []
+    for line in lines:
+        if not out or out[-1] != line:
+            out.append(line)
+    return out
+
+
+def reverse_lines(lines: list[str]) -> list[str]:
+    """Return lines in reverse order."""
+    return list(reversed(lines))
+
+
 def join_lines(lines: list[str], separator: str = " ") -> list[str]:
     """Join all lines into a single line."""
     if not lines:
