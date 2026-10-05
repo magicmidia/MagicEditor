@@ -26,7 +26,14 @@ from PyQt6.QtWidgets import (
 
 from magiceditor.core.checksum import DEFAULT_ALGORITHMS, file_hashes
 
-ALGO_LABELS = {"md5": "MD5", "sha1": "SHA-1", "sha256": "SHA-256"}
+ALGO_LABELS = {
+    "md5": "MD5",
+    "sha1": "SHA-1",
+    "sha256": "SHA-256",
+    "sha384": "SHA-384",
+    "sha512": "SHA-512",
+    "blake2b": "BLAKE2b",
+}
 
 
 class ChecksumWorker(QThread):
@@ -35,9 +42,16 @@ class ChecksumWorker(QThread):
     finished_hashes = pyqtSignal(dict)
     failed = pyqtSignal(str)
 
-    def __init__(self, path: Path | str, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        path: Path | str,
+        parent: QObject | None = None,
+        *,
+        algorithms: tuple[str, ...] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._path = path
+        self._algorithms = tuple(algorithms) if algorithms else DEFAULT_ALGORITHMS
         self._cancelled = False
 
     def request_cancel(self) -> None:
@@ -45,7 +59,7 @@ class ChecksumWorker(QThread):
 
     def run(self) -> None:
         try:
-            result = file_hashes(self._path)
+            result = file_hashes(self._path, algorithms=self._algorithms)
         except (OSError, ValueError) as exc:
             if not self._cancelled:
                 self.failed.emit(str(exc))
@@ -72,9 +86,11 @@ class ChecksumDialog(QDialog):
         dirty: bool = False,
         tr: QObject | None = None,
         parent: QWidget | None = None,
+        algorithms: tuple[str, ...] | None = None,
     ) -> None:
         super().__init__(parent)
         self._tr = tr
+        self._algorithms = tuple(algorithms) if algorithms else DEFAULT_ALGORITHMS
         self._worker: ChecksumWorker | None = None
         self.setWindowTitle(self._t("checksum.title", "Checksum do arquivo"))
         self.setModal(True)
@@ -109,7 +125,7 @@ class ChecksumDialog(QDialog):
 
         form = QFormLayout()
         self._fields: dict[str, QLineEdit] = {}
-        for algo in DEFAULT_ALGORITHMS:
+        for algo in self._algorithms:
             row = QWidget(self)
             row_lay = QHBoxLayout(row)
             row_lay.setContentsMargins(0, 0, 0, 0)
@@ -141,7 +157,7 @@ class ChecksumDialog(QDialog):
         buttons.addButton(self._cancel_btn, QDialogButtonBox.ButtonRole.RejectRole)
         layout.addWidget(buttons)
 
-        self._start_worker(path)
+        self._start_worker(path, self._algorithms)
 
     def _t(self, key: str, default: str) -> str:
         tr = self._tr
@@ -149,8 +165,8 @@ class ChecksumDialog(QDialog):
             return tr.t(key, default)  # type: ignore[no-any-return,union-attr]
         return default
 
-    def _start_worker(self, path: Path | str) -> None:
-        worker = ChecksumWorker(path, self)
+    def _start_worker(self, path: Path | str, algorithms: tuple[str, ...]) -> None:
+        worker = ChecksumWorker(path, self, algorithms=algorithms)
         worker.finished_hashes.connect(self._on_finished)
         worker.failed.connect(self._on_failed)
         worker.start()

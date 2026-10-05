@@ -204,7 +204,9 @@ class LineIndex:
             return
         if offset < 0 or offset > self._length:
             raise IndexError("insert offset out of range")
-        for i in range(len(self._starts)):
+        # Lines before the caret do not move. Editing at EOF is O(1).
+        line = self.offset_to_line(offset)
+        for i in range(line, len(self._starts)):
             if self._starts[i] > offset:
                 self._starts[i] += delta
             if self._content_ends[i] >= offset:
@@ -218,7 +220,8 @@ class LineIndex:
         if offset < 0 or delta < 0 or offset + delta > self._length:
             raise IndexError("delete range out of range")
         end = offset + delta
-        for i in range(len(self._starts)):
+        line = self.offset_to_line(offset)
+        for i in range(line, len(self._starts)):
             if self._starts[i] >= end:
                 self._starts[i] -= delta
             elif self._starts[i] > offset:

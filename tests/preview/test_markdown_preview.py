@@ -1,5 +1,5 @@
 from magiceditor.preview.markdown_preview import render_markdown, strip_frontmatter
-from magiceditor.preview.preview_css import wrap_preview_html
+from magiceditor.preview.preview_css import preview_css, wrap_preview_html
 from magiceditor.themes.tokens import chrome_tokens
 
 
@@ -49,10 +49,12 @@ def test_frontmatter_stripped() -> None:
 
 
 def test_preview_html_uses_theme_colors() -> None:
-    html = wrap_preview_html("<p>Hi</p>", "luminous_void")
+    css = preview_css("luminous_void")
     tok = chrome_tokens("luminous_void")
-    assert tok.fg.lower() in html.lower()
-    assert tok.bg.lower() in html.lower()
+    assert tok.fg.lower() in css.lower()
+    assert tok.bg.lower() in css.lower()
+    html = wrap_preview_html("<p>Hi</p>", "luminous_void")
+    assert "<style" not in html.lower()
     assert "<p>Hi</p>" in html
 
 

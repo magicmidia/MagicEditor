@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QGroupBox,
+    QLabel,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -18,9 +19,7 @@ PAGE_ID = "editor"
 
 
 class EditorPage(QWidget):
-    def __init__(
-        self, state: SessionState, t: Translate, parent: QWidget | None = None
-    ) -> None:
+    def __init__(self, state: SessionState, t: Translate, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         page = QWidget()
         lay = QVBoxLayout(page)
@@ -62,9 +61,7 @@ class EditorPage(QWidget):
         self.line_numbers_box.setChecked(state.line_numbers)
         form.addRow(self.line_numbers_box)
 
-        self.highlight_line_box = QCheckBox(
-            t("settings.highlight_line", "Destacar linha atual"), g
-        )
+        self.highlight_line_box = QCheckBox(t("settings.highlight_line", "Destacar linha atual"), g)
         self.highlight_line_box.setChecked(state.highlight_current_line)
         form.addRow(self.highlight_line_box)
 
@@ -72,9 +69,7 @@ class EditorPage(QWidget):
         self.show_ws_box.setChecked(bool(state.show_whitespace))
         form.addRow(self.show_ws_box)
 
-        self.brace_box = QCheckBox(
-            t("settings.brace_match", "Destacar par de chaves/colchetes"), g
-        )
+        self.brace_box = QCheckBox(t("settings.brace_match", "Destacar par de chaves/colchetes"), g)
         self.brace_box.setChecked(bool(state.brace_match))
         form.addRow(self.brace_box)
 
@@ -87,7 +82,66 @@ class EditorPage(QWidget):
         )
         self.word_completion_box.setChecked(bool(state.word_completion))
         form.addRow(self.word_completion_box)
+
+        self.line_spacing_spin = QSpinBox(g)
+        self.line_spacing_spin.setRange(0, 16)
+        self.line_spacing_spin.setValue(int(state.line_spacing or 0))
+        self.line_spacing_spin.setSuffix(" px")
+        form.addRow(t("settings.line_spacing", "Espaço extra entre linhas"), self.line_spacing_spin)
+
+        self.right_margin_spin = QSpinBox(g)
+        self.right_margin_spin.setRange(0, 240)
+        self.right_margin_spin.setValue(int(state.right_margin or 0))
+        form.addRow(
+            t("settings.right_margin", "Margem direita (0 desliga)"),
+            self.right_margin_spin,
+        )
+
+        self.indent_guides_box = QCheckBox(t("settings.indent_guides", "Guias de indentação"), g)
+        self.indent_guides_box.setChecked(bool(state.indent_guides))
+        form.addRow(self.indent_guides_box)
+
+        self.auto_close_box = QCheckBox(
+            t("settings.auto_close_brackets", "Fechar parênteses, colchetes e aspas"), g
+        )
+        self.auto_close_box.setChecked(bool(state.auto_close_brackets))
+        form.addRow(self.auto_close_box)
+
+        self.highlight_occurrences_box = QCheckBox(
+            t("settings.highlight_occurrences", "Destacar outras ocorrências da palavra"), g
+        )
+        self.highlight_occurrences_box.setChecked(bool(state.highlight_occurrences))
+        form.addRow(self.highlight_occurrences_box)
+
+        self.wheel_zoom_box = QCheckBox(
+            t("settings.wheel_zoom", "Ctrl + roda do mouse altera o zoom"), g
+        )
+        self.wheel_zoom_box.setChecked(bool(state.wheel_zoom))
+        form.addRow(self.wheel_zoom_box)
         lay.addWidget(g)
+
+        rec = QGroupBox(t("settings.recovery_group", "Recuperação"), page)
+        rec_form = QFormLayout(rec)
+        rec_form.setSpacing(8)
+        rec_form.setContentsMargins(12, 16, 12, 12)
+        self.recovery_interval_spin = QSpinBox(rec)
+        self.recovery_interval_spin.setRange(2, 120)
+        self.recovery_interval_spin.setValue(int(state.recovery_interval_sec or 8))
+        self.recovery_interval_spin.setSuffix(" s")
+        rec_form.addRow(
+            t("settings.recovery_interval", "Intervalo da recuperação"),
+            self.recovery_interval_spin,
+        )
+        hint = QLabel(
+            t(
+                "settings.recovery_hint",
+                "Guarda o texto das abas na recuperação. Não grava por cima do arquivo.",
+            ),
+            rec,
+        )
+        hint.setWordWrap(True)
+        rec_form.addRow(hint)
+        lay.addWidget(rec)
 
         save_g = QGroupBox(t("settings.save_group", "Ao salvar"), page)
         save_form = QFormLayout(save_g)
@@ -129,6 +183,13 @@ class EditorPage(QWidget):
         state.brace_match = self.brace_box.isChecked()
         state.syntax_highlight = self.syntax_box.isChecked()
         state.word_completion = self.word_completion_box.isChecked()
+        state.line_spacing = int(self.line_spacing_spin.value())
+        state.right_margin = int(self.right_margin_spin.value())
+        state.indent_guides = self.indent_guides_box.isChecked()
+        state.auto_close_brackets = self.auto_close_box.isChecked()
+        state.highlight_occurrences = self.highlight_occurrences_box.isChecked()
+        state.wheel_zoom = self.wheel_zoom_box.isChecked()
+        state.recovery_interval_sec = int(self.recovery_interval_spin.value())
         state.trim_trailing_on_save = self.trim_save_box.isChecked()
         state.insert_final_newline = self.final_nl_box.isChecked()
         state.high_contrast = self.high_contrast_box.isChecked()

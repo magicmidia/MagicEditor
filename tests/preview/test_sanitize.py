@@ -12,6 +12,15 @@ def test_sanitize_strips_script_and_handlers() -> None:
     assert "https://x/y.png" not in out
 
 
+def test_sanitize_strips_style_body() -> None:
+    out = sanitize_html("<style>color: red</style><p>Hi</p>")
+    assert "color: red" not in out
+    assert "<p>Hi</p>" in out
+    unclosed = sanitize_html("<p>Hi</p><style>color: blue")
+    assert "color: blue" not in unclosed
+    assert "<p>Hi</p>" in unclosed
+
+
 def test_sanitize_blocks_javascript_href() -> None:
     assert is_safe_href("javascript:alert(1)") is False
     assert is_safe_href("file:///etc/passwd") is False

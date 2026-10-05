@@ -10,7 +10,7 @@ from magiceditor.core.line_index import LineIndex
 from magiceditor.core.mmap_source import MmapSource, should_use_mmap
 from magiceditor.core.piece_table import PieceTable
 from magiceditor.core.syntax_limits import HUGE_UI_BYTES, PROBE_BYTES, syntax_enabled_for_size
-from magiceditor.services.atomic_io import write_bytes_atomic, write_chunks_atomic
+from magiceditor.services.atomic_io import write_bytes_atomic
 
 # Soft UI threshold: above this size use VirtualEditor (no full QTextDocument).
 UI_VIRTUAL_THRESHOLD_BYTES = HUGE_UI_BYTES
@@ -79,9 +79,15 @@ def open_document(path: Path | str) -> Document:
 
 def save_document(document: Document, path: Path | str | None = None) -> Document:
     """Write document bytes to disk. Updates path/title when saving as."""
-    target = Path(path) if path is not None else document.path
+    target = (
+        Path(path).resolve()
+        if path is not None
+        else (document.path.resolve() if document.path is not None else None)
+    )
     if target is None:
         raise ValueError("No path for save")
+
+    target.parent.mkdir(parents=True, exist_ok=True)
 
     if document.huge_mode:
         chunks = document.buffer.iter_chunks()
@@ -98,9 +104,53 @@ def save_document(document: Document, path: Path | str | None = None) -> Documen
                             continue
                     yield chunk
 
-            write_chunks_atomic(target, _bom_chunks())
+            stream = _bom_chunks()
         else:
-            write_chunks_atomic(target, chunks)
+            stream = chunks
+
+        import os
+        import tempfile
+
+        fd, tmp_name = tempfile.mkstemp(prefix=".me-", suffix=".tmp", dir=str(target.parent))
+        tmp = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                for chunk in stream:
+                    if chunk:
+                        handle.write(chunk)
+                handle.flush()
+                os.fsync(handle.fileno())
+
+            # If target is currently memory-mapped by this document, release lock before replace
+            reopen_mmap = False
+            if document._mmap is not None:
+                is_same_file = document.path is not None and document.path.resolve() == target
+                if is_same_file:
+                    reopen_mmap = True
+                    document.buffer.release()
+                    document._mmap.close()
+                    document._mmap = None
+
+            os.replace(tmp, target)
+
+            # Re-map or re-read so the document stays completely synchronized
+            new_size = target.stat().st_size
+            if should_use_mmap(target, new_size) or reopen_mmap:
+                src = MmapSource(target)
+                view = src.as_memoryview()
+                document._mmap = src
+                document.buffer = PieceTable(view)
+                document._line_index = LineIndex.from_buffer(view)
+            else:
+                raw = target.read_bytes()
+                document.buffer = PieceTable(raw)
+                document._line_index = LineIndex.from_bytes(raw)
+        except Exception:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
     else:
         # Re-encode from text so Format → Encoding is honored on save.
         text = document.text()
@@ -108,6 +158,9 @@ def save_document(document: Document, path: Path | str | None = None) -> Documen
         if document.eol in {"LF", "CRLF", "CR"}:
             data = normalize_newlines(data, document.eol)
         write_bytes_atomic(target, data)
+        document.buffer = PieceTable(data)
+        document._line_index = LineIndex.from_bytes(data)
+
     document.path = target
     document.title = target.name
     document.modified = False

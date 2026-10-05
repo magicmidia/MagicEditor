@@ -5,10 +5,12 @@ from __future__ import annotations
 from PyQt6.QtCore import QEvent, QPoint, Qt, QTimer
 from PyQt6.QtGui import QContextMenuEvent, QWheelEvent
 
+from magiceditor.ui.virtual_metrics import scroll_origin
+
 
 def hit_test(editor, pos: QPoint) -> tuple[int, int]:
     """Map viewport point to (doc_line, char_col) in O(1) or O(visible)."""
-    first = editor.verticalScrollBar().value()
+    first, skip = scroll_origin(editor)
     lh = max(1, int(getattr(editor, "_line_height", 18) or 18))
     gutter = editor._gutter_width if editor._show_line_numbers else 0
     fm = editor.fontMetrics()
@@ -53,6 +55,8 @@ def hit_test(editor, pos: QPoint) -> tuple[int, int]:
         except IndexError:
             text = ""
         rows = editor._wrap_display_rows(text)
+        if skip and line == first:
+            rows = rows[skip:]
         for d0, _d1, _row in rows:
             if y <= target_y < y + lh:
                 target_col = max(0, round(x / space_w)) if x > 0 else 0
@@ -75,6 +79,14 @@ def handle_wheel(editor, event: QWheelEvent | None) -> bool:
     if event is None:
         return False
     delta = event.angleDelta().y()
+    ctrl = bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier)
+    if ctrl and getattr(editor, "_wheel_zoom", True) and delta:
+        if delta > 0:
+            editor.zoom_in_one()
+        else:
+            editor.zoom_out_one()
+        event.accept()
+        return True
     step = -3 if delta > 0 else 3
     sb = editor.verticalScrollBar()
     sb.setValue(sb.value() + step)

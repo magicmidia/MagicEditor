@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import QApplication
 from magiceditor.services.print_engine import (
     _document_from_plain,
     export_pdf,
+    markdown_print_css,
     printable_css,
 )
 
@@ -29,6 +30,13 @@ def test_printable_css_is_light() -> None:
     css = printable_css()
     assert "#ffffff" in css
     assert "font-family" in css
+
+
+def test_markdown_print_css_keeps_body_flowing() -> None:
+    css = markdown_print_css()
+    body, _rest = css.split("pre", 1)
+    assert "pre-wrap" not in body
+    assert "#ffffff" in css
 
 
 def test_document_from_plain_escapes_html(qapp) -> None:

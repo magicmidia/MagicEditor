@@ -26,12 +26,12 @@ QMenu::separator { height: 1px; background: #403E41; margin: 3px 6px; }
 
 QToolBar {
   background-color: #221F22; border: none; border-bottom: 1px solid #403E41;
-  spacing: 2px; padding: 4px 8px; min-height: 36px;
+  spacing: 2px; padding: 1px 8px; min-height: 30px;
 }
 QToolBar::separator { background: #403E41; width: 1px; margin: 4px 4px; }
 QToolButton {
   background: transparent; color: #C2C0C4; border: 1px solid transparent;
-  border-radius: 4px; padding: 5px; min-width: 28px; min-height: 28px;
+  border-radius: 4px; padding: 3px; min-width: 24px; min-height: 24px;
 }
 QToolButton:hover { background-color: #403E41; border-color: #5B595C; }
 QToolButton:pressed, QToolButton:checked {

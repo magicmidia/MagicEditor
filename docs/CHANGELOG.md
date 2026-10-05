@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.9.8 BETA — Recovery, preview, and editor options
+
+- Unsaved tab text is snapshotted to a recovery file and restored after a power
+  loss. The file on disk is not overwritten
+- Markdown preview no longer shows the theme CSS as text. The Markdown view can
+  be printed on its own
+- Editor settings: line spacing, indent guides, auto-close brackets, right
+  margin, occurrence highlight, Ctrl+wheel zoom, and the recovery interval
+- Tools menu hashes the active file: MD5, SHA-1, SHA-256, SHA-384, SHA-512,
+  BLAKE2b, or all of them
+- Slightly shorter toolbar. About dialog lists what the editor actually does
+
+## 0.9.7 BETA — Backspace and typing responsiveness
+
+- Backspace and Delete remove a whole character (UTF-8, combining marks, emoji)
+  from the raw bytes, so holding the key no longer leaves U+FFFD
+- A click followed by holding Backspace no longer turns the caret move into a
+  selection that skips deletes
+- Typing and deleting at the end of the buffer keeps one piece-table span
+  instead of one piece per keystroke
+- The line index shifts only from the caret forward; spell check, minimap,
+  syntax cache, and the tab title no longer redo all of their work on every key
+- With word wrap on, breaking a line at the bottom of the viewport scrolls the
+  new row above the status footer instead of painting it underneath
+
 ## 0.9.6 BETA — Filter Lines + Log Lens (roadmap §9.5, P1 e P6)
 
 - Filter Lines (Tools): extract lines matching a pattern (substring/regex, case,

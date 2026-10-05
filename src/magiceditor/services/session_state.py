@@ -21,6 +21,7 @@ class SessionState:
     bookmarks: dict[str, list[int]] = field(default_factory=dict)
     cursors: dict[str, tuple[int, int]] = field(default_factory=dict)
     drafts: list[dict[str, Any]] = field(default_factory=list)
+    tab_groups: list[dict[str, Any]] = field(default_factory=list)
     recent_files: list[str] = field(default_factory=list)
     icon_pack: str = "qlementine"
     font_size: int = 12
@@ -37,6 +38,13 @@ class SessionState:
     spell_force: bool | None = None
     spell_extra_languages: str = ""
     autosave_interval_sec: int = 0
+    recovery_interval_sec: int = 8
+    line_spacing: int = 0
+    indent_guides: bool = False
+    auto_close_brackets: bool = False
+    right_margin: int = 0
+    highlight_occurrences: bool = False
+    wheel_zoom: bool = True
     show_minimap: bool = False
     first_run_done: bool = False
     want_file_associations: bool = False

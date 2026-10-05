@@ -6,7 +6,7 @@ import hashlib
 
 import pytest
 
-from magiceditor.core.checksum import bytes_hashes, file_hashes
+from magiceditor.core.checksum import DEFAULT_ALGORITHMS, bytes_hashes, file_hashes
 
 CONTENT = b"hello world"
 EXPECTED_MD5 = hashlib.md5(CONTENT).hexdigest()
@@ -18,11 +18,9 @@ def test_file_hashes_known_content(tmp_path):
     f = tmp_path / "known.bin"
     f.write_bytes(CONTENT)
     result = file_hashes(f)
-    assert result == {
-        "md5": EXPECTED_MD5,
-        "sha1": EXPECTED_SHA1,
-        "sha256": EXPECTED_SHA256,
-    }
+    assert set(result) == set(DEFAULT_ALGORITHMS)
+    for name in DEFAULT_ALGORITHMS:
+        assert result[name] == hashlib.new(name, CONTENT).hexdigest()
 
 
 def test_file_hashes_small_chunks_match_single_pass(tmp_path):
@@ -62,9 +60,9 @@ def test_file_hashes_invalid_chunk_size_raises(tmp_path):
 
 def test_bytes_hashes_known_content():
     result = bytes_hashes(CONTENT)
-    assert result["md5"] == EXPECTED_MD5
-    assert result["sha1"] == EXPECTED_SHA1
-    assert result["sha256"] == EXPECTED_SHA256
+    assert set(result) == set(DEFAULT_ALGORITHMS)
+    for name in DEFAULT_ALGORITHMS:
+        assert result[name] == hashlib.new(name, CONTENT).hexdigest()
 
 
 def test_bytes_hashes_invalid_algorithm_raises():

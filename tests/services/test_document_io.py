@@ -51,3 +51,22 @@ def test_huge_save_writes_chunks(tmp_path: Path) -> None:
     doc.huge_mode = True
     save_document(doc, path)
     assert b"chunk-save" in path.read_bytes()
+
+
+def test_mmap_save_in_place(tmp_path: Path) -> None:
+    """Ensure saving a modified mmapped file (>5MB) replaces in place without lock errors."""
+    path = tmp_path / "big_mmap.txt"
+    line = b"Line 0123456789\n"
+    count = (6 * 1024 * 1024) // len(line)
+    path.write_bytes(line * count)
+
+    doc = open_document(path)
+    try:
+        assert doc.huge_mode is True
+        assert doc._mmap is not None
+        doc.insert_bytes(0, b"HEADER_PREFIX\n")
+        save_document(doc)
+        assert doc.modified is False
+        assert doc.line_text(0) == "HEADER_PREFIX"
+    finally:
+        doc.close()

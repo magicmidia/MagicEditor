@@ -219,7 +219,7 @@ wheels = [
 
 [[package]]
 name = "magiceditor"
-version = "0.9.6"
+version = "0.9.8"
 source = { editable = "." }
 dependencies = [
     { name = "markdown" },

@@ -35,6 +35,18 @@ def test_insert_then_delete_across_pieces() -> None:
     assert table.get_text() == b"world"
 
 
+def test_repeated_end_inserts_stay_one_add_piece() -> None:
+    table = PieceTable("hi")
+    for ch in b"aaaa":
+        table.insert(len(table), bytes([ch]))
+    add = [p for p in table._pieces if p.source == "add"]
+    assert len(add) == 1
+    assert table.get_text() == b"hiaaaa"
+    while len(table) > 2:
+        table.delete(len(table) - 1, 1)
+    assert table.get_text() == b"hi"
+
+
 def test_delete_all() -> None:
     table = PieceTable("x")
     table.delete(0, 1)

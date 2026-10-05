@@ -20,6 +20,7 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.save_as", "save_current_as", "Ctrl+Shift+S", False),
     ("action.save_all", "save_all", None, False),
     ("action.print", "print_current", "Ctrl+P", False),
+    ("action.print_preview", "print_markdown_view", None, False),
     ("action.export_pdf", "export_pdf_current", "Ctrl+Shift+E", False),
     ("action.undo", "undo_current", "Ctrl+Z", False),
     ("action.redo", "redo_current", "Ctrl+Y", False),
@@ -88,6 +89,12 @@ ACTION_SPECS: list[tuple[str, str, str | None, bool]] = [
     ("action.cancel_search", "cancel_long_search", "Ctrl+Shift+C", False),
     ("action.export_theme", "export_theme_bundle", None, False),
     ("action.import_theme", "import_theme_bundle", None, False),
+    ("action.hash_md5", "show_hash_md5", None, False),
+    ("action.hash_sha1", "show_hash_sha1", None, False),
+    ("action.hash_sha256", "show_hash_sha256", None, False),
+    ("action.hash_sha384", "show_hash_sha384", None, False),
+    ("action.hash_sha512", "show_hash_sha512", None, False),
+    ("action.hash_blake2b", "show_hash_blake2b", None, False),
     ("action.file_checksum", "show_checksum_dialog", None, False),
     ("action.doc_stats", "show_stats_dialog", None, False),
     ("action.filter_lines", "show_filter_lines", None, False),
@@ -117,6 +124,7 @@ FILE_MENU_KEYS = (
     "action.save_as",
     "action.save_all",
     "action.print",
+    "action.print_preview",
     "action.export_pdf",
 )
 FILE_CLOSE_KEYS = ("action.close_tab", "action.close_others", "action.close_all")
@@ -204,7 +212,17 @@ TOOLS_KEYS = (
     "action.cancel_search",
     "action.export_theme",
     "action.import_theme",
+)
+HASH_KEYS = (
+    "action.hash_md5",
+    "action.hash_sha1",
+    "action.hash_sha256",
+    "action.hash_sha384",
+    "action.hash_sha512",
+    "action.hash_blake2b",
     "action.file_checksum",
+)
+TOOLS_AFTER_HASH = (
     "action.doc_stats",
     "action.filter_lines",
     "action.log_summary",
@@ -235,6 +253,7 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.save_as": "save_as",
     "action.save_all": "save_all",
     "action.print": "print",
+    "action.print_preview": "print",
     "action.export_pdf": "export_pdf",
     "action.undo": "undo",
     "action.redo": "redo",
@@ -302,6 +321,12 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.cancel_search": "cancel_search",
     "action.export_theme": "export_theme",
     "action.import_theme": "import_theme",
+    "action.hash_md5": "checksum",
+    "action.hash_sha1": "checksum",
+    "action.hash_sha256": "checksum",
+    "action.hash_sha384": "checksum",
+    "action.hash_sha512": "checksum",
+    "action.hash_blake2b": "checksum",
     "action.file_checksum": "checksum",
     "action.doc_stats": "doc_stats",
     "action.filter_lines": "filter",
@@ -342,6 +367,7 @@ def populate_icons(window: Any) -> None:
         (getattr(window, "_recent_menu", None), "recent"),
         (getattr(window, "_menu_encoding", None), "encoding"),
         (getattr(window, "_menu_eol", None), "eol"),
+        (getattr(window, "_menu_hash", None), "checksum"),
     ):
         if menu is not None:
             menu.setIcon(icon(name, color))
@@ -428,6 +454,9 @@ def populate_menus(window: Any) -> None:
     _add_keys(window._menu_edit, window, EDIT_STATE_KEYS)
     _add_keys(window._menu_view, window, VIEW_KEYS)
     _add_keys(window._menu_tools, window, TOOLS_KEYS)
+    window._menu_hash = window._menu_tools.addMenu(window._tr.t("menu.hash", "Hashes do arquivo"))
+    _add_keys(window._menu_hash, window, HASH_KEYS)
+    _add_keys(window._menu_tools, window, TOOLS_AFTER_HASH)
 
     window._menu_encoding = window._menu_format.addMenu(
         window._tr.t("menu.encoding", "Codificação")
@@ -498,8 +527,12 @@ def populate_toolbar(window: Any) -> None:
     tb = QToolBar("Main", window)
     tb.setObjectName("mainToolbar")
     tb.setMovable(False)
-    tb.setIconSize(QSize(22, 22))
+    tb.setIconSize(QSize(20, 20))
     tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+    bar_layout = tb.layout()
+    if bar_layout is not None:
+        bar_layout.setContentsMargins(2, 1, 2, 1)
+        bar_layout.setSpacing(2)
     window._toolbar = tb
     window.addToolBar(tb)
     _add_keys(tb, window, TOOLBAR_FILE)

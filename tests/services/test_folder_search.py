@@ -60,3 +60,10 @@ def test_search_texts_open_tabs() -> None:
     hits = search_texts(sources, "beta")
     assert len(hits) == 2
     assert {h.source_key for h in hits} == {"tab:0", "tab:1"}
+
+
+def test_search_rejects_dangerous_regex(tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("aaaaa\n", encoding="utf-8")
+    dangerous = "((a+)+)+b"
+    hits = search_folder(tmp_path, dangerous, use_regex=True)
+    assert hits == []

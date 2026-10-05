@@ -6,8 +6,6 @@ from PyQt6.QtCore import QPoint, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QMouseEvent
 from PyQt6.QtWidgets import (
     QHBoxLayout,
-    QInputDialog,
-    QMenu,
     QStyle,
     QTabBar,
     QTabWidget,
@@ -19,7 +17,10 @@ from magiceditor.ui.editor_tab import EditorTab
 from magiceditor.ui.icons import icon as make_icon
 from magiceditor.ui.magic_tab_bar import MagicTabBar
 from magiceditor.ui.tab_filters import CloseButtonFilter, StripClickFilter
-from magiceditor.ui.tab_groups import GROUP_COLORS, TabGroup, TabGroupStore
+from magiceditor.ui.tab_group_actions import show_tab_context_menu
+from magiceditor.ui.tab_group_anim import TabGroupAnimator
+from magiceditor.ui.tab_group_drag import TabGroupDropFilter
+from magiceditor.ui.tab_groups import TabGroup, TabGroupStore
 
 _MagicTabBar = MagicTabBar
 _CloseButtonFilter = CloseButtonFilter
@@ -53,6 +54,9 @@ class TabManager(QTabWidget):
         self._strip_filter = _StripClickFilter(self)
         self.installEventFilter(self._strip_filter)
         self._store = TabGroupStore()
+        self._group_animator = TabGroupAnimator(self)
+        self._drop_filter = TabGroupDropFilter(self, self._group_animator)
+        bar.installEventFilter(self._drop_filter)
         self._middle_click_close = True
         self._show_scroll_buttons = True
         self._tr = None
@@ -262,12 +266,16 @@ class TabManager(QTabWidget):
             return
         self._store.add(id(w), group_id)
         self._refresh_group_paint()
+        group = self._store.groups.get(group_id)
+        if group is not None:
+            self._group_animator.pulse(self.tabBar(), index, group.color)
         self.groups_changed.emit()
 
     def remove_from_group(self, index: int) -> None:
         w = self.widget(index)
         if w is None:
             return
+        self._group_animator.stop_index(self.tabBar(), index)
         self._store.remove(id(w))
         self._refresh_group_paint()
         self.groups_changed.emit()
@@ -326,91 +334,7 @@ class TabManager(QTabWidget):
                     self.setTabToolTip(i, f"{base}  [{g.name}]")
 
     def _on_tab_context_menu(self, index: int, global_pos: QPoint) -> None:
-        menu = QMenu(self)
-        if index < 0:
-            act_new = menu.addAction(self._t("tabs.new_tab", "New tab"))
-            chosen = menu.exec(global_pos)
-            if chosen is act_new:
-                self.empty_area_double_clicked.emit()
-            return
-
-        group = self.group_of_index(index)
-        act_new_group = menu.addAction(self._t("tabs.new_group", "New group with this tab"))
-        add_menu = menu.addMenu(self._t("tabs.add_to_group", "Add to group"))
-        if self._store.groups:
-            for g in self._store.groups.values():
-                act = add_menu.addAction(g.name)
-                act.setData(g.group_id)
-        else:
-            add_menu.setEnabled(False)
-
-        act_remove = act_rename = act_collapse = act_expand = None
-        color_menu = None
-        if group is not None:
-            act_remove = menu.addAction(
-                self._t("tabs.remove_from_group", "Remove from “{name}”", name=group.name)
-            )
-            act_rename = menu.addAction(self._t("tabs.rename_group", "Rename group…"))
-            color_menu = menu.addMenu(self._t("tabs.group_color", "Group color"))
-            for label, hex_c in GROUP_COLORS:
-                ca = color_menu.addAction(label.capitalize())
-                ca.setData(hex_c)
-            if group.collapsed:
-                act_expand = menu.addAction(self._t("tabs.expand_group", "Expand group"))
-            else:
-                act_collapse = menu.addAction(self._t("tabs.collapse_group", "Collapse group"))
-
-        menu.addSeparator()
-        act_close = menu.addAction(self._t("tabs.close_tab", "Close tab"))
-        act_close_others = menu.addAction(self._t("tabs.close_others", "Close others"))
-
-        chosen = menu.exec(global_pos)
-        if chosen is None:
-            return
-        if chosen is act_new_group:
-            name, ok = QInputDialog.getText(
-                self,
-                self._t("tabs.group_title", "Tab group"),
-                self._t("tabs.group_name", "Group name:"),
-            )
-            self.create_group([index], name=name if ok and name.strip() else None)
-            return
-        if chosen is act_remove:
-            self.remove_from_group(index)
-            return
-        if chosen is act_rename and group is not None:
-            name, ok = QInputDialog.getText(
-                self,
-                self._t("tabs.rename_title", "Rename group"),
-                self._t("tabs.rename_name", "Name:"),
-                text=group.name,
-            )
-            if ok and name.strip():
-                self.rename_group(group.group_id, name)
-            return
-        if chosen is act_collapse and group is not None:
-            self.set_group_collapsed(group.group_id, True)
-            return
-        if chosen is act_expand and group is not None:
-            self.set_group_collapsed(group.group_id, False)
-            return
-        if chosen is act_close:
-            self.tabCloseRequested.emit(index)
-            return
-        if chosen is act_close_others:
-            for i in range(self.count() - 1, -1, -1):
-                if i != index:
-                    self.tabCloseRequested.emit(i)
-            return
-        if chosen.parent() is add_menu:
-            gid = chosen.data()
-            if isinstance(gid, str):
-                self.add_to_group(index, gid)
-            return
-        if color_menu is not None and chosen.parent() is color_menu and group:
-            hex_c = chosen.data()
-            if isinstance(hex_c, str):
-                self.set_group_color(group.group_id, hex_c)
+        show_tab_context_menu(self, index, global_pos)
 
     def _hit_empty_strip(self, local: QPoint) -> bool:
         bar = self.tabBar()

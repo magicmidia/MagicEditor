@@ -107,6 +107,83 @@ def print_plain_text(
     return True
 
 
+def markdown_print_css() -> str:
+    """Light print CSS for rendered Markdown. Body is not pre-wrap."""
+    return """
+    body {
+      background: #ffffff;
+      color: #111111;
+      font-family: "Segoe UI", sans-serif;
+      font-size: 11pt;
+      line-height: 1.45;
+      margin: 12mm;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #111111;
+      margin-top: 0.9em;
+      margin-bottom: 0.3em;
+    }
+    p, li { margin: 0.35em 0; }
+    a { color: #0645ad; }
+    blockquote {
+      margin-left: 0;
+      padding-left: 10px;
+      border-left: 3px solid #888888;
+      color: #333333;
+    }
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f4f4f4;
+      color: #111111;
+    }
+    pre { white-space: pre-wrap; padding: 8px; }
+    table { border-collapse: collapse; margin: 8px 0; }
+    th, td { border: 1px solid #cccccc; padding: 4px 8px; }
+    """
+
+
+def print_rich_html(
+    html: str,
+    parent: QWidget | None = None,
+    title: str = "document",
+    *,
+    preview: bool = True,
+) -> bool:
+    """Print a sanitized HTML fragment (Markdown view) with a light stylesheet.
+
+    CSS goes through ``setDefaultStyleSheet``. A ``<style>`` block in the HTML
+    is painted as text by QTextDocument after tags are stripped.
+    """
+    printer = QPrinter(QPrinter.PrinterMode.ScreenResolution)
+    _configure_printer(printer)
+    doc = QTextDocument()
+    body = html or ""
+    if len(body) > _MAX_PRINT_CHARS:
+        body = body[:_MAX_PRINT_CHARS] + "<p>[… truncado para impressão …]</p>"
+    doc.setDefaultStyleSheet(markdown_print_css())
+    doc.setHtml(body)
+    if title:
+        doc.setMetaInformation(QTextDocument.MetaInformation.DocumentTitle, title)
+
+    def _paint(p: QPrinter) -> None:
+        doc.setPageSize(p.pageRect(QPrinter.Unit.Point).size())
+        doc.print(p)
+
+    if preview:
+        dialog = QPrintPreviewDialog(printer, parent)
+        dialog.setWindowTitle(f"Pré-visualizar impressão — {title}")
+        dialog.resize(960, 720)
+        dialog.paintRequested.connect(_paint)
+        return dialog.exec() == QPrintPreviewDialog.DialogCode.Accepted
+
+    dialog = QPrintDialog(printer, parent)
+    dialog.setWindowTitle(f"Imprimir — {title}")
+    if dialog.exec() != QPrintDialog.DialogCode.Accepted:
+        return False
+    _paint(printer)
+    return True
+
+
 def print_preview_plain_text(
     text: str,
     parent: QWidget | None = None,

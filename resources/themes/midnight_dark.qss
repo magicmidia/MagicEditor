@@ -61,24 +61,24 @@ QToolBar {
   background-color: #1E293B;
   border: none;
   border-bottom: 1px solid #334155;
-  spacing: 4px;
-  padding: 6px 8px;
-  min-height: 40px;
+  spacing: 2px;
+  padding: 2px 8px;
+  min-height: 32px;
 }
 QToolBar::separator {
   background: #334155;
   width: 1px;
-  margin: 4px 6px;
+  margin: 4px 4px;
 }
 QToolButton {
   background-color: transparent;
   color: #CBD5E1;
   border: 1px solid transparent;
   border-radius: 6px;
-  padding: 6px;
+  padding: 3px;
   margin: 0px;
-  min-width: 30px;
-  min-height: 30px;
+  min-width: 24px;
+  min-height: 24px;
 }
 QToolButton:hover {
   background-color: #334155;

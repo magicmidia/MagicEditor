@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
-from magiceditor.services.print_engine import export_pdf, print_plain_text
+from magiceditor.services.print_engine import export_pdf, print_plain_text, print_rich_html
 
 
 def print_current(window) -> None:
@@ -35,6 +35,55 @@ def print_current(window) -> None:
         title=tab.document.title,
         preview=True,
     )
+    if ok:
+        window._status.showMessage(
+            window._tr.t("msg.printed", "Enviado para impressão"),
+            2500,
+        )
+
+
+def print_markdown_view(window) -> None:
+    """Print the rendered Markdown/HTML view. Does not replace source print."""
+    tab = window.current_tab()
+    if tab is None:
+        return
+    huge = bool(getattr(tab, "is_huge", False) or getattr(tab.document, "huge_mode", False))
+    if huge:
+        QMessageBox.information(
+            window,
+            window._tr.t("app.name", "MagicEditor"),
+            window._tr.t(
+                "msg.print_preview_huge",
+                "A visualização não é impressa em arquivos enormes.",
+            ),
+        )
+        return
+    tab.sync_document_from_editor()
+    try:
+        raw = tab.export_text()
+    except Exception as exc:
+        QMessageBox.critical(window, "MagicEditor", str(exc))
+        return
+    if not raw.strip():
+        QMessageBox.information(
+            window,
+            window._tr.t("app.name", "MagicEditor"),
+            window._tr.t(
+                "msg.print_preview_empty",
+                "Não há conteúdo para imprimir na visualização.",
+            ),
+        )
+        return
+    from magiceditor.preview.markdown_preview import render_markdown
+    from magiceditor.preview.sanitize import sanitize_html
+
+    name = tab.document.title.lower()
+    lang = getattr(tab, "language", "")
+    if name.endswith((".html", ".htm")) or lang == "html":
+        html = sanitize_html(raw)
+    else:
+        html = sanitize_html(render_markdown(raw))
+    ok = print_rich_html(html, parent=window, title=tab.document.title, preview=True)
     if ok:
         window._status.showMessage(
             window._tr.t("msg.printed", "Enviado para impressão"),

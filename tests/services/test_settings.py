@@ -141,6 +141,80 @@ def test_editor_and_chrome_prefs_roundtrip(tmp_path: Path) -> None:
     assert loaded.icon_pack == "material"
 
 
+def test_draft_path_and_editor_prefs_roundtrip(tmp_path: Path) -> None:
+    target = tmp_path / "note.txt"
+    target.write_text("disk\n", encoding="utf-8")
+    path = normalize_path(target)
+    s = _isolated(tmp_path)
+    s.save(
+        SessionState(
+            drafts=[{"title": "note.txt", "text": "unsaved", "path": path, "active": True}],
+            open_files=[path],
+            active_file=path,
+            recovery_interval_sec=12,
+            line_spacing=4,
+            indent_guides=True,
+            auto_close_brackets=True,
+            right_margin=80,
+            highlight_occurrences=True,
+            wheel_zoom=False,
+        )
+    )
+    loaded = s.load()
+    assert loaded.drafts[0]["path"] == path
+    assert loaded.drafts[0]["text"] == "unsaved"
+    assert loaded.recovery_interval_sec == 12
+    assert loaded.line_spacing == 4
+    assert loaded.indent_guides is True
+    assert loaded.auto_close_brackets is True
+    assert loaded.right_margin == 80
+    assert loaded.highlight_occurrences is True
+    assert loaded.wheel_zoom is False
+    assert s.recovery_path().parent == tmp_path
+    assert s.recovery_path().is_file()
+
+
+def test_recovery_file_overrides_stale_drafts(tmp_path: Path) -> None:
+    from magiceditor.services.recovery_store import write_recovery
+
+    s = _isolated(tmp_path)
+    s.save(SessionState(drafts=[{"title": "Old", "text": "stale"}]))
+    write_recovery(
+        s.recovery_path(),
+        {
+            "version": 1,
+            "open_files": [],
+            "active_file": None,
+            "drafts": [{"title": "New", "text": "fresh"}],
+            "bookmarks": {},
+            "cursors": {},
+        },
+    )
+    loaded = s.load()
+    assert loaded.drafts[0]["text"] == "fresh"
+
+
+def test_empty_recovery_does_not_resurrect_drafts(tmp_path: Path) -> None:
+    from magiceditor.services.recovery_store import write_recovery
+
+    s = _isolated(tmp_path)
+    s.save(SessionState(drafts=[{"title": "U", "text": "keep"}]))
+    write_recovery(
+        s.recovery_path(),
+        {
+            "version": 1,
+            "open_files": [],
+            "active_file": None,
+            "drafts": [],
+            "bookmarks": {},
+            "cursors": {},
+        },
+    )
+    loaded = s.load()
+    assert loaded.drafts == []
+    assert loaded.open_files == []
+
+
 def test_missing_files_dropped_on_load(tmp_path: Path) -> None:
     gone = tmp_path / "missing.txt"
     # do not create

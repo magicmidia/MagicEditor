@@ -6,6 +6,7 @@ from pathlib import Path
 
 from magiceditor.paths import icons_dir, themes_dir
 from magiceditor.themes.fonts import qss_font_family
+from magiceditor.themes.tokens import is_light_theme
 
 NATIVE_THEMES: dict[str, str] = {
     "luminous_void": "Luminous Void",
@@ -18,6 +19,10 @@ NATIVE_THEMES: dict[str, str] = {
     "catppuccin_mocha": "Catppuccin Mocha",
     "nord": "Nord",
     "rose_pine": "Rosé Pine",
+    "gruvbox_dark": "Gruvbox",
+    "everforest": "Everforest",
+    "kanagawa": "Kanagawa",
+    "solarized_light": "Solarized Light",
 }
 
 
@@ -67,8 +72,7 @@ QPlainTextEdit, QTextEdit, QTextBrowser {{
 
 
 def _check_svg(theme_id: str) -> Path:
-    light = theme_id == "clean_light"
-    name = "check_dark.svg" if light else "check.svg"
+    name = "check_dark.svg" if is_light_theme(theme_id) else "check.svg"
     return icons_dir() / "app" / name
 
 

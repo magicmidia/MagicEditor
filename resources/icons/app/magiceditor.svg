@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#121520"/>
+      <stop offset="100%" stop-color="#08090D"/>
+    </linearGradient>
+    <radialGradient id="goldGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="0.22"/>
+      <stop offset="60%" stop-color="#F59E0B" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="goldStem" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF1B8"/>
+      <stop offset="45%" stop-color="#FFD000"/>
+      <stop offset="100%" stop-color="#E67E00"/>
+    </linearGradient>
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFE082" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#6B7280" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#1F2937" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <!-- Base Squircle Plate -->
+  <rect x="16" y="16" width="224" height="224" rx="52" fill="url(#bgGrad)" filter="url(#shadow)"/>
+  <rect x="16" y="16" width="224" height="224" rx="52" fill="url(#goldGlow)"/>
+  <rect x="16.5" y="16.5" width="223" height="223" rx="51.5" fill="none" stroke="url(#rimGrad)" stroke-width="1.5"/>
+
+  <!-- Arcane Monogram "M" composed of Code Chevrons -->
+  <path d="M 46 194 L 46 66 L 128 138 L 210 66 L 210 194"
+        fill="none"
+        stroke="url(#goldStem)"
+        stroke-width="22"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- Vertical Caret Beam -->
+  <line x1="128" y1="138" x2="128" y2="194"
+        stroke="#FFF8E1"
+        stroke-width="16"
+        stroke-linecap="round"/>
+
+  <!-- Magic Sparkle Core (4-Point Diamond Star ✦) -->
+  <path d="M 128 62 C 128 85, 137 98, 160 98 C 137 98, 128 111, 128 134 C 128 111, 119 98, 96 98 C 119 98, 128 85, 128 62 Z"
+        fill="#FFFFFF"/>
+  <!-- Sparkle Amber Halo -->
+  <circle cx="128" cy="98" r="7" fill="#FFE082" opacity="0.8"/>
+</svg>

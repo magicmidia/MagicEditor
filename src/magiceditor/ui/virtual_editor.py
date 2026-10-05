@@ -188,6 +188,12 @@ class VirtualEditor(QAbstractScrollArea):
         self._brace_match_enabled = True
         self._show_whitespace = False
         self._caret_width = 1
+        self._line_spacing = 0
+        self._indent_guides = False
+        self._auto_close_brackets = False
+        self._right_margin = 0
+        self._highlight_occurrences = False
+        self._wheel_zoom = True
         self._context_menu_enabled = True
         self._context_menu_from_mouse = False
         # Per-tab read-only flag (View/Edit "Somente leitura"): blocks text
@@ -217,8 +223,14 @@ class VirtualEditor(QAbstractScrollArea):
         self._antialiasing = True
         self._spell_debounce = QTimer(self)
         self._spell_debounce.setSingleShot(True)
-        self._spell_debounce.setInterval(60)
+        self._spell_debounce.setInterval(100)
         self._spell_debounce.timeout.connect(self._refresh_spell_spans)
+        self._spell_dirty_line: int | None = None
+        self._spell_line_count = -1
+        self._brace_debounce = QTimer(self)
+        self._brace_debounce.setSingleShot(True)
+        self._brace_debounce.setInterval(40)
+        self._brace_debounce.timeout.connect(self._run_brace_match)
         self.textChanged.connect(self._on_buffer_changed)
         self.verticalScrollBar().valueChanged.connect(self._schedule_spell_refresh)
         self._brace_match_col: int | None = None
@@ -308,8 +320,20 @@ class VirtualEditor(QAbstractScrollArea):
         self._schedule_spell_refresh()
 
     def _on_buffer_changed(self) -> None:
-        self._token_cache.invalidate()
+        # Token cache keys include the line text hash, so a full wipe only
+        # forces every visible line to retokenize on the next paint.
+        count = self._line_count()
+        if count != self._spell_line_count:
+            self._spell_spans.clear()
+            self._spell_line_count = count
+            self._spell_dirty_line = None
+        else:
+            self._spell_dirty_line = self._cursor_line
         self._schedule_spell_refresh()
+
+    def _run_brace_match(self) -> None:
+        update_brace_match(self)
+        self.viewport().update()
 
     def _schedule_spell_refresh(self, *_args: object) -> None:
         self._spell_debounce.start()
@@ -346,7 +370,7 @@ class VirtualEditor(QAbstractScrollArea):
         return editor_multi_spans(self)
 
     def _update_brace_match(self) -> None:
-        update_brace_match(self)
+        self._brace_debounce.start()
 
     def set_find_highlight(
         self,
@@ -431,7 +455,12 @@ class VirtualEditor(QAbstractScrollArea):
         self.viewport().update()
 
     def set_word_wrap(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if enabled == self._word_wrap:
+            return
         self._word_wrap = enabled
+        self._update_scrollbars()
+        self.viewport().update()
 
     def set_font_point_size(self, size: int) -> None:
         chrome_set_font(self, size)
@@ -463,6 +492,28 @@ class VirtualEditor(QAbstractScrollArea):
         self.viewport().update()
         self._update_scrollbars()
         self.viewport().update()
+
+    def set_line_spacing(self, extra: int) -> None:
+        self._line_spacing = max(0, min(16, int(extra)))
+        self._recalc_metrics()
+
+    def set_indent_guides(self, enabled: bool) -> None:
+        self._indent_guides = bool(enabled)
+        self.viewport().update()
+
+    def set_auto_close_brackets(self, enabled: bool) -> None:
+        self._auto_close_brackets = bool(enabled)
+
+    def set_right_margin(self, columns: int) -> None:
+        self._right_margin = max(0, min(240, int(columns)))
+        self.viewport().update()
+
+    def set_highlight_occurrences(self, enabled: bool) -> None:
+        self._highlight_occurrences = bool(enabled)
+        self.viewport().update()
+
+    def set_wheel_zoom(self, enabled: bool) -> None:
+        self._wheel_zoom = bool(enabled)
 
     def toggle_bookmark(self) -> None:
         chrome_toggle_bookmark(self)

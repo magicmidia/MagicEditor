@@ -8,7 +8,8 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from magiceditor.core.text_match import PatternError, compile_pattern
+from magiceditor.core.safe_regex import compile_user_pattern
+from magiceditor.core.text_match import PatternError
 
 # Skip obvious binaries / huge blobs
 _SKIP_SUFFIXES = {
@@ -76,7 +77,7 @@ def search_folder(
         return []
 
     try:
-        pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
+        pattern = compile_user_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
     except PatternError:
         return []
 
@@ -125,7 +126,7 @@ def search_texts(
     if not needle or not sources:
         return []
     try:
-        pattern = compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
+        pattern = compile_user_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
     except PatternError:
         return []
 

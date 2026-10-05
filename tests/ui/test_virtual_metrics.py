@@ -1,5 +1,6 @@
 from magiceditor.ui.virtual_metrics import (
     ensure_visible,
+    scroll_origin,
     update_scrollbars,
     usable_line_slots,
     visible_line_slots,
@@ -109,10 +110,9 @@ class _WrapEditor(_Editor):
         self._doc = _WrapDoc(len(rows))
 
     def _wrap_display_rows(self, text: str) -> list[tuple[int, int, str]]:
-        # Chamado apenas com o texto da linha corrente no walk do tail; o
-        # índice é inferido pelo contador de chamadas em ordem reversa.
+        # ``line_text`` sets ``_call_line`` before this runs.
         n = self._rows[self._call_line]
-        return [(0, 1, "x")] * n
+        return [(i, i + 1, "x") for i in range(max(1, n))]
 
     _call_line = 0
 
@@ -147,5 +147,64 @@ def test_wrap_whole_document_fits() -> None:
 def test_wrap_single_giant_line_scrollable_to_it() -> None:
     ed = _WrapEditor([1] * 4 + [40])
     _wrapped_update(ed)
-    # Linha gigante (40 rows > 10 slots): pode rolar até ela (line 4).
-    assert ed._vsb.hi == 4
+    # Linha gigante (40 rows > 10 slots): rola até a linha (4) e depois
+    # dentro dela (sub-row scroll) até a última row: 4 + (40 - 10).
+    assert ed._vsb.hi == 34
+
+
+def test_toggle_wrap_recomputes_range_immediately() -> None:
+    ed = _WrapEditor([1] * 29 + [4])
+    ed._word_wrap = False
+    update_scrollbars(ed)
+    assert ed._vsb.hi == 20  # contrato não-wrap: lines - visible
+    ed._word_wrap = True
+    _wrapped_update(ed)
+    assert ed._vsb.hi == 23
+
+
+def test_scroll_origin_plain_and_wrap() -> None:
+    ed = _Editor(lines=30)
+    ed._vsb.setValue(7)
+    assert scroll_origin(ed) == (7, 0)
+
+    w = _WrapEditor([1] * 4 + [40])
+    _wrapped_update(w)
+    w._vsb.setValue(2)
+    assert scroll_origin(w) == (2, 0)
+    # Além de lines-1: rola dentro da última linha (skip rows).
+    w._vsb.setValue(7)
+    assert scroll_origin(w) == (4, 3)
+
+
+def test_ensure_visible_scrolls_wrapped_caret_above_footer() -> None:
+    """A wrap on the last on-screen line used to paint under the footer.
+
+    10 slots, 10 document lines, the last one occupies 2 display rows and
+    the caret sits on the second row. Scroll must move so that row fits.
+    """
+    ed = _WrapEditor([1] * 9 + [2], height=200, lh=20)
+    _wrapped_update(ed)
+    ed._cursor_col = 1  # boundary of row 0 lands on the wrapped row
+    assert ed._vsb.val == 0
+    ensure_visible(ed, 9)
+    assert ed._vsb.val == 1
+
+
+def test_ensure_visible_keeps_wrapped_caret_already_on_screen() -> None:
+    ed = _WrapEditor([1] * 9 + [2], height=200, lh=20)
+    _wrapped_update(ed)
+    ed._cursor_col = 0  # first display row, still inside the viewport
+    ensure_visible(ed, 9)
+    assert ed._vsb.val == 0
+
+
+def test_giant_last_line_reachable_to_final_row() -> None:
+    ed = _WrapEditor([1] * 4 + [40])
+    _wrapped_update(ed)
+    visible = visible_line_slots(ed)
+    assert ed._vsb.hi == 4 + (40 - visible)
+    ed._vsb.setValue(ed._vsb.hi)
+    first, skip = scroll_origin(ed)
+    assert first == 4
+    # No scroll máximo, as rows restantes da última linha cobrem o fundo.
+    assert ed._rows[4] - skip >= visible

@@ -131,9 +131,53 @@ TOKENS: dict[str, ChromeTokens] = {
         code_bg="#26233A",
         border="#403D52",
     ),
+    "gruvbox_dark": ChromeTokens(
+        fg="#EBDBB2",
+        muted="#928374",
+        heading="#EBDBB2",
+        bg="#282828",
+        surface="#3C3836",
+        accent="#FABD2F",
+        link="#FABD2F",
+        code_bg="#3C3836",
+        border="#504945",
+    ),
+    "everforest": ChromeTokens(
+        fg="#D3C6AA",
+        muted="#859289",
+        heading="#D3C6AA",
+        bg="#2D353B",
+        surface="#3D484D",
+        accent="#A7C080",
+        link="#A7C080",
+        code_bg="#3D484D",
+        border="#475258",
+    ),
+    "kanagawa": ChromeTokens(
+        fg="#DCD7BA",
+        muted="#727169",
+        heading="#DCD7BA",
+        bg="#1F1F28",
+        surface="#2A2A37",
+        accent="#7E9CD8",
+        link="#7E9CD8",
+        code_bg="#2A2A37",
+        border="#363646",
+    ),
+    "solarized_light": ChromeTokens(
+        fg="#52666D",
+        muted="#93A1A1",
+        heading="#073642",
+        bg="#FDF6E3",
+        surface="#EEE8D5",
+        accent="#1666A3",
+        link="#1666A3",
+        code_bg="#EEE8D5",
+        border="#DDD6C1",
+    ),
 }
 
-LIGHT_THEMES: frozenset[str] = frozenset({"clean_light"})
+LIGHT_THEMES: frozenset[str] = frozenset({"clean_light", "solarized_light"})
 
 
 def is_light_theme(theme_id: str) -> bool:

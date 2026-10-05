@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
+from magiceditor.core.text_units import byte_to_column, codec_name, column_to_byte
 from magiceditor.ui.virtual_cursors import insert_at_multi_spans
 
 EXPORT_CAP = 2 * 1024 * 1024
-
-
-def codec_name(encoding: str) -> str:
-    return encoding if encoding != "utf-8-sig" else "utf-8"
 
 
 def col_to_byte(text: str, col: int, encoding: str) -> int:
@@ -37,12 +34,20 @@ def export_text_capped(raw: bytes, total: int, encoding: str, *, limit: int = EX
     return text
 
 
+def _line_bytes(editor, line: int) -> bytes:
+    idx = editor._doc.line_index()
+    start = idx.line_start(line)
+    return editor._doc.buffer.get_text(start, idx.line_length(line))
+
+
 def editor_col_to_byte(editor, line: int, col: int) -> int:
-    return col_to_byte(editor._doc.line_text(line), col, editor._doc.encoding)
+    # Map columns on the raw line. Re-encoding a replace-decoded string turns
+    # one bad byte into U+FFFD (3 bytes) and the next delete splits neighbors.
+    return column_to_byte(_line_bytes(editor, line), col, editor._doc.encoding)
 
 
 def editor_byte_to_col(editor, line: int, byte_off: int) -> int:
-    return byte_to_col(editor._doc.line_text(line), byte_off, editor._doc.encoding)
+    return byte_to_column(_line_bytes(editor, line), byte_off, editor._doc.encoding)
 
 
 def byte_offset_at_cursor(editor) -> int:

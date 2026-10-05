@@ -142,6 +142,8 @@ class Document:
         self.modified = True
 
     def close(self) -> None:
+        if hasattr(self.buffer, "release") and callable(self.buffer.release):
+            self.buffer.release()
         mmap_src = self._mmap
         self._mmap = None
         if mmap_src is not None:

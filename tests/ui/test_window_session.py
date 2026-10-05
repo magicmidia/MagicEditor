@@ -67,6 +67,76 @@ def test_collect_tabs_into_session_files_and_drafts(tmp_path: Path) -> None:
     assert DRAFT_TEXT_CAP >= 400_000
 
 
+def test_collect_dirty_file_stores_path_draft(tmp_path: Path) -> None:
+    clean = tmp_path / "saved.txt"
+    dirty = tmp_path / "dirty.txt"
+    clean.write_text("ok", encoding="utf-8")
+    dirty.write_text("disk", encoding="utf-8")
+    views = [
+        TabSessionView(
+            path=clean,
+            path_is_file=True,
+            title="saved.txt",
+            text="ok",
+            modified=False,
+            bookmarks=[],
+            cursor=(1, 1),
+            is_current=False,
+        ),
+        TabSessionView(
+            path=dirty,
+            path_is_file=True,
+            title="dirty.txt",
+            text="",
+            modified=True,
+            bookmarks=[1],
+            cursor=(2, 1),
+            is_current=True,
+        ),
+    ]
+    out = collect_tabs_into_session(
+        views,
+        SessionState(),
+        workspace=None,
+        theme="nord",
+        language="pt_BR",
+        word_wrap=False,
+        line_numbers=True,
+        icon_pack="qlementine",
+    )
+    assert len(out.drafts) == 1
+    assert out.drafts[0]["text"] == ""
+    assert out.drafts[0]["path"].endswith("dirty.txt")
+    assert out.drafts[0]["active"] is True
+    assert any(p.endswith("saved.txt") for p in out.open_files)
+
+
+def test_plan_recovery_text_and_missing_file_becomes_draft(tmp_path: Path) -> None:
+    existing = tmp_path / "keep.txt"
+    existing.write_text("disk", encoding="utf-8")
+    gone = tmp_path / "gone.txt"
+    orphan = tmp_path / "extra.txt"
+    orphan.write_text("x", encoding="utf-8")
+    session = SessionState(
+        open_files=[str(existing), str(gone)],
+        active_file=str(existing),
+        drafts=[
+            {"title": "keep.txt", "text": "recovered", "path": str(existing)},
+            {"title": "gone.txt", "text": "orphan text", "path": str(gone), "active": True},
+            {"title": "extra.txt", "text": "buf", "path": str(orphan)},
+        ],
+    )
+    files, drafts = plan_session_restore(session)
+    by_name = {op.path.name: op for op in files}
+    assert by_name["keep.txt"].recovery_text == "recovered"
+    assert by_name["keep.txt"].activate is True
+    assert by_name["extra.txt"].recovery_text == "buf"
+    assert "gone.txt" not in by_name
+    assert drafts[0].title == "gone.txt"
+    assert drafts[0].text == "orphan text"
+    assert drafts[0].modified is True
+
+
 def test_plan_session_restore_files_and_active_draft(tmp_path: Path) -> None:
     existing = tmp_path / "keep.txt"
     existing.write_text("x", encoding="utf-8")

@@ -10,16 +10,16 @@ from magiceditor.version import (
 )
 
 
-def test_version_is_094_beta() -> None:
-    assert VERSION == "0.9.6"
+def test_version_is_098_beta() -> None:
+    assert VERSION == "0.9.8"
     assert STAGE.upper() == "BETA"
-    assert version_display() == "0.9.6 BETA"
-    assert version_label() == "v0.9.6 BETA"
-    assert "0.9.6" in about_version_text()
-    assert pep440().startswith("0.9.6")
+    assert version_display() == "0.9.8 BETA"
+    assert version_label() == "v0.9.8 BETA"
+    assert "0.9.8" in about_version_text()
+    assert pep440().startswith("0.9.8")
 
 
 def test_package_dunder_version() -> None:
     import magiceditor
 
-    assert magiceditor.__version__ == "0.9.6"
+    assert magiceditor.__version__ == "0.9.8"

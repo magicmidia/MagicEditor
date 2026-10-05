@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from magiceditor.core.multi_cursor import restore_carets_after_multi_insert
+from magiceditor.core.text_units import grapheme_end, grapheme_start
 
 Span = tuple[int, int, int]
 
@@ -129,16 +130,19 @@ def backspace(editor) -> None:
     if editor.has_selection() or editor._extra_cursors or editor_column_rect(editor):
         spans = editor_multi_spans(editor)
         if spans and all(c0 == c1 for _, c0, c1 in spans):
+            rebuilt: list[tuple[int, int, int]] = []
             for line, c0, _c1 in spans:
                 if c0 <= 0:
+                    rebuilt.append((line, 0, 0))
                     continue
-                start = editor._doc.line_index().line_start(line) + editor._col_to_byte(
-                    line, c0 - 1
-                )
-                end = editor._doc.line_index().line_start(line) + editor._col_to_byte(line, c0)
+                text = editor._doc.line_text(line)
+                clamped = min(c0, len(text))
+                cut = grapheme_start(text, clamped)
+                start = editor._doc.line_index().line_start(line) + editor._col_to_byte(line, cut)
+                end = editor._doc.line_index().line_start(line) + editor._col_to_byte(line, clamped)
                 if end > start:
                     editor._delete_bytes_tracked(start, end - start)
-            rebuilt = [(ln, max(0, c0 - 1), max(0, c0 - 1)) for ln, c0, _ in spans]
+                rebuilt.append((line, cut, cut))
             rebuilt.sort(key=lambda t: (t[0], t[1]))
             if rebuilt:
                 editor._cursor_line, editor._cursor_col, _ = rebuilt[-1]
@@ -151,8 +155,26 @@ def backspace(editor) -> None:
     off = editor._byte_offset_at_cursor()
     if off <= 0:
         return
-    editor._delete_bytes_tracked(off - 1, 1)
-    editor._place_cursor_at(off - 1)
+    idx = editor._doc.line_index()
+    line = editor._cursor_line
+    col = editor._cursor_col
+    if col > 0:
+        # Erase the whole grapheme left of the caret, measured on raw bytes
+        # so a broken UTF-8 byte is removed once and not rewritten as U+FFFD.
+        text = editor._doc.line_text(line)
+        col = min(col, len(text))
+        cut = grapheme_start(text, col)
+        start = idx.line_start(line) + editor._col_to_byte(line, cut)
+        off = idx.line_start(line) + editor._col_to_byte(line, col)
+    else:
+        # Caret at column 0: join with the previous line by removing the
+        # entire line terminator ("\n", "\r\n", or UTF-16 units).
+        prev = line - 1
+        start = idx.line_start(prev) + idx.line_length(prev)
+    if off > start:
+        editor._delete_bytes_tracked(start, off - start)
+    editor._place_cursor_at(start)
+    editor._clear_selection()
     editor._emit_edit()
 
 
@@ -164,10 +186,12 @@ def delete_forward(editor) -> None:
                 text = editor._doc.line_text(line)
                 if c0 >= len(text):
                     continue
+                end_col = grapheme_end(text, c0)
                 start = editor._doc.line_index().line_start(line) + editor._col_to_byte(line, c0)
-                end = editor._doc.line_index().line_start(line) + editor._col_to_byte(line, c0 + 1)
+                end = editor._doc.line_index().line_start(line) + editor._col_to_byte(line, end_col)
                 if end > start:
                     editor._delete_bytes_tracked(start, end - start)
+            editor._clear_selection()
             editor._emit_edit()
             return
         editor._delete_selection()
@@ -175,7 +199,23 @@ def delete_forward(editor) -> None:
     off = editor._byte_offset_at_cursor()
     if off >= len(editor._doc.buffer):
         return
-    editor._delete_bytes_tracked(off, 1)
+    idx = editor._doc.line_index()
+    line = editor._cursor_line
+    col = editor._cursor_col
+    text = editor._doc.line_text(line)
+    line_start = idx.line_start(line)
+    if col < len(text):
+        # Erase the whole grapheme under the caret (multibyte-safe).
+        end_col = grapheme_end(text, col)
+        start = line_start + editor._col_to_byte(line, col)
+        end = line_start + editor._col_to_byte(line, end_col)
+    else:
+        # Caret at EOL: remove the entire line terminator, joining lines.
+        start = line_start + idx.line_length(line)
+        end = idx.line_start(line + 1) if line + 1 < editor._line_count() else start
+    if end > start:
+        editor._delete_bytes_tracked(start, end - start)
+    editor._clear_selection()
     editor._emit_edit()
 
 

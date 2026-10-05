@@ -13,7 +13,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-DEFAULT_ALGORITHMS: tuple[str, ...] = ("md5", "sha1", "sha256")
+DEFAULT_ALGORITHMS: tuple[str, ...] = (
+    "md5",
+    "sha1",
+    "sha256",
+    "sha384",
+    "sha512",
+    "blake2b",
+)
 DEFAULT_CHUNK_SIZE = 1024 * 1024  # 1 MiB
 
 

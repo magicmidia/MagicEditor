@@ -50,7 +50,10 @@ img {{ max-width: 100%; }}
 
 
 def wrap_preview_html(body: str, theme_id: str) -> str:
-    css = preview_css(theme_id)
-    return (
-        f"<html><head><meta charset='utf-8'><style>{css}</style></head><body>{body}</body></html>"
-    )
+    """Return the body fragment. Theme CSS is applied with setDefaultStyleSheet.
+
+    Embedding ``<style>`` made QTextBrowser paint the rules as text: the
+    sanitizer removes the tag and leaves the CSS body behind.
+    """
+    _ = theme_id
+    return body

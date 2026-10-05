@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QHBoxLayout, QSplitter, QVBoxLayout, QWidget
 
 from magiceditor.core.syntax.detect import detect_language
@@ -46,7 +46,11 @@ class EditorTab(QWidget):
         self.minimap = MinimapWidget(self)
         self.minimap.hide()
         self.minimap.jump_ratio.connect(self._on_minimap_jump)
-        self.editor.textChanged.connect(self._refresh_minimap)
+        self._minimap_timer = QTimer(self)
+        self._minimap_timer.setSingleShot(True)
+        self._minimap_timer.setInterval(120)
+        self._minimap_timer.timeout.connect(self._refresh_minimap)
+        self.editor.textChanged.connect(self._schedule_minimap)
         self.editor.cursorPositionChanged.connect(self._refresh_minimap_viewport)
         self.editor.verticalScrollBar().valueChanged.connect(self._refresh_minimap_viewport)
 
@@ -107,6 +111,11 @@ class EditorTab(QWidget):
 
     def set_word_completion(self, enabled: bool) -> None:
         self.editor.set_word_completion(enabled)
+
+    def _schedule_minimap(self) -> None:
+        if self._huge or not self.minimap.isVisible():
+            return
+        self._minimap_timer.start()
 
     def _refresh_minimap(self) -> None:
         if self._huge or not self.minimap.isVisible():

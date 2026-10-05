@@ -26,12 +26,29 @@ class MagicTabBar(QTabBar):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_context_menu)
         self._group_colors: dict[int, str] = {}
+        self._drop_highlight_index = -1
+        self._drop_highlight_color: str | None = None
+        self._drop_highlight_alpha = 0
+        self._stripe_pulses: dict[int, int] = {}
         self._pref_height = 30
         self._pref_min_width = 72
         self._pref_max_width = 220
 
     def set_group_colors(self, mapping: dict[int, str]) -> None:
         self._group_colors = dict(mapping)
+        self.update()
+
+    def set_drop_highlight(self, index: int, color: str) -> None:
+        """Highlight ``index`` as a drop-to-group target (rounded overlay)."""
+        self._drop_highlight_index = index
+        self._drop_highlight_color = color
+        self._drop_highlight_alpha = 160
+        self.update()
+
+    def clear_drop_highlight(self) -> None:
+        self._drop_highlight_index = -1
+        self._drop_highlight_color = None
+        self._drop_highlight_alpha = 0
         self.update()
 
     def _on_context_menu(self, pos: QPoint) -> None:
@@ -60,7 +77,7 @@ class MagicTabBar(QTabBar):
 
     def paintEvent(self, event: QPaintEvent | None) -> None:
         super().paintEvent(event)
-        if not self._group_colors:
+        if not self._group_colors and self._drop_highlight_index < 0:
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -71,9 +88,25 @@ class MagicTabBar(QTabBar):
             if rect.isEmpty():
                 continue
             color = QColor(hex_color)
+            pulse = self._stripe_pulses.get(index)
+            if pulse is not None:
+                color.setAlpha(max(0, min(255, int(pulse))))
             stripe = QRect(rect.left() + 1, rect.top() + 4, 3, rect.height() - 8)
             painter.fillRect(stripe, color)
             painter.fillRect(rect.left(), rect.top(), rect.width(), 2, color)
+        index = self._drop_highlight_index
+        if (
+            0 <= index < self.count()
+            and self._drop_highlight_color
+            and self._drop_highlight_alpha > 0
+        ):
+            rect = self.tabRect(index)
+            if not rect.isEmpty():
+                color = QColor(self._drop_highlight_color)
+                color.setAlpha(max(0, min(255, int(self._drop_highlight_alpha))))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(color)
+                painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 6, 6)
         painter.end()
 
     def set_chrome_metrics(self, height: int, min_width: int, max_width: int) -> None:

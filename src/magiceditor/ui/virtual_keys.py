@@ -8,6 +8,7 @@ from PyQt6.QtGui import QKeyEvent
 from magiceditor.core.indent import indent_unit, newline_auto_indent, unindent_prefix
 from magiceditor.core.multi_cursor import word_at
 from magiceditor.core.snippets import expand_snippet, match_trigger
+from magiceditor.ui.bracket_edit import bracket_insert
 from magiceditor.ui.virtual_cursors import backspace, delete_forward, editor_multi_spans
 from magiceditor.ui.virtual_metrics import usable_line_slots
 
@@ -48,6 +49,8 @@ def handle_key_press(editor, event: QKeyEvent | None) -> bool:
     visible = usable_line_slots(editor)
     ctrl = bool(mod & Qt.KeyboardModifier.ControlModifier)
     shift = bool(mod & Qt.KeyboardModifier.ShiftModifier)
+    # Edit paths already emit cursorPositionChanged via emit_edit.
+    signaled = False
 
     if ctrl and key == Qt.Key.Key_Z and not shift:
         if not editor._read_only:
@@ -125,27 +128,64 @@ def handle_key_press(editor, event: QKeyEvent | None) -> bool:
         elif editor.has_selection():
             editor._delete_selection(emit=False)
         editor._insert_at_cursor(newline_for_editor(editor))
+        signaled = True
     elif key == Qt.Key.Key_Backspace:
         backspace(editor)
+        signaled = True
     elif key == Qt.Key.Key_Delete:
         delete_forward(editor)
+        signaled = True
     elif event.text() and not ctrl:
         if editor_multi_spans(editor):
             editor._insert_at_cursor(event.text())
-        else:
+        elif not _maybe_auto_close(editor, event.text()):
             if editor.has_selection():
                 editor._delete_selection(emit=False)
             editor._insert_at_cursor(event.text())
         if editor._word_completion and event.text().isalnum():
             refresh_completion_candidates(editor)
+        signaled = True
     else:
         return False
 
     editor._ensure_visible(editor._cursor_line)
     editor._update_brace_match()
-    editor.cursorPositionChanged.emit()
+    if not signaled:
+        editor.cursorPositionChanged.emit()
     editor.viewport().update()
     event.accept()
+    return True
+
+
+def _maybe_auto_close(editor, ch: str) -> bool:
+    """Insert a bracket pair or skip a closer. True when the key was consumed."""
+    if not getattr(editor, "_auto_close_brackets", False) or len(ch) != 1:
+        return False
+    selection = editor.selected_text() if editor.has_selection() else ""
+    nxt = ""
+    if not selection:
+        try:
+            line = editor._doc.line_text(editor._cursor_line)
+        except IndexError:
+            line = ""
+        col = editor._cursor_col
+        if 0 <= col < len(line):
+            nxt = line[col]
+    planned = bracket_insert(ch, selection, nxt)
+    if planned is None:
+        return False
+    inserted, back = planned
+    if back < 0:
+        editor._clear_selection()
+        editor._cursor_col += 1
+        editor.cursorPositionChanged.emit()
+        return True
+    if editor.has_selection():
+        editor._delete_selection(emit=False)
+    editor._insert_at_cursor(inserted)
+    if back:
+        editor._cursor_col = max(0, editor._cursor_col - back)
+        editor.cursorPositionChanged.emit()
     return True
 
 

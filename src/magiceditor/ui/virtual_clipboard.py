@@ -56,7 +56,7 @@ def selection_cols_on_line(editor, line: int) -> tuple[int, int] | None:
     if line < s_line or line > e_line:
         return None
     a = s_col if line == s_line else 0
-    b = e_col if line == e_line else editor._doc.line_index().line_length(line)
+    b = e_col if line == e_line else len(editor._doc.line_text(line))
     if a >= b:
         return None
     return a, b

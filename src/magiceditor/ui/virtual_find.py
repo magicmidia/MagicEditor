@@ -6,9 +6,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from re import Pattern
 
+from magiceditor.core.safe_regex import compile_user_pattern
 from magiceditor.core.text_match import (
     PatternError,
-    compile_pattern,
     expand_replacement,
     find_all_matches,
     find_first,
@@ -36,7 +36,7 @@ def try_compile(
     if not needle:
         return None
     try:
-        return compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
+        return compile_user_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)
     except PatternError:
         return None
 

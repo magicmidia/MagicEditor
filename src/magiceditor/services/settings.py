@@ -8,13 +8,20 @@ from typing import Any
 
 from PyQt6.QtCore import QByteArray, QSettings
 
+from magiceditor.services.recovery_store import (
+    RECOVERY_VERSION,
+    apply_recovery,
+    normalize_drafts,
+    read_recovery,
+    write_recovery,
+)
 from magiceditor.services.session_state import SessionState, normalize_path
 from magiceditor.services.settings_clamp import clamp_int as _clamp_int
 
 __all__ = ["AppSettings", "SessionState", "normalize_path"]
 
-# Caps for session drafts (Untitled recovery)
-_MAX_DRAFTS = 12
+# Caps for session drafts (Untitled + dirty-file recovery)
+_MAX_DRAFTS = 24
 _MAX_DRAFT_CHARS = 400_000
 _MAX_RECENT = 15
 
@@ -158,29 +165,33 @@ class AppSettings:
             opacity_f = 1.0
         opacity_f = max(0.55, min(1.0, opacity_f))
 
-        drafts_raw = self._load_json_list(qs.value("session/drafts_json", ""))
-        drafts: list[dict[str, Any]] = []
-        for item in drafts_raw[:_MAX_DRAFTS]:
+        drafts = normalize_drafts(
+            self._load_json_list(qs.value("session/drafts_json", "")),
+            limit=_MAX_DRAFTS,
+            max_chars=_MAX_DRAFT_CHARS,
+        )
+
+        tab_groups: list[dict[str, Any]] = []
+        for item in self._load_json_list(qs.value("session/tab_groups_json", "")):
             if not isinstance(item, dict):
                 continue
-            title = str(item.get("title") or "Untitled")
-            text = str(item.get("text") or "")
-            if len(text) > _MAX_DRAFT_CHARS:
-                text = text[:_MAX_DRAFT_CHARS]
-            entry: dict[str, Any] = {"title": title, "text": text}
-            if item.get("active"):
-                entry["active"] = True
-            if isinstance(item.get("bookmarks"), list):
-                entry["bookmarks"] = [
-                    int(x) for x in item["bookmarks"] if str(x).lstrip("-").isdigit()
-                ]
-            cur = item.get("cursor")
-            if isinstance(cur, (list, tuple)) and len(cur) >= 2:
-                try:
-                    entry["cursor"] = [max(1, int(cur[0])), max(1, int(cur[1]))]
-                except (TypeError, ValueError):
-                    pass
-            drafts.append(entry)
+            name = str(item.get("name") or "").strip()
+            if not name:
+                continue
+            members_raw = item.get("members")
+            members = (
+                [str(m) for m in members_raw if isinstance(m, str) and m]
+                if isinstance(members_raw, list)
+                else []
+            )
+            tab_groups.append(
+                {
+                    "name": name,
+                    "color": str(item.get("color") or ""),
+                    "collapsed": bool(item.get("collapsed")),
+                    "members": members,
+                }
+            )
 
         recent: list[str] = []
         seen_r: set[str] = set()
@@ -197,8 +208,8 @@ class AppSettings:
                 break
 
         geom = qs.value("window/geometry")
-        state = qs.value("window/state")
-        return SessionState(
+        win_state = qs.value("window/state")
+        loaded = SessionState(
             theme=qs.value("ui/theme", "luminous_void", str) or "luminous_void",
             language=qs.value("ui/language", "pt_BR", str) or "pt_BR",
             word_wrap=self._as_bool(qs.value("ui/word_wrap"), False),
@@ -213,6 +224,7 @@ class AppSettings:
             bookmarks=bookmarks,
             cursors=cursors,
             drafts=drafts,
+            tab_groups=tab_groups,
             recent_files=recent,
             icon_pack=qs.value("ui/icon_pack", "qlementine", str) or "qlementine",
             font_size=_clamp_int(qs.value("editor/font_size", 12), 8, 48, 12),
@@ -229,6 +241,13 @@ class AppSettings:
             spell_force=(True if self._as_bool(qs.value("editor/spell_force"), False) else None),
             spell_extra_languages=qs.value("editor/spell_extra", "", str) or "",
             autosave_interval_sec=_clamp_int(qs.value("editor/autosave_sec", 0), 0, 3600, 0),
+            recovery_interval_sec=_clamp_int(qs.value("editor/recovery_sec"), 2, 120, 8),
+            line_spacing=_clamp_int(qs.value("editor/line_spacing"), 0, 16, 0),
+            indent_guides=self._as_bool(qs.value("editor/indent_guides"), False),
+            auto_close_brackets=self._as_bool(qs.value("editor/auto_close_brackets"), False),
+            right_margin=_clamp_int(qs.value("editor/right_margin"), 0, 240, 0),
+            highlight_occurrences=self._as_bool(qs.value("editor/highlight_occurrences"), False),
+            wheel_zoom=self._as_bool(qs.value("editor/wheel_zoom"), True),
             show_minimap=self._as_bool(qs.value("ui/show_minimap"), False),
             first_run_done=self._as_bool(qs.value("ui/first_run_done"), False),
             want_file_associations=self._as_bool(qs.value("ui/want_file_associations"), False),
@@ -255,8 +274,12 @@ class AppSettings:
             chrome_transparency=self._as_bool(qs.value("graphics/chrome_transparency"), False),
             editor_transparency=self._as_bool(qs.value("graphics/editor_transparency"), False),
             geometry=geom if isinstance(geom, QByteArray) else None,
-            window_state=state if isinstance(state, QByteArray) else None,
+            window_state=win_state if isinstance(win_state, QByteArray) else None,
         )
+        payload = read_recovery(self.recovery_path())
+        if payload is not None:
+            loaded = apply_recovery(loaded, payload)
+        return loaded
 
     def save(self, state: SessionState) -> None:
         qs = self._qs
@@ -279,6 +302,13 @@ class AppSettings:
         qs.setValue("editor/spell_force", bool(state.spell_force) is True)
         qs.setValue("editor/spell_extra", state.spell_extra_languages or "")
         qs.setValue("editor/autosave_sec", int(max(0, min(3600, state.autosave_interval_sec))))
+        qs.setValue("editor/recovery_sec", int(max(2, min(120, state.recovery_interval_sec))))
+        qs.setValue("editor/line_spacing", int(max(0, min(16, state.line_spacing))))
+        qs.setValue("editor/indent_guides", state.indent_guides)
+        qs.setValue("editor/auto_close_brackets", state.auto_close_brackets)
+        qs.setValue("editor/right_margin", int(max(0, min(240, state.right_margin))))
+        qs.setValue("editor/highlight_occurrences", state.highlight_occurrences)
+        qs.setValue("editor/wheel_zoom", state.wheel_zoom)
         qs.setValue("ui/show_minimap", state.show_minimap)
         qs.setValue("ui/first_run_done", state.first_run_done)
         qs.setValue("ui/want_file_associations", state.want_file_associations)
@@ -342,31 +372,33 @@ class AppSettings:
             cursors_out[key] = [max(1, int(line)), max(1, int(col))]
         qs.setValue("session/cursors_json", json.dumps(cursors_out, separators=(",", ":")))
 
-        drafts_out: list[dict[str, Any]] = []
-        for item in state.drafts[:_MAX_DRAFTS]:
+        drafts_out = normalize_drafts(state.drafts, limit=_MAX_DRAFTS, max_chars=_MAX_DRAFT_CHARS)
+        qs.setValue("session/drafts_json", json.dumps(drafts_out, separators=(",", ":")))
+
+        tab_groups_out: list[dict[str, Any]] = []
+        for item in state.tab_groups:
             if not isinstance(item, dict):
                 continue
-            text = str(item.get("text") or "")
-            if len(text) > _MAX_DRAFT_CHARS:
-                text = text[:_MAX_DRAFT_CHARS]
-            entry: dict[str, Any] = {
-                "title": str(item.get("title") or "Untitled")[:120],
-                "text": text,
-            }
-            if item.get("active"):
-                entry["active"] = True
-            if isinstance(item.get("bookmarks"), list):
-                entry["bookmarks"] = [
-                    int(x) for x in item["bookmarks"] if isinstance(x, (int, float, str))
-                ][:500]
-            cur = item.get("cursor")
-            if isinstance(cur, (list, tuple)) and len(cur) >= 2:
-                try:
-                    entry["cursor"] = [max(1, int(cur[0])), max(1, int(cur[1]))]
-                except (TypeError, ValueError):
-                    pass
-            drafts_out.append(entry)
-        qs.setValue("session/drafts_json", json.dumps(drafts_out, separators=(",", ":")))
+            name = str(item.get("name") or "").strip()
+            if not name:
+                continue
+            members_raw = item.get("members")
+            members = (
+                [str(m) for m in members_raw if isinstance(m, str) and m]
+                if isinstance(members_raw, list)
+                else []
+            )
+            if not members:
+                continue
+            tab_groups_out.append(
+                {
+                    "name": name[:80],
+                    "color": str(item.get("color") or ""),
+                    "collapsed": bool(item.get("collapsed")),
+                    "members": members[:64],
+                }
+            )
+        qs.setValue("session/tab_groups_json", json.dumps(tab_groups_out, separators=(",", ":")))
 
         recent_out: list[str] = []
         seen_r: set[str] = set()
@@ -387,4 +419,36 @@ class AppSettings:
             qs.setValue("window/geometry", state.geometry)
         if state.window_state is not None:
             qs.setValue("window/state", state.window_state)
+        try:
+            write_recovery(
+                self.recovery_path(),
+                {
+                    "version": RECOVERY_VERSION,
+                    "open_files": files,
+                    "active_file": active or None,
+                    "drafts": drafts_out,
+                    "bookmarks": bookmarks_out,
+                    "cursors": cursors_out,
+                },
+            )
+        except OSError:
+            pass
         qs.sync()
+
+    def recovery_path(self) -> Path:
+        """Sidecar beside an ini file; AppConfigLocation when settings are in the registry."""
+        name = str(self._qs.fileName() or "")
+        registry = (
+            not name
+            or name.upper().startswith("HKEY")
+            or name.startswith("\\")
+            or name.startswith("//")
+        )
+        if registry:
+            from PyQt6.QtCore import QStandardPaths
+
+            base = QStandardPaths.writableLocation(
+                QStandardPaths.StandardLocation.AppConfigLocation
+            )
+            return Path(base) / "recovery.json"
+        return Path(name).with_name("recovery.json")

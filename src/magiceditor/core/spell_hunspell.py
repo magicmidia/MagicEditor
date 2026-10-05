@@ -13,6 +13,7 @@ from typing import Any
 _lock = threading.Lock()
 _dictionary: Any = None
 _failed = False
+_lookup_cache: dict[str, bool] = {}
 
 
 def hunspell_stem() -> Path | None:
@@ -63,16 +64,26 @@ def clear_cache() -> None:
     with _lock:
         _dictionary = None
         _failed = False
+        _lookup_cache.clear()
 
 
 def lookup(word: str) -> bool:
-    d = dictionary()
-    if d is None or not word:
+    if not word:
         return False
-    if d.lookup(word):
-        return True
-    folded = word.casefold()
-    return folded != word and bool(d.lookup(folded))
+    cached = _lookup_cache.get(word)
+    if cached is not None:
+        return cached
+    d = dictionary()
+    if d is None:
+        return False
+    found = bool(d.lookup(word))
+    if not found:
+        folded = word.casefold()
+        found = folded != word and bool(d.lookup(folded))
+    if len(_lookup_cache) > 20000:
+        _lookup_cache.clear()
+    _lookup_cache[word] = found
+    return found
 
 
 def suggest(word: str, *, limit: int = 6) -> list[str]:

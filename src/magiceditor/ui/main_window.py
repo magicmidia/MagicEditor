@@ -104,6 +104,7 @@ class MainWindow(
         self.tabs.tabCloseRequested.connect(self._close_tab)
         self.tabs.currentChanged.connect(self._on_tab_changed)
         self.tabs.empty_area_double_clicked.connect(self.new_document)
+        self.tabs.groups_changed.connect(self._persist_session)
         self._recent_menu = None  # type: ignore[assignment]
         self._menu_format = None  # type: ignore[assignment]
         self._menu_encoding = None  # type: ignore[assignment]
@@ -223,6 +224,30 @@ class MainWindow(
             tb.setVisible(bool(self._session.show_toolbar))
         self.statusBar().setVisible(bool(self._session.show_status_bar))
 
+    def _push_editor_prefs(self, tab: EditorTab) -> None:
+        """Apply editor preferences to one tab (open and newly created)."""
+        s = self._session
+        tab.set_word_wrap(s.word_wrap)
+        tab.set_line_numbers(s.line_numbers)
+        if isinstance(tab.editor, VirtualEditor):
+            ed = tab.editor
+            ed.set_font_point_size(s.font_size)
+            ed.set_tab_width(s.tab_width)
+            ed.set_indent_with_spaces(s.indent_with_spaces)
+            ed.set_highlight_current_line(s.highlight_current_line)
+            ed.set_show_whitespace(bool(getattr(s, "show_whitespace", False)))
+            ed.set_brace_match_enabled(bool(getattr(s, "brace_match", True)))
+            ed.set_syntax_enabled(bool(getattr(s, "syntax_highlight", True)))
+            ed.set_caret_width(int(getattr(s, "caret_width", 1) or 1))
+            ed.set_line_spacing(int(getattr(s, "line_spacing", 0) or 0))
+            ed.set_indent_guides(bool(getattr(s, "indent_guides", False)))
+            ed.set_auto_close_brackets(bool(getattr(s, "auto_close_brackets", False)))
+            ed.set_right_margin(int(getattr(s, "right_margin", 0) or 0))
+            ed.set_highlight_occurrences(bool(getattr(s, "highlight_occurrences", False)))
+            ed.set_wheel_zoom(bool(getattr(s, "wheel_zoom", True)))
+        tab.set_word_completion(bool(getattr(s, "word_completion", False)))
+        tab.set_minimap_visible(bool(getattr(s, "show_minimap", False)))
+
     def _apply_editor_prefs_to_tabs(self) -> None:
         """Push font size, wrap, gutters, indent prefs to open editors."""
         s = self._session
@@ -242,20 +267,9 @@ class MainWindow(
             w = self.tabs.widget(i)
             if not isinstance(w, EditorTab):
                 continue
-            w.set_word_wrap(s.word_wrap)
-            w.set_line_numbers(s.line_numbers)
+            self._push_editor_prefs(w)
             if isinstance(w.editor, VirtualEditor):
-                w.editor.set_font_point_size(s.font_size)
-                w.editor.set_tab_width(s.tab_width)
-                w.editor.set_indent_with_spaces(s.indent_with_spaces)
-                w.editor.set_highlight_current_line(s.highlight_current_line)
-                w.editor.set_show_whitespace(bool(getattr(s, "show_whitespace", False)))
-                w.editor.set_brace_match_enabled(bool(getattr(s, "brace_match", True)))
-                w.editor.set_syntax_enabled(bool(getattr(s, "syntax_highlight", True)))
-                w.editor.set_caret_width(int(getattr(s, "caret_width", 1) or 1))
-                w.set_word_completion(bool(getattr(s, "word_completion", False)))
                 self._wire_editor_context_menu(w.editor)
-            w.set_minimap_visible(bool(getattr(s, "show_minimap", False)))
 
     # --- chrome -------------------------------------------------------
 
@@ -327,6 +341,8 @@ class MainWindow(
             self._menu_convert.setTitle(t("menu.convert", "Converter"))
         if getattr(self, "_menu_insert", None) is not None:
             self._menu_insert.setTitle(t("menu.insert", "Inserir"))
+        if getattr(self, "_menu_hash", None) is not None:
+            self._menu_hash.setTitle(t("menu.hash", "Hashes do arquivo"))
         self._sidebar_dock.setWindowTitle(t("panel.explorer", "Explorador"))
         labels = {
             "action.new": t("action.new", "&Novo"),
@@ -336,6 +352,9 @@ class MainWindow(
             "action.save_as": t("action.save_as", "Salvar &como…"),
             "action.save_all": t("action.save_all", "Salvar &tudo"),
             "action.print": t("action.print", "&Imprimir…"),
+            "action.print_preview": t(
+                "action.print_preview", "Imprimir &visualização Markdown…"
+            ),
             "action.export_pdf": t("action.export_pdf", "&Exportar PDF…"),
             "action.undo": t("action.undo", "&Desfazer"),
             "action.redo": t("action.redo", "&Refazer"),
@@ -411,7 +430,13 @@ class MainWindow(
             "action.cancel_search": t("action.cancel_search", "Cancelar busca"),
             "action.export_theme": t("action.export_theme", "Exportar tema…"),
             "action.import_theme": t("action.import_theme", "Importar tema…"),
-            "action.file_checksum": t("action.file_checksum", "Checksum do arquivo…"),
+            "action.hash_md5": t("action.hash_md5", "MD5"),
+            "action.hash_sha1": t("action.hash_sha1", "SHA-1"),
+            "action.hash_sha256": t("action.hash_sha256", "SHA-256"),
+            "action.hash_sha384": t("action.hash_sha384", "SHA-384"),
+            "action.hash_sha512": t("action.hash_sha512", "SHA-512"),
+            "action.hash_blake2b": t("action.hash_blake2b", "BLAKE2b"),
+            "action.file_checksum": t("action.file_checksum", "Todos os hashes…"),
             "action.doc_stats": t("action.doc_stats", "Estatísticas do documento…"),
             "action.filter_lines": t("action.filter_lines", "Filtrar linhas…"),
             "action.log_summary": t("action.log_summary", "Resumo do log…"),
@@ -464,12 +489,27 @@ class MainWindow(
         files, drafts = plan_session_restore(self._session)
         opened = False
         active_index = 0
+        recovered_text = False
         for op in files:
             try:
                 doc = open_document(op.path)
             except OSError as exc:
                 _log.warning("Could not restore %s: %s", op.path, exc)
                 continue
+            if op.recovery_text is not None and not doc.huge_mode:
+                try:
+                    disk = doc.text()
+                except Exception:
+                    disk = None
+                if disk is not None and disk != op.recovery_text:
+                    doc = Document.from_text(
+                        op.recovery_text,
+                        path=op.path,
+                        encoding=doc.encoding,
+                        eol=doc.eol,
+                    )
+                    doc.modified = True
+                    recovered_text = True
             tab = self._add_document(doc, activate=False)
             if op.bookmarks:
                 tab.set_bookmarks(op.bookmarks)
@@ -478,17 +518,17 @@ class MainWindow(
             if op.activate:
                 active_index = self.tabs.indexOf(tab)
             opened = True
-        for op in drafts:
-            doc = Document.from_text(op.text)
-            doc.title = op.title
-            if op.modified:
+        for draft_op in drafts:
+            doc = Document.from_text(draft_op.text)
+            doc.title = draft_op.title
+            if draft_op.modified:
                 doc.modified = True
             tab = self._add_document(doc, activate=False)
-            if op.bookmarks:
-                tab.set_bookmarks(op.bookmarks)
-            if op.cursor:
-                tab.goto_line(op.cursor[0], op.cursor[1])
-            if op.activate:
+            if draft_op.bookmarks:
+                tab.set_bookmarks(draft_op.bookmarks)
+            if draft_op.cursor:
+                tab.goto_line(draft_op.cursor[0], draft_op.cursor[1])
+            if draft_op.activate:
                 active_index = self.tabs.indexOf(tab)
             opened = True
         if opened:
@@ -496,26 +536,69 @@ class MainWindow(
             w = self.current_tab()
             if w is not None:
                 self._update_status_for(w)
+        if recovered_text:
+            self._status.showMessage(
+                self._tr.t(
+                    "msg.recovery_restored",
+                    "Texto não salvo foi recuperado. O arquivo no disco não foi alterado.",
+                ),
+                6000,
+            )
+        self._restore_tab_groups()
         return opened
 
+    def _restore_tab_groups(self) -> None:
+        """Recreate persisted tab groups; runs under ``self._restoring`` guard."""
+        from magiceditor.ui.window_session import plan_group_restore
+
+        if not self._session.tab_groups:
+            return
+        keys: list[str] = []
+        for i in range(self.tabs.count()):
+            w = self.tabs.widget(i)
+            if not isinstance(w, EditorTab):
+                keys.append("")
+                continue
+            path = w.document.path
+            keys.append(
+                normalize_path(path) if path is not None and path.is_file() else w.document.title
+            )
+        for op in plan_group_restore(self._session.tab_groups, keys):
+            group = self.tabs.create_group(op.member_indices, name=op.name, color=op.color)
+            if group is not None and op.collapsed:
+                self.tabs.set_group_collapsed(group.group_id, True)
+
     def _collect_session(self) -> SessionState:
-        from magiceditor.ui.window_session import TabSessionView, collect_tabs_into_session
+        from magiceditor.ui.window_session import (
+            DRAFT_TEXT_CAP,
+            TabSessionView,
+            collect_tab_groups,
+            collect_tabs_into_session,
+        )
 
         current = self.current_tab()
         views: list[TabSessionView] = []
+        member_keys: dict[int, str] = {}
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
             if not isinstance(w, EditorTab):
                 continue
             path = w.document.path
-            # Draft text is persisted; file-backed tabs restore from disk, so
-            # never materialize their text here (up to 2MB decode per tab).
+            # Untitled tabs and dirty file tabs are snapshotted. Huge buffers are
+            # not decoded. Unmodified files restore from disk. The snapshot never
+            # overwrites the file.
             text = ""
-            if path is None:
+            huge = bool(w.document.huge_mode or w.is_huge)
+            if not huge and (path is None or w.document.modified):
                 try:
                     text = w.document.text()
                 except Exception:
                     text = ""
+                if len(text) > DRAFT_TEXT_CAP:
+                    text = text[:DRAFT_TEXT_CAP]
+            member_keys[id(w)] = (
+                normalize_path(path) if path is not None and path.is_file() else w.document.title
+            )
             views.append(
                 TabSessionView(
                     path=path,
@@ -540,6 +623,7 @@ class MainWindow(
             word_wrap=self._word_wrap,
             line_numbers=self._line_numbers,
             icon_pack=get_icon_pack(),
+            tab_groups=collect_tab_groups(self.tabs.list_groups(), member_keys),
             geometry=self.saveGeometry(),
             window_state=self.saveState(),
         )
@@ -611,6 +695,8 @@ class MainWindow(
             self._sync_spell_to_editors()
         if hasattr(self, "_apply_autosave_interval"):
             self._apply_autosave_interval()
+        if hasattr(self, "_apply_recovery_interval"):
+            self._apply_recovery_interval()
         if "action.toggle_spell" in self._actions:
             self._actions["action.toggle_spell"].setChecked(
                 bool(getattr(self._session, "spell_check", True))
@@ -845,25 +931,17 @@ class MainWindow(
         tab.set_syntax_light_theme(self._themes.current == "clean_light")
         if isinstance(tab.editor, VirtualEditor):
             tab.editor.apply_theme_palette(self._themes.current)
-            tab.editor.set_font_point_size(self._session.font_size)
-            tab.editor.set_tab_width(self._session.tab_width)
-            tab.editor.set_indent_with_spaces(self._session.indent_with_spaces)
-            tab.editor.set_highlight_current_line(self._session.highlight_current_line)
-            tab.editor.set_show_whitespace(bool(getattr(self._session, "show_whitespace", False)))
-            tab.editor.set_brace_match_enabled(bool(getattr(self._session, "brace_match", True)))
-            tab.editor.set_syntax_enabled(bool(getattr(self._session, "syntax_highlight", True)))
-            tab.editor.set_caret_width(int(getattr(self._session, "caret_width", 1) or 1))
-            tab.set_word_completion(bool(getattr(self._session, "word_completion", False)))
+            self._push_editor_prefs(tab)
             self._wire_editor_context_menu(tab.editor)
-        tab.set_minimap_visible(bool(getattr(self._session, "show_minimap", False)))
+            self._hook_editor_recovery(tab.editor)
+        else:
+            self._push_editor_prefs(tab)
         if self._session.editor_transparency:
             tab.editor.setObjectName("translucentEditor")
         tab.modification_changed.connect(self._refresh_tab_titles)
         tab.cursor_info_changed.connect(self._status.set_cursor)
         # Selection-dependent actions (Convert submenu) track caret/selection.
-        tab.cursor_info_changed.connect(
-            lambda *_args, t=tab: self._sync_doc_tool_actions(t)
-        )
+        tab.cursor_info_changed.connect(lambda *_args, t=tab: self._sync_doc_tool_actions(t))
         tab.language_changed.connect(lambda _lang: self._on_tab_language_changed(tab))
         idx = self.tabs.addTab(tab, doc.display_name())
         self.tabs.setTabIcon(idx, language_icon(tab.language, self._icon_color))
@@ -890,6 +968,11 @@ class MainWindow(
         from magiceditor.ui.window_print import print_current as _print
 
         _print(self)
+
+    def print_markdown_view(self) -> None:
+        from magiceditor.ui.window_print import print_markdown_view as _print_view
+
+        _print_view(self)
 
     def export_pdf_current(self) -> None:
         from magiceditor.ui.window_print import export_pdf_current as _pdf
@@ -1339,16 +1422,24 @@ class MainWindow(
             self._persist_session()
 
     def _refresh_tab_titles(self) -> None:
+        sidebar = False
+        current = self.current_tab()
         for i in range(self.tabs.count()):
             w = self.tabs.widget(i)
-            if isinstance(w, EditorTab):
-                name = w.document.display_name()
-                if w.editor.is_read_only():
-                    name += READ_ONLY_SUFFIX
+            if not isinstance(w, EditorTab):
+                continue
+            name = w.document.display_name()
+            if w.editor.is_read_only():
+                name += READ_ONLY_SUFFIX
+            if self.tabs.tabText(i) != name:
                 self.tabs.setTabText(i, name)
-                if w is self.current_tab():
-                    self.setWindowTitle(f"{name} — MagicEditor")
-        self._refresh_open_editors_sidebar()
+                sidebar = True
+            if w is current:
+                title = f"{name} — MagicEditor"
+                if self.windowTitle() != title:
+                    self.setWindowTitle(title)
+        if sidebar:
+            self._refresh_open_editors_sidebar()
 
     def _on_tab_changed(self, index: int) -> None:
         w = self.tabs.widget(index)
@@ -1409,7 +1500,10 @@ class MainWindow(
                     ),
                     informative=self._tr.t(
                         "msg.unsaved_quit_hint",
-                        "Alterações não salvas serão perdidas.",
+                        (
+                            "O texto não salvo fica na recuperação e volta na próxima abertura. "
+                            "O arquivo no disco não é alterado."
+                        ),
                     ),
                     tr=self._tr,
                 )

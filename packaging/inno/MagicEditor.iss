@@ -11,7 +11,7 @@
 
 #define MyAppName "MagicEditor"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.9.6"
+  #define MyAppVersion "0.9.8"
 #endif
 #define MyAppPublisher "MagicEditor Contributors"
 #define MyAppURL "https://github.com/magicmidia/MagicEditor"
@@ -164,6 +164,10 @@ begin
     7: Result := 'catppuccin_mocha';
     8: Result := 'nord';
     9: Result := 'rose_pine';
+    10: Result := 'gruvbox_dark';
+    11: Result := 'everforest';
+    12: Result := 'kanagawa';
+    13: Result := 'solarized_light';
   else
     Result := 'luminous_void';
   end;
@@ -218,6 +222,10 @@ begin
   ThemeCombo.Items.Add('Catppuccin Mocha');
   ThemeCombo.Items.Add('Nord');
   ThemeCombo.Items.Add('Rosé Pine');
+  ThemeCombo.Items.Add('Gruvbox');
+  ThemeCombo.Items.Add('Everforest');
+  ThemeCombo.Items.Add('Kanagawa');
+  ThemeCombo.Items.Add('Solarized Light');
   ThemeCombo.ItemIndex := 0;
 
   PrefsHint := TNewStaticText.Create(PrefsPage);

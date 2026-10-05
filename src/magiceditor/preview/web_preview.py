@@ -6,7 +6,7 @@ from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QTextBrowser, QVBoxLayout, QWidget
 
 from magiceditor.preview.markdown_preview import render_markdown
-from magiceditor.preview.preview_css import wrap_preview_html
+from magiceditor.preview.preview_css import preview_css
 from magiceditor.preview.sanitize import sanitize_html
 from magiceditor.themes.tokens import chrome_tokens
 
@@ -17,6 +17,7 @@ class WebPreview(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._theme_id = "luminous_void"
+        self._fragment = ""
         self._view = QTextBrowser(self)
         self._view.setObjectName("markdownPreview")
         self._view.setOpenExternalLinks(False)
@@ -34,13 +35,14 @@ class WebPreview(QWidget):
         pal.setColor(QPalette.ColorRole.Window, QColor(tok.bg))
         pal.setColor(QPalette.ColorRole.WindowText, QColor(tok.fg))
         self._view.setPalette(pal)
+        self._view.document().setDefaultStyleSheet(preview_css(self._theme_id))
+        if self._fragment:
+            self._view.setHtml(self._fragment)
 
     def set_html(self, html: str) -> None:
-        html = sanitize_html(html)
-        if "<html" not in html[:200].lower():
-            html = wrap_preview_html(html, self._theme_id)
-        self._view.setHtml(html)
+        self._fragment = sanitize_html(html)
+        self._view.document().setDefaultStyleSheet(preview_css(self._theme_id))
+        self._view.setHtml(self._fragment)
 
     def set_markdown(self, source: str) -> None:
-        body = render_markdown(source)
-        self.set_html(wrap_preview_html(body, self._theme_id))
+        self.set_html(render_markdown(source))

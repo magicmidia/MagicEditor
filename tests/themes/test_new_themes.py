@@ -5,14 +5,32 @@ from magiceditor.themes.tokens import chrome_tokens
 
 
 def test_new_editor_themes_are_registered() -> None:
-    added = ("tokyo_night", "catppuccin_mocha", "nord", "rose_pine")
+    added = (
+        "tokyo_night",
+        "catppuccin_mocha",
+        "nord",
+        "rose_pine",
+        "gruvbox_dark",
+        "everforest",
+        "kanagawa",
+        "solarized_light",
+    )
     for tid in added:
         assert tid in NATIVE_THEMES
 
 
 def test_new_theme_qss_files_exist_and_load() -> None:
     mgr = ThemeManager()
-    for tid in ("tokyo_night", "catppuccin_mocha", "nord", "rose_pine"):
+    for tid in (
+        "tokyo_night",
+        "catppuccin_mocha",
+        "nord",
+        "rose_pine",
+        "gruvbox_dark",
+        "everforest",
+        "kanagawa",
+        "solarized_light",
+    ):
         qss = mgr.load_qss(tid)
         assert "QMainWindow" in qss
         assert "QDialog QLabel" in qss
@@ -24,12 +42,12 @@ def test_new_theme_qss_files_exist_and_load() -> None:
 def test_new_theme_tokens_are_distinct() -> None:
     accents = {
         chrome_tokens(tid).accent.lower()
-        for tid in ("tokyo_night", "catppuccin_mocha", "nord", "rose_pine")
+        for tid in ("gruvbox_dark", "everforest", "kanagawa", "solarized_light")
     }
     assert len(accents) == 4
     backgrounds = {
         chrome_tokens(tid).bg.lower()
-        for tid in ("tokyo_night", "catppuccin_mocha", "nord", "rose_pine")
+        for tid in ("gruvbox_dark", "everforest", "kanagawa", "solarized_light")
     }
     assert len(backgrounds) == 4
 

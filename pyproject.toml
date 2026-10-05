@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "magiceditor"
-version = "0.9.6"
+version = "0.9.8"
 description = "High-performance text/code editor with virtual viewport, piece table, and mmap for huge files"
 readme = "README.md"
 requires-python = ">=3.12"

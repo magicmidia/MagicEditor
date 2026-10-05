@@ -6,6 +6,7 @@ Keeps main_window thinner; methods expect MainWindow attributes
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
@@ -32,7 +33,9 @@ from magiceditor.core.symbols import extract_symbols
 from magiceditor.services.document_io import open_document, save_document
 from magiceditor.services.performance_info import document_mmap_active, snapshot_for_document
 from magiceditor.services.portable import is_portable_mode
+from magiceditor.services.recovery_store import session_recovery_payload, write_recovery
 from magiceditor.services.session_state import SessionState
+from magiceditor.services.settings import AppSettings
 from magiceditor.ui.command_palette import CommandPaletteDialog, PaletteCommand
 from magiceditor.ui.editor_context_menu import build_editor_context_menu
 from magiceditor.ui.goto_anything import GotoAnythingDialog
@@ -59,6 +62,8 @@ from magiceditor.ui.spell_controller import (
 )
 from magiceditor.ui.virtual_editor import VirtualEditor
 
+_log = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from PyQt6.QtGui import QAction
 
@@ -79,14 +84,21 @@ class PowerFeaturesMixin:
     _spell_engine: SpellEngine
     _file_watcher: QFileSystemWatcher
     _autosave_timer: QTimer
+    _recovery_timer: QTimer
+    _recovery_pulse: QTimer
+    _recovery_dirty: bool
+    _settings: AppSettings
+    _restoring: bool
     _search_cancel_flag: bool
     _minimap_enabled: bool
     _split_secondary: Any
 
     if TYPE_CHECKING:
+
         def current_tab(self) -> EditorTab | None: ...
         def open_path(self, path: str) -> Any: ...
         def _persist_session(self) -> None: ...
+        def _collect_session(self) -> SessionState: ...
         def apply_theme(self, theme: str, persist: bool = True) -> None: ...
         def show_find(self) -> None: ...
         def show_replace(self) -> None: ...
@@ -107,12 +119,49 @@ class PowerFeaturesMixin:
         self._file_watcher.fileChanged.connect(self._on_disk_file_changed)
         self._autosave_timer = QTimer(self)  # type: ignore[arg-type]
         self._autosave_timer.timeout.connect(self._autosave_tick)
+        self._recovery_dirty = False
+        self._recovery_timer = QTimer(self)  # type: ignore[arg-type]
+        self._recovery_timer.setSingleShot(True)
+        self._recovery_timer.timeout.connect(self._flush_recovery)
+        self._recovery_pulse = QTimer(self)  # type: ignore[arg-type]
+        self._recovery_pulse.timeout.connect(self._flush_recovery_if_dirty)
         self._search_cancel_flag = False
         self._minimap_enabled = bool(session.show_minimap)
         self._split_secondary = None
         self._apply_autosave_interval()
+        self._apply_recovery_interval()
         self._sync_spell_to_editors()
         self.apply_minimap_to_tabs()
+
+    def _hook_editor_recovery(self, editor: VirtualEditor) -> None:
+        if getattr(editor, "_recovery_hooked", False):
+            return
+        editor._recovery_hooked = True
+        editor.textChanged.connect(self._mark_recovery_dirty)
+
+    def _mark_recovery_dirty(self) -> None:
+        if self._restoring:
+            return
+        self._recovery_dirty = True
+        self._recovery_timer.start(1500)
+
+    def _flush_recovery_if_dirty(self) -> None:
+        if self._recovery_dirty:
+            self._flush_recovery()
+
+    def _flush_recovery(self) -> None:
+        self._recovery_dirty = False
+        if self._restoring:
+            return
+        try:
+            payload = session_recovery_payload(self._collect_session())
+            write_recovery(self._settings.recovery_path(), payload)
+        except Exception:
+            _log.debug("recovery snapshot failed", exc_info=True)
+
+    def _apply_recovery_interval(self) -> None:
+        sec = max(2, min(120, int(getattr(self._session, "recovery_interval_sec", 8) or 8)))
+        self._recovery_pulse.start(sec * 1000)
 
     def _apply_autosave_interval(self) -> None:
         ms = autosave_interval_ms(self._session.autosave_interval_sec)
@@ -275,9 +324,7 @@ class PowerFeaturesMixin:
                 return
             needle = w[0]
         hits = find_all_in_line_source(line_at, n_lines, needle, max_hits=200)
-        ed._extra_cursors = [
-            (h.line, h.col, h.col + len(needle)) for h in hits
-        ]
+        ed._extra_cursors = [(h.line, h.col, h.col + len(needle)) for h in hits]
         if hits:
             h0 = hits[0]
             ed._cursor_line = h0.line
@@ -486,7 +533,11 @@ class PowerFeaturesMixin:
         if folder is None:
             return
         if sys.platform == "win32":
-            subprocess.run(["explorer", "/select,", str(path)], check=False)
+            resolved = path.resolve()
+            if resolved.is_file():
+                subprocess.run(["explorer", f"/select,{resolved}"], check=False)
+            else:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
         else:
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
 
@@ -774,9 +825,7 @@ class PowerFeaturesMixin:
 
     def cancel_long_search(self) -> None:
         self._search_cancel_flag = True
-        self._status.set_sync_message(
-            self._tr.t("search.cancelled", "Search cancelled")
-        )
+        self._status.set_sync_message(self._tr.t("search.cancelled", "Search cancelled"))
 
     def is_search_cancelled(self) -> bool:
         return self._search_cancel_flag

@@ -247,6 +247,7 @@ def test_checksum_action_requires_path(qtbot, tmp_path: Path) -> None:
 
 @pytest.mark.ui
 def test_checksum_worker_hashes_file(qtbot, tmp_path: Path) -> None:
+    from magiceditor.core.checksum import DEFAULT_ALGORITHMS
     from magiceditor.ui.checksum_dialog import ChecksumWorker
 
     p = tmp_path / "hash_me.txt"
@@ -265,7 +266,7 @@ def test_checksum_worker_hashes_file(qtbot, tmp_path: Path) -> None:
             break
     assert len(results) == 1
     hashes = results[0]
-    assert set(hashes) == {"md5", "sha1", "sha256"}
+    assert set(hashes) == set(DEFAULT_ALGORITHMS)
     assert hashes["md5"] == "2f3a4fccca6406e35bcf33e92dd93135"
 
 

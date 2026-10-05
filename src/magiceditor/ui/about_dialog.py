@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 from magiceditor.themes.tokens import chrome_tokens
 
 
-def _monogram_pixmap(size: int = 64, accent: str = "#FFD700", bg: str = "#1C1B1B") -> QPixmap:
+def _monogram_pixmap(size: int = 64, accent: str = "#FFD700", bg: str = "#141722") -> QPixmap:
     pm = QPixmap(size, size)
     pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm)
@@ -27,17 +27,25 @@ def _monogram_pixmap(size: int = 64, accent: str = "#FFD700", bg: str = "#1C1B1B
     p.setPen(Qt.PenStyle.NoPen)
     p.drawRoundedRect(0, 0, size, size, size * 0.22, size * 0.22)
     pen = QPen(QColor(accent))
-    pen.setWidthF(max(2.0, size * 0.06))
+    pen.setWidthF(max(2.0, size * 0.08))
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     p.setPen(pen)
     p.setBrush(Qt.BrushStyle.NoBrush)
-    # Stylized "M"
-    m = size * 0.22
-    p.drawLine(int(m), int(size - m), int(m), int(m * 1.1))
-    p.drawLine(int(m), int(m * 1.1), int(size / 2), int(size * 0.55))
-    p.drawLine(int(size / 2), int(size * 0.55), int(size - m), int(m * 1.1))
-    p.drawLine(int(size - m), int(m * 1.1), int(size - m), int(size - m))
+    m_x = size * 0.18
+    m_top = size * 0.24
+    m_bot = size * 0.76
+    m_mid = size * 0.54
+    cx = size / 2.0
+    p.drawLine(int(m_x), int(m_bot), int(m_x), int(m_top))
+    p.drawLine(int(m_x), int(m_top), int(cx), int(m_mid))
+    p.drawLine(int(cx), int(m_mid), int(size - m_x), int(m_top))
+    p.drawLine(int(size - m_x), int(m_top), int(size - m_x), int(m_bot))
+    caret_pen = QPen(QColor("#FFF8E1"))
+    caret_pen.setWidthF(max(1.5, size * 0.06))
+    caret_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    p.setPen(caret_pen)
+    p.drawLine(int(cx), int(m_mid), int(cx), int(m_bot))
     p.end()
     return pm
 
@@ -64,7 +72,7 @@ class AboutDialog(QDialog):
         super().__init__(parent)
         self.setObjectName("aboutDialog")
         self.setModal(True)
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(480)
 
         def t(key: str, default: str) -> str:
             return tr.t(key, default) if tr is not None else default
@@ -89,11 +97,11 @@ class AboutDialog(QDialog):
 
             app_ico = load_app_icon()
             if not app_ico.isNull():
-                logo.setPixmap(app_ico.pixmap(72, 72))
+                logo.setPixmap(app_ico.pixmap(88, 88))
             else:
-                logo.setPixmap(_monogram_pixmap(72, accent, bg))
+                logo.setPixmap(_monogram_pixmap(88, accent, bg))
         except Exception:
-            logo.setPixmap(_monogram_pixmap(72, accent, bg))
+            logo.setPixmap(_monogram_pixmap(88, accent, bg))
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         title = QLabel("MagicEditor", self)
@@ -118,14 +126,17 @@ class AboutDialog(QDialog):
         body = QLabel(
             t(
                 "msg.about_body",
-                "<p>Editor de texto e código moderno e rápido para o dia a dia.</p>"
-                "<p>Piece table · mmap · pré-visualização · temas · i18n</p>",
+                "<p>Editor de texto e código para o dia a dia, feito para arquivos grandes.</p>"
+                "<ul><li>Recuperação do texto não salvo se faltar energia</li>"
+                "<li>Pré-visualização de Markdown, com impressão dessa visualização</li>"
+                "<li>Hashes do arquivo ativo: MD5, SHA-256, SHA-512 e outros</li>"
+                "<li>Piece table e mmap: o arquivo inteiro não entra na memória</li></ul>",
             ),
             self,
         )
         body.setWordWrap(True)
         body.setTextFormat(Qt.TextFormat.RichText)
-        body.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        body.setAlignment(Qt.AlignmentFlag.AlignLeft)
         body.setObjectName("aboutBody")
         body.setOpenExternalLinks(True)
         # Qt rich-text ignores QSS color — wrap HTML so dark themes stay readable.
@@ -136,7 +147,7 @@ class AboutDialog(QDialog):
         tagline = QLabel(
             t(
                 "about.tagline",
-                "Zero travamentos em arquivos gigantes. Design Luminous Void.",
+                "Arquivos grandes sem carregar o arquivo inteiro na memória.",
             ),
             self,
         )

@@ -117,7 +117,17 @@ class DocumentToolsMixin:
         if has_tab:
             acts["action.toggle_read_only"].setChecked(read_only)
         path = getattr(getattr(tab, "document", None), "path", None)
-        acts["action.file_checksum"].setEnabled(path is not None)
+        for key in (
+            "action.file_checksum",
+            "action.hash_md5",
+            "action.hash_sha1",
+            "action.hash_sha256",
+            "action.hash_sha384",
+            "action.hash_sha512",
+            "action.hash_blake2b",
+        ):
+            if key in acts:
+                acts[key].setEnabled(path is not None)
         acts["action.doc_stats"].setEnabled(has_tab)
         acts["action.filter_lines"].setEnabled(has_tab)
         acts["action.log_summary"].setEnabled(has_tab)
@@ -263,7 +273,28 @@ class DocumentToolsMixin:
 
     # --- tools dialogs -----------------------------------------------------
 
-    def show_checksum_dialog(self) -> None:
+    def show_checksum_dialog(self, _checked: bool = False) -> None:
+        self._open_checksum(None)
+
+    def show_hash_md5(self, _checked: bool = False) -> None:
+        self._open_checksum(("md5",))
+
+    def show_hash_sha1(self, _checked: bool = False) -> None:
+        self._open_checksum(("sha1",))
+
+    def show_hash_sha256(self, _checked: bool = False) -> None:
+        self._open_checksum(("sha256",))
+
+    def show_hash_sha384(self, _checked: bool = False) -> None:
+        self._open_checksum(("sha384",))
+
+    def show_hash_sha512(self, _checked: bool = False) -> None:
+        self._open_checksum(("sha512",))
+
+    def show_hash_blake2b(self, _checked: bool = False) -> None:
+        self._open_checksum(("blake2b",))
+
+    def _open_checksum(self, algorithms: tuple[str, ...] | None) -> None:
         tab = self.current_tab()
         if tab is None or tab.document.path is None:
             return
@@ -274,6 +305,7 @@ class DocumentToolsMixin:
             dirty=tab.document.modified,
             tr=self._tr,
             parent=self,  # type: ignore[arg-type]
+            algorithms=algorithms,
         )
         dlg.exec()
 
