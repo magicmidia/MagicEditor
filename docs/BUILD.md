@@ -54,7 +54,7 @@ Optional flags:
 | Flag | Meaning |
 |------|---------|
 | `-Version 0.2.0` | Override version (default: `pyproject.toml`) |
-| `-SkipDeps` | Skip `pip install -e ".[dev]"` |
+| `-SkipDeps` | Skip `pip install`. PyInstaller uses `.venv` when that environment has it, otherwise `python` |
 | `-KeepWork` | Keep `build/` PyInstaller workdir |
 | `-Onedir` | Daily-use folder build (`dist/MagicEditor/`) — faster cold start (K10) |
 

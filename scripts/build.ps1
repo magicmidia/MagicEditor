@@ -75,7 +75,40 @@ function Write-Step([string]$Message) {
     Write-Host "==> $Message" -ForegroundColor Cyan
 }
 
+function Test-PyInstaller([string]$Exe) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $Exe -c "import PyInstaller" *> $null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
+function Resolve-ProjectPython {
+    # Prefer the repo venv after `uv sync` (GitHub). Fall back to python on a
+    # machine whose system interpreter already has PyInstaller.
+    $venv = $null
+    foreach ($candidate in @(
+            (Join-Path $Root ".venv\Scripts\python.exe"),
+            (Join-Path $Root ".venv\bin\python")
+        )) {
+        if (Test-Path -LiteralPath $candidate) {
+            $venv = $candidate
+            break
+        }
+    }
+    if ($venv -and (Test-PyInstaller $venv)) { return $venv }
+    if (Test-PyInstaller "python") { return "python" }
+    if ($venv) { return $venv }
+    return "python"
+}
+
 $ProductVersion = Get-ProductVersion -Override $Version
+$Python = Resolve-ProjectPython
 $DistDir = Join-Path $Root "dist"
 $WorkDir = Join-Path $Root "build\pyinstaller"
 $RootExePath = Join-Path $Root "MagicEditor.exe"
@@ -87,6 +120,7 @@ $IconPath = Join-Path $Root "resources\icons\app\magiceditor.ico"
 Write-Host "MagicEditor build" -ForegroundColor Green
 Write-Host "  root     : $Root"
 Write-Host "  version  : $ProductVersion"
+Write-Host "  python   : $Python"
 Write-Host "  icon     : $(if(Test-Path $IconPath){ $IconPath } else { '(missing)' })"
 Write-Host "  targets  :$(if($Exe){' exe'})$(if($Portable){' portable'})$(if($Msi){' msi'})$(if($Inno){' inno'})"
 Write-Host "  log      : $(Join-Path $Root 'MagicEditor.log')"
@@ -95,7 +129,7 @@ Write-MeLog "INFO" "Build start version=$ProductVersion targets=$(if($Exe){'exe 
 # --- Dependencies -------------------------------------------------------
 if (-not $SkipDeps) {
     Write-Step "Installing package + PyInstaller (editable + dev extras)"
-    python -m pip install -e ".[dev]" -q
+    & $Python -m pip install -e ".[dev]" -q
     if ($LASTEXITCODE -ne 0) {
         Write-MeLog "ERROR" "pip install failed (exit $LASTEXITCODE)"
         throw "pip install failed (exit $LASTEXITCODE)"
@@ -113,7 +147,7 @@ if ($Onedir) {
     Write-Step "PyInstaller onedir -> dist/MagicEditor/ (daily)"
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    & python -m PyInstaller `
+    & $Python -m PyInstaller `
         --noconfirm `
         --clean `
         --distpath $DistDir `
@@ -146,7 +180,7 @@ if ($Exe -or $Portable -or $Msi) {
     # PyInstaller logs to stderr; do not treat that as a terminating error.
     $prevEap = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    & python -m PyInstaller `
+    & $Python -m PyInstaller `
         --noconfirm `
         --clean `
         --distpath $Root `

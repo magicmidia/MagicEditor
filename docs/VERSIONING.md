@@ -40,7 +40,7 @@ That updates the three version files and inserts an empty `## [0.9.9]` section w
 
 ## Publish
 
-GitHub publishes the Windows executable and the Inno installer when a tag is pushed. The workflow is `.github/workflows/release.yml`.
+GitHub publishes the Windows executable and the Inno installer when a tag is pushed. The workflow is `.github/workflows/release.yml`. It installs the lockfile with `uv sync` and then runs `scripts/build.ps1 -Exe -Inno -SkipDeps`. That script uses the repo `.venv` when PyInstaller is installed there, which is what `uv sync --all-extras` provides on the runner.
 
 ```powershell
 git tag v0.9.9
