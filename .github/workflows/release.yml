@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: uv sync --all-extras
+
+      - name: Tag matches semver and changelog
+        run: uv run python scripts/check_release_version.py --tag "${GITHUB_REF_NAME}"
+
+      - name: Ruff
+        run: uv run ruff check src tests
+
+      - name: Tests
+        run: uv run pytest tests/core tests/services tests/preview tests/i18n tests/test_version.py -q
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+  package:
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: uv sync --all-extras
+
+      - name: Build exe and Inno installer
+        run: powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Inno -SkipDeps
+
+      - name: Release notes
+        run: uv run python scripts/changelog_notes.py --out release-notes.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: |
+            dist/MagicEditor.exe
+            dist/MagicEditor-*-win64-setup.exe

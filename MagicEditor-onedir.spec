@@ -23,6 +23,7 @@ a = Analysis(
     datas=[
         (str(root / "locales"), "locales"),
         (str(root / "resources"), "resources"),
+        (str(root / "docs" / "CHANGELOG.md"), "docs"),
         *_qta_datas,
         *_spell_datas,
     ],

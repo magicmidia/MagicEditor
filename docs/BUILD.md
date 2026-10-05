@@ -2,6 +2,8 @@
 
 Release artifacts are written to **`dist/`** and are **gitignored**. Never commit `.exe`, `.msi`, or portable `.zip`.
 
+Pushing a git tag `vX.Y.Z` runs `.github/workflows/release.yml`, which builds the exe and the Inno installer and attaches them to a GitHub Release. The tag has to match `VERSION`. See [VERSIONING.md](VERSIONING.md).
+
 Runtime and build diagnostics go to **`MagicEditor.log`**: repo root in development; **`%LOCALAPPDATA%\MagicEditor\MagicEditor.log`** for an installed EXE (Program Files is not writable). Portable builds still log next to the EXE when that folder is writable. The windowed EXE has no console — open that file if the app exits immediately.
 
 ## Quick commands

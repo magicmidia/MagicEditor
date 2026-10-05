@@ -38,10 +38,13 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
 
+      - name: Semver and changelog
+        run: uv run python scripts/check_release_version.py
+
       - name: Tests (services + ui offscreen)
         run: |
           mkdir -p "$RUNNER_TEMP/pytest-tmp"
-          uv run pytest tests/services tests/ui tests/test_version.py -q
+          uv run pytest tests/services tests/ui tests/preview tests/themes tests/i18n tests/test_version.py -q
         env:
           QT_QPA_PLATFORM: offscreen
           TMPDIR: ${{ runner.temp }}/pytest-tmp

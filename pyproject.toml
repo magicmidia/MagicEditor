@@ -38,7 +38,7 @@ packages = ["src/magiceditor"]
 "src" = ""
 
 [tool.hatch.build.targets.sdist]
-include = ["src/magiceditor", "locales", "resources", "README.md", "AGENTS.md"]
+include = ["src/magiceditor", "locales", "resources", "README.md", "AGENTS.md", "docs/CHANGELOG.md"]
 
 [tool.ruff]
 target-version = "py312"

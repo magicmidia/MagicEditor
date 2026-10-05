@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.9.8 BETA — Recovery, preview, and editor options
+All notable changes to MagicEditor are recorded in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+(`MAJOR.MINOR.PATCH`). Before 1.0.0, a minor release may include breaking
+changes. The BETA label in the app is a channel name and is not part of the
+version. See [Versioning](VERSIONING.md).
+
+## [Unreleased]
+
+## [0.9.8] — 2026-09-30 — Recovery, preview, and editor options
 
 - Unsaved tab text is snapshotted to a recovery file and restored after a power
   loss. The file on disk is not overwritten
@@ -11,8 +21,11 @@
 - Tools menu hashes the active file: MD5, SHA-1, SHA-256, SHA-384, SHA-512,
   BLAKE2b, or all of them
 - Slightly shorter toolbar. About dialog lists what the editor actually does
+- Help → Novidades shows this changelog. Version, installer, and package
+  metadata share one semver. GitHub Actions tests every push and publishes
+  the Windows build when a `vX.Y.Z` tag is pushed
 
-## 0.9.7 BETA — Backspace and typing responsiveness
+## [0.9.7] — Backspace and typing responsiveness
 
 - Backspace and Delete remove a whole character (UTF-8, combining marks, emoji)
   from the raw bytes, so holding the key no longer leaves U+FFFD
@@ -25,7 +38,7 @@
 - With word wrap on, breaking a line at the bottom of the viewport scrolls the
   new row above the status footer instead of painting it underneath
 
-## 0.9.6 BETA — Filter Lines + Log Lens (roadmap §9.5, P1 e P6)
+## [0.9.6] — Filter Lines + Log Lens (roadmap §9.5, P1 e P6)
 
 - Filter Lines (Tools): extract lines matching a pattern (substring/regex, case,
   invert) into a new tab, with original line numbers (`N: text`) — streaming
@@ -39,7 +52,7 @@
   "go to next" per level with wrap-around — works on huge files without
   materializing the document
 
-## 0.9.5 BETA — Text transforms, document tools, editor perf
+## [0.9.5] — Text transforms, document tools, editor perf
 
 - Case conversion on selection: UPPERCASE, lowercase (Ctrl+U), Title, Sentence, Invert
 - Base64 / URL encode-decode on selection; invalid decode warns and never destroys text
@@ -58,7 +71,7 @@
 - New pure core modules: `text_transform`, `checksum`, `text_stats`
   (streaming, split-CRLF-safe) with full unit coverage
 
-## 0.9.4 BETA — Menus, auto-scroll, window raise, huge-file fixes
+## [0.9.4] — Menus, auto-scroll, window raise, huge-file fixes
 
 - Fix invalid application stylesheet: unquoted percent-encoded `url()` (non-ASCII
   install path, e.g. "Repositórios") made Qt reject the whole QSS — menus fell
@@ -81,21 +94,21 @@
 - Tests: worker-based find-in-files cancel wiring, menu style isolation,
   drag auto-scroll coverage, line-index perf budgets
 
-## 0.9.2 BETA — Footer, single instance, spell dictionaries
+## [0.9.2] — Footer, single instance, spell dictionaries
 
 - Last editor line stays above the status footer (viewport pad + scroll range)
 - Opening a file reuses the running editor as a new tab (Settings → General; default on)
 - Bundle `resources/spell/{pt,en,es}.json.gz` so installed EXE recognizes common words and suggestions
 - Installer still restores `.bat`/`.cmd` and clears Explorer FileExts leftovers
 
-## 0.9.1 BETA — Inno Setup installer
+## [0.9.1] — Inno Setup installer
 
 - Inno Setup package: `packaging/inno/MagicEditor.iss` + `scripts/build_inno.ps1`
 - Associations from `file-associations.json` (Open with, optional defaults, context menu)
 - Installer wizard: default language + theme → QSettings
 - Build: `scripts/build.ps1 -Exe -Inno`
 
-## 0.9.1 BETA — Splash, settings depth, tab groups
+## [0.9.1] — Splash, settings depth, tab groups
 
 - Centralized version module (`magiceditor.version`) — **0.9.1 BETA**
 - Modern gradient splash screen (min. 5s, toggle in Settings)
@@ -103,7 +116,7 @@
 - Deep settings (tabs chrome, spell multi-lang, editor extras)
 - Editor context menu, tab groups, compact tabs
 
-## 0.2.0 — Roadmap waves B–I (excellence)
+## [0.2.0] — Roadmap waves B–I (excellence)
 
 ### Power editing (Onda B)
 - Column / block selection (Alt+drag)
@@ -141,5 +154,5 @@
 - WiX MSI: ProgID, OpenWithProgids, context menu, Default Programs, ME_LANG/ME_THEME
 - `packaging/wix/file-associations.json`
 
-## 0.1.0 — MVP
+## [0.1.0] — MVP
 - Piece table, mmap, virtual viewport, themes, i18n, session, find, print/PDF

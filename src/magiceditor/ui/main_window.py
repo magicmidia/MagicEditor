@@ -352,9 +352,7 @@ class MainWindow(
             "action.save_as": t("action.save_as", "Salvar &como…"),
             "action.save_all": t("action.save_all", "Salvar &tudo"),
             "action.print": t("action.print", "&Imprimir…"),
-            "action.print_preview": t(
-                "action.print_preview", "Imprimir &visualização Markdown…"
-            ),
+            "action.print_preview": t("action.print_preview", "Imprimir &visualização Markdown…"),
             "action.export_pdf": t("action.export_pdf", "&Exportar PDF…"),
             "action.undo": t("action.undo", "&Desfazer"),
             "action.redo": t("action.redo", "&Refazer"),
@@ -455,6 +453,7 @@ class MainWindow(
             "action.close_others": t("action.close_others", "Fechar &outras"),
             "action.close_all": t("action.close_all", "Fechar t&odas"),
             "action.exit": t("action.exit", "&Sair"),
+            "action.changelog": t("action.changelog", "&Novidades"),
             "action.about": t("action.about", "&Sobre"),
         }
         for key, label in labels.items():

@@ -28,6 +28,13 @@ def test_onefile_spec_skips_optional_datas() -> None:
     spec = Path("MagicEditor.spec").read_text(encoding="utf-8")
     assert "collect_data_files" not in spec
     assert "upx=False" in spec
+    assert 'docs" / "CHANGELOG.md"' in spec or 'docs / "CHANGELOG.md"' in spec
+
+
+def test_specs_bundle_changelog() -> None:
+    for name in ("MagicEditor.spec", "MagicEditor-onedir.spec"):
+        spec = Path(name).read_text(encoding="utf-8")
+        assert "CHANGELOG.md" in spec
 
 
 def test_build_ps1_has_onedir_flag() -> None:

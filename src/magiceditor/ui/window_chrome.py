@@ -346,6 +346,7 @@ ACTION_ICON_MAP: dict[str, str] = {
     "action.close_others": "close_others",
     "action.close_all": "close_all",
     "action.exit": "exit",
+    "action.changelog": "about",
     "action.about": "about",
 }
 
@@ -516,11 +517,23 @@ def populate_menus(window: Any) -> None:
         window._menu_lang.addAction(action)
         window._lang_actions[lang] = action
 
+    changelog = QAction("Changelog", window)
+    changelog.setObjectName("action.changelog")
+    changelog.triggered.connect(lambda: _open_changelog(window))
+    window._actions["action.changelog"] = changelog
+    window._menu_help.addAction(changelog)
+
     about = QAction("About", window)
     about.setObjectName("action.about")
     about.triggered.connect(window._about)
     window._actions["action.about"] = about
     window._menu_help.addAction(about)
+
+
+def _open_changelog(window: Any) -> None:
+    from magiceditor.ui.changelog_dialog import show_changelog
+
+    show_changelog(window)
 
 
 def populate_toolbar(window: Any) -> None:

@@ -1,52 +1,61 @@
 # MagicEditor
 
-High-performance desktop text/code editor (Python 3.12+, PyQt6): virtual viewport, piece table, and mmap for huge files.
+Editor de texto e código para o desktop (Python 3.12+, PyQt6). A viewport mostra só o trecho visível, o texto fica numa piece table e arquivos grandes são lidos com mmap, sem carregar o arquivo inteiro na memória.
 
-**Architecture (master spec):** [`docs/magiceditor-architecture.md`](docs/magiceditor-architecture.md)  
-**Agent entry:** [`AGENTS.md`](AGENTS.md)  
-**AI setup (skills/MCP/hosts):** [`docs/ai/ai-setup.md`](docs/ai/ai-setup.md)  
-**Dev setup:** [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)  
-**Status:** [`docs/STATUS.md`](docs/STATUS.md)
+**Versão:** 0.9.8 ([Semantic Versioning](docs/VERSIONING.md)). O rótulo BETA na interface é o canal da versão, não faz parte do número.
 
-## Quick start
+[Novidades](docs/CHANGELOG.md) · [Documentação](docs/README.md) · [Arquitetura](docs/magiceditor-architecture.md) · [Releases](https://github.com/magicmidia/MagicEditor/releases)
 
-```bash
+## O que o editor faz
+
+- Abas, sessão e recuperação do texto não salvo se o processo cair (o arquivo no disco não é sobrescrito)
+- Pré-visualização de Markdown, com impressão dessa visualização
+- Hashes do arquivo ativo: MD5, SHA-1, SHA-256, SHA-384, SHA-512 e BLAKE2b
+- Temas, três idiomas (pt_BR, en_US, es_ES) e corretor ortográfico
+- Busca no arquivo e na pasta, impressão e PDF do código-fonte
+
+A lista completa de cada versão está em [docs/CHANGELOG.md](docs/CHANGELOG.md) e, dentro do programa, em **Ajuda → Novidades**.
+
+## Instalar no Windows
+
+O instalador publicado fica em [Releases](https://github.com/magicmidia/MagicEditor/releases): `MagicEditor-<versão>-win64-setup.exe`.
+
+Para gerar o pacote nesta máquina:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Exe -Inno
+```
+
+Os binários saem em `dist/` e não entram no git. Detalhes em [docs/BUILD.md](docs/BUILD.md).
+
+## Rodar a partir do código
+
+```powershell
 uv sync --all-extras
-uv run pytest
 uv run magiceditor
 ```
 
-## Windows packages
+Testes e lint: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-Build artifacts under `dist/` (not committed). See [`docs/BUILD.md`](docs/BUILD.md).
+## Mapa do repositório
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -All
-# → dist/MagicEditor.exe
-# → dist/MagicEditor-Portable-<ver>-win64.zip
-# → dist/MagicEditor-<ver>-win64.msi   (if WiX CLI installed)
-```
+| Caminho | Função |
+|---------|--------|
+| `src/magiceditor/core/` | Buffer, índice de linhas e busca. Sem PyQt |
+| `src/magiceditor/ui/` | Janela, abas e viewport |
+| `src/magiceditor/services/` | Sessão, impressão, recuperação |
+| `src/magiceditor/preview/` | Markdown e HTML |
+| `src/magiceditor/themes/` | Temas |
+| `src/magiceditor/i18n/` | Tradução em tempo real |
+| `locales/` | `pt_BR.json`, `en_US.json`, `es_ES.json` |
+| `resources/themes/` | Folhas QSS |
+| `docs/` | Documentação. Índice em [docs/README.md](docs/README.md) |
+| `.github/workflows/` | Testes em cada push e instalador a cada tag `vX.Y.Z` |
 
-## Layout
+## Versão e entrega
 
-| Path | Role |
-|------|------|
-| `src/magiceditor/core/` | Pure buffer/search engine (no Qt) |
-| `src/magiceditor/ui/` | Windows, tabs, viewport |
-| `src/magiceditor/themes/` | Theme manager |
-| `src/magiceditor/i18n/` | Live translation |
-| `src/magiceditor/preview/` | MD/HTML preview |
-| `src/magiceditor/services/` | Print/PDF, policies |
-| `locales/` | `en_US.json`, `pt_BR.json` |
-| `resources/themes/` | QSS themes |
-| `docs/ai/` | Skills, MCPs, coding standards |
-| `.memory/` | ADRs, patterns, agent inbox |
+Uma versão é `MAJOR.MINOR.PATCH`. Os três lugares que precisam concordar são `src/magiceditor/version.py`, `pyproject.toml` e o instalador Inno. O procedimento de bump, tag e release está em [docs/VERSIONING.md](docs/VERSIONING.md).
 
-## AI-assisted development
+## Licença
 
-- Follow `AGENTS.md` context routing (token-efficient).
-- **Model routing (cost):** Plan/Review → HIGH (`xhigh`/`high`); Build → MEDIUM; Tests → LOW.  
-  Details: [`docs/ai/model-routing.md`](docs/ai/model-routing.md). Grok roles: `me-plan` / `me-build` / `me-verify` / `me-review`.
-- Skills/MCP catalog: `docs/ai/skills-and-tools.md`.
-- Cursor rules: `.cursor/rules/magiceditor.mdc`.
-- Example MCP config: `.mcp.example.json`.
+[MIT](LICENSE). Ícones Qlementine em `resources/icons/qlementine/` têm a licença própria daquela pasta.

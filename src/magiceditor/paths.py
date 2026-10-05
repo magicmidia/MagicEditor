@@ -35,6 +35,22 @@ def repo_root() -> Path:
     return _PACKAGE_DIR.parent
 
 
+def changelog_path() -> Path:
+    """Bundled ``docs/CHANGELOG.md`` (dev tree or frozen ``_MEIPASS``)."""
+    bundled = resource_root() / "docs" / "CHANGELOG.md"
+    if bundled.is_file():
+        return bundled
+    return repo_root() / "docs" / "CHANGELOG.md"
+
+
+def read_changelog() -> str:
+    """Changelog text, or an empty string when the file is missing."""
+    path = changelog_path()
+    if not path.is_file():
+        return ""
+    return path.read_text(encoding="utf-8")
+
+
 def locales_dir() -> Path:
     return resource_root() / "locales"
 

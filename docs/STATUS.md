@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-30  
 **Branch:** `main`  
-**Version:** 0.9.8 BETA
+**Version:** 0.9.8 (semver; channel BETA)
 
 ## Current phase
 **Reengenharia J–N concluída** — Inventário de todos os IDs §11 contra o código enviado: **zero Aceites abertos** (2026-08-17).  

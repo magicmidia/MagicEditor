@@ -51,6 +51,20 @@ See [`docs/ai/ai-setup.md`](ai/ai-setup.md) for skills, MCP, and multi-host conf
 - Optional MCP: copy from `.mcp.example.json` or `.grok/mcp.example.toml`
 - Never commit secrets or host-local `.mcp.json`
 
+## Versioning
+
+Product versions are [Semantic Versioning](VERSIONING.md). One number lives in
+`src/magiceditor/version.py`, `pyproject.toml`, and the Inno script. Record
+the change under `## [Unreleased]` or `## [x.y.z]` in `docs/CHANGELOG.md`.
+
+```powershell
+uv run python scripts/check_release_version.py
+uv run python scripts/bump_version.py 0.9.9
+```
+
+A git tag `vX.Y.Z` pushed to GitHub builds the Windows installer and opens the
+release. See [VERSIONING.md](VERSIONING.md).
+
 ## Ship Windows packages (each delivery)
 
 Artifacts go to **`dist/`** (gitignored). Full guide: [`docs/BUILD.md`](BUILD.md).
