@@ -41,9 +41,7 @@ def to_sentence_case(text: str) -> str:
     """
     lowered = text.lower()
     parts = _SENTENCE_SPLIT.split(lowered)
-    return "".join(
-        part if i % 2 else _uppercase_first_alpha(part) for i, part in enumerate(parts)
-    )
+    return "".join(part if i % 2 else _uppercase_first_alpha(part) for i, part in enumerate(parts))
 
 
 def invert_case(text: str) -> str:

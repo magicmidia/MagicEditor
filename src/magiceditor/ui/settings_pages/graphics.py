@@ -11,9 +11,7 @@ PAGE_ID = "graphics"
 
 
 class GraphicsPage(QWidget):
-    def __init__(
-        self, state: SessionState, t: Translate, parent: QWidget | None = None
-    ) -> None:
+    def __init__(self, state: SessionState, t: Translate, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         page = QWidget()
         lay = QVBoxLayout(page)

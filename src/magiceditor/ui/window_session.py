@@ -255,7 +255,6 @@ def plan_session_restore(
     return files, drafts
 
 
-
 def collect_tab_groups(groups: Iterable[Any], member_keys: dict[int, str]) -> list[dict[str, Any]]:
     """Serialize TabGroup-like objects; members become path-or-title keys.
 
@@ -298,11 +297,7 @@ def plan_group_restore(
         members_raw = item.get("members")
         if not name or not isinstance(members_raw, list):
             continue
-        indices = [
-            key_to_index[m]
-            for m in members_raw
-            if isinstance(m, str) and m in key_to_index
-        ]
+        indices = [key_to_index[m] for m in members_raw if isinstance(m, str) and m in key_to_index]
         if not indices:
             continue
         ops.append(

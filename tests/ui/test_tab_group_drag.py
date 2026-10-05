@@ -166,9 +166,7 @@ def test_drop_filter_adds_dragged_tab_to_group(qapp) -> None:
             Qt.KeyboardModifier.NoModifier,
         )
         QApplication.sendEvent(bar, move)
-    QTest.mouseRelease(
-        bar, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, target_pos
-    )
+    QTest.mouseRelease(bar, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, target_pos)
     final = tabs.indexOf(dragged)
     assert final >= 0
     assert tabs.group_of_index(final) is g

@@ -165,9 +165,7 @@ def test_tab_groups_settings_tolerant_load(tmp_path: Path) -> None:
         '[{"name":"","members":["x"]},{"name":"Ok","members":"nope"},42]',
     )
     loaded = s.load()
-    assert loaded.tab_groups == [
-        {"name": "Ok", "color": "", "collapsed": False, "members": []}
-    ]
+    assert loaded.tab_groups == [{"name": "Ok", "color": "", "collapsed": False, "members": []}]
 
 
 def test_collect_tab_groups_drops_empty(qapp) -> None:

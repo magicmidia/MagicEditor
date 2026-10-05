@@ -81,9 +81,7 @@ class _Act:
 
 
 def test_palette_and_goto_file_list() -> None:
-    entries = palette_entries_from_actions(
-        {"action.save": _Act("&Save", "Ctrl+S")}
-    )
+    entries = palette_entries_from_actions({"action.save": _Act("&Save", "Ctrl+S")})
     assert entries == [("action.save", "Save", "Ctrl+S")]
     files = goto_anything_file_list(["a.txt", "b.txt"], ["b.txt", "c.txt"])
     assert files == ["a.txt", "b.txt", "c.txt"]

@@ -69,7 +69,6 @@ def test_tokenize_log_all_levels_and_no_false_positive() -> None:
     assert tokenize_line("information processed", "log") == []
 
 
-
 def test_tokenize_does_not_allocate_claimed_and_caches_rules() -> None:
     from magiceditor.core.syntax import rules as rules_mod
 

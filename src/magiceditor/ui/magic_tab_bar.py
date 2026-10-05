@@ -69,7 +69,7 @@ class MagicTabBar(QTabBar):
             idx = self.tabAt(event.position().toPoint())
             if idx >= 0:
                 parent = self.parentWidget()
-                if hasattr(parent, '_middle_click_close') and parent._middle_click_close:
+                if hasattr(parent, "_middle_click_close") and parent._middle_click_close:
                     parent.tabCloseRequested.emit(idx)
                     event.accept()
                     return
@@ -137,4 +137,3 @@ class MagicTabBar(QTabBar):
         return 0 <= pos.y() <= self.height() and (
             pos.x() < 0 or pos.x() >= self.width() or self.tabAt(pos) < 0
         )
-
