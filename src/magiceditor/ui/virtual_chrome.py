@@ -101,7 +101,10 @@ def update_brace_match(editor) -> None:
     editor._brace_pair_line = None
     if not getattr(editor, "_brace_match_enabled", True):
         return
-    line = editor._cursor_line
+    line = int(editor._cursor_line)
+    # A debounced match can run after a replace or close left the caret past the end.
+    if line < 0 or line >= editor._line_count():
+        return
     text = editor._doc.line_text(line)
     bpos = brace_at_or_near(text, editor._cursor_col)
     if bpos is None:
