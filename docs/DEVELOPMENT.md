@@ -63,7 +63,8 @@ uv run python scripts/bump_version.py 0.9.9
 ```
 
 A git tag `vX.Y.Z` pushed to GitHub builds the Windows installer and opens the
-release. See [VERSIONING.md](VERSIONING.md).
+release. See [VERSIONING.md](VERSIONING.md). Ubuntu runners install the PyQt
+libraries in `scripts/ci_qt_libs.sh` before pytest.
 
 ## Ship Windows packages (each delivery)
 

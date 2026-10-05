@@ -27,6 +27,9 @@ jobs:
       - name: Install
         run: uv sync --all-extras
 
+      - name: Qt system libraries
+        run: bash scripts/ci_qt_libs.sh
+
       - name: Tag matches semver and changelog
         run: uv run python scripts/check_release_version.py --tag "${GITHUB_REF_NAME}"
 
