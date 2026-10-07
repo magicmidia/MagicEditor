@@ -61,11 +61,7 @@ def apply_structural_edit(
     # A one-byte margin splits CRLF into a lone CR plus a following LF.
     # Pull the window back over that CR, and forward over a following LF.
     window_start = touch
-    if (
-        touch > 0
-        and table.get_text(touch, 1) == b"\n"
-        and table.get_text(touch - 1, 1) == b"\r"
-    ):
+    if touch > 0 and table.get_text(touch, 1) == b"\n" and table.get_text(touch - 1, 1) == b"\r":
         window_start = touch - 1
     line0 = index.offset_to_line(window_start)
     old_after = old_offset + old_deleted
