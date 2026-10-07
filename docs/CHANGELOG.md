@@ -10,6 +10,36 @@ version. See [Versioning](VERSIONING.md).
 
 ## [Unreleased]
 
+## [0.9.9] — 2026-10-07 — Backspace, safer opens, and wrap scroll
+
+- Backspace on a byte sequence the document encoding rejects deletes that whole span. Holding the key no longer leaves a new U+FFFD, and it no longer gets stuck on that span.
+- Markdown and HTML preview escape attribute values, so a quote in a title
+  cannot inject a style or an event handler. Links that use `javascript:`,
+  a protocol-relative URL, or an HTML entity for the colon are dropped.
+  The preview and markdown print do not fetch remote or local resources.
+- Find in folder and Quick Open skip a symlink whose target is outside the
+  opened folder. Directory links are not followed.
+- Tab on a shorter line, after Up or Down left the caret past the end of
+  that line, no longer raises IndexError.
+- User find patterns reject a quantified group that itself contains a
+  quantifier, such as `(a+)+`.
+- The crash-recovery file is replaced through a unique temp file. A planted
+  `recovery.json.tmp` link is not opened for writing.
+- Find in folder, Quick Open, and opening a path from the file dialog or
+  from another window of the same user only read an existing regular file.
+  A symlink whose target is outside the opened folder stays excluded, and a
+  directory or other non-regular path is refused before any content read.
+- An edit that does not cover a byte span leaves those bytes unchanged.
+  Insert, delete, replace, joining or splitting lines, and find-replace next
+  to a sequence the encoding rejects no longer store a new U+FFFD over it.
+- Inserting or deleting a newline (LF, CR, or CRLF) updates line boundaries
+  to match a full rescan, including the lines before the edit and the tail,
+  without copying the suffix on every edit.
+- With word wrap on, a line that is not the last line and is taller than the
+  viewport scrolls by display row, so a clipped continuation and its caret
+  stay above the status footer. Moving to a line after that tall line still
+  brings it into view.
+
 ## [0.9.8] — 2026-09-30 — Recovery, preview, and editor options
 
 - Unsaved tab text is snapshotted to a recovery file and restored after a power

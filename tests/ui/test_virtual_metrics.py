@@ -198,6 +198,46 @@ def test_ensure_visible_keeps_wrapped_caret_already_on_screen() -> None:
     assert ed._vsb.val == 0
 
 
+def test_non_last_tall_line_scrolls_by_display_row() -> None:
+    """A wrapped line that is not the last one still scrolls by display row."""
+    ed = _WrapEditor([40, 1, 1])
+    _wrapped_update(ed)
+    visible = visible_line_slots(ed)
+    assert visible == 10
+    # skip 0..30 on line 0, then the two short lines. Flush is line 1:
+    # skip 30 still leaves 12 rows, which is past the viewport.
+    assert ed._vsb.hi == 31
+    ed._vsb.setValue(0)
+    assert scroll_origin(ed) == (0, 0)
+    ed._vsb.setValue(30)
+    assert scroll_origin(ed) == (0, 30)
+    ed._vsb.setValue(31)
+    assert scroll_origin(ed) == (1, 0)
+
+    def line_text(i: int) -> str:
+        ed._call_line = i
+        if i == 0:
+            return "x" * 40
+        return "x"
+
+    ed._doc.line_text = line_text  # type: ignore[method-assign]
+    ed._cursor_col = 25
+    ed._vsb.setValue(0)
+    ensure_visible(ed, 0)
+    # caret row 25 sits on the last usable slot (skip 16, screen row 9).
+    assert ed._vsb.val == 16
+    assert scroll_origin(ed) == (0, 16)
+
+    # Lines after the tall one use the same scroll index. Value 1 is still
+    # row 1 of line 0; line 1 is only painted at 31, and line 2 is the next row.
+    ed._cursor_col = 0
+    for line in (1, 2):
+        ed._vsb.setValue(0)
+        ensure_visible(ed, line)
+        assert ed._vsb.val == 31
+        assert scroll_origin(ed) == (1, 0)
+
+
 def test_giant_last_line_reachable_to_final_row() -> None:
     ed = _WrapEditor([1] * 4 + [40])
     _wrapped_update(ed)

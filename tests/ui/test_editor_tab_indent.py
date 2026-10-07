@@ -26,6 +26,20 @@ def test_preview_is_lazy_until_toggled(qtbot) -> None:
 
 
 @pytest.mark.ui
+def test_tab_past_end_of_shorter_line_does_not_crash(qtbot) -> None:
+    """Up/Down keeps a sticky column. Tab must not index past that line."""
+    doc = Document.from_text("longline\nxy")
+    ed = VirtualEditor(doc)
+    qtbot.addWidget(ed)
+    ed.show()
+    ed.setFocus()
+    ed._cursor_line = 1
+    ed._cursor_col = 40
+    qtbot.keyClick(ed, Qt.Key.Key_Tab)
+    assert doc.text().splitlines() == ["longline", "xy    "]
+
+
+@pytest.mark.ui
 def test_tab_does_not_cycle_focus_and_inserts_indent(qtbot) -> None:
     doc = Document.from_text("hi")
     ed = VirtualEditor(doc)

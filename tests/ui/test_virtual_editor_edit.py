@@ -215,6 +215,68 @@ def test_backspace_utf16_single_line(qtbot) -> None:
     assert "�" not in doc.text()
 
 
+def _wipe_with_backspace(ed, doc) -> None:
+    """Holding backspace must shrink the buffer and never mint a new U+FFFD."""
+    previous = len(doc.buffer)
+    shown = doc.line_text(0)
+    ed.goto_line(0, len(shown))
+    for _ in range(previous + 2):
+        if len(doc.buffer) == 0:
+            break
+        before_n = len(doc.buffer)
+        before_bad = doc.line_text(0).count("\ufffd")
+        ed._backspace()
+        assert len(doc.buffer) < before_n
+        assert doc.line_text(0).count("\ufffd") <= before_bad
+    assert doc.buffer.get_text() == b""
+
+
+@pytest.mark.ui
+def test_backspace_truncated_emoji_does_not_regenerate_replacement(qtbot) -> None:
+    raw = b"\xf0\x9f\x98X"
+    doc = Document(buffer=PieceTable(raw), path=None, encoding="utf-8", eol="LF", title="t")
+    ed = VirtualEditor(doc)
+    qtbot.addWidget(ed)
+    ed.goto_line(0, 1)
+    ed._backspace()
+    assert doc.buffer.get_text() == b"X"
+    assert "\ufffd" not in doc.line_text(0)
+
+
+@pytest.mark.ui
+def test_backspace_cp1252_opened_as_utf8_does_not_stick(qtbot) -> None:
+    raw = "Não é uma ação rápida".encode("cp1252")
+    doc = Document(buffer=PieceTable(raw), path=None, encoding="utf-8", eol="LF", title="t")
+    ed = VirtualEditor(doc)
+    qtbot.addWidget(ed)
+    _wipe_with_backspace(ed, doc)
+
+
+@pytest.mark.ui
+def test_duplicate_and_replace_keep_rejected_bytes(qtbot) -> None:
+    doc = Document(buffer=PieceTable(b"a\xff"), path=None, encoding="utf-8", eol="LF", title="t")
+    ed = VirtualEditor(doc)
+    qtbot.addWidget(ed)
+    ed.duplicate_line()
+    raw = doc.buffer.get_text()
+    assert raw.count(b"\xff") == 2
+    assert b"\xef\xbf\xbd" not in raw
+
+    neighbor = Document(
+        buffer=PieceTable(b"a\xffYZ"),
+        path=None,
+        encoding="utf-8",
+        eol="LF",
+        title="t",
+    )
+    ed2 = VirtualEditor(neighbor)
+    qtbot.addWidget(ed2)
+    ed2._replace_char_span(0, 2, 4, "Q", emit=False)
+    got = neighbor.buffer.get_text()
+    assert got == b"a\xffQ"
+    assert b"\xef\xbf\xbd" not in got
+
+
 @pytest.mark.ui
 def test_set_word_wrap_recomputes_scrollbar_range(qtbot) -> None:
     """Regression: set_word_wrap only set the flag — the scrollbar range

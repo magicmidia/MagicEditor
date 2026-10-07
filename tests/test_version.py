@@ -24,19 +24,19 @@ from magiceditor.version import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_version_is_098_beta() -> None:
-    assert VERSION == "0.9.8"
+def test_version_is_099_beta() -> None:
+    assert VERSION == "0.9.9"
     assert STAGE.upper() == "BETA"
-    assert version_display() == "0.9.8 BETA"
-    assert version_label() == "v0.9.8 BETA"
-    assert "0.9.8" in about_version_text()
-    assert pep440().startswith("0.9.8")
+    assert version_display() == "0.9.9 BETA"
+    assert version_label() == "v0.9.9 BETA"
+    assert "0.9.9" in about_version_text()
+    assert pep440().startswith("0.9.9")
 
 
 def test_package_dunder_version() -> None:
     import magiceditor
 
-    assert magiceditor.__version__ == "0.9.8"
+    assert magiceditor.__version__ == "0.9.9"
 
 
 def test_semver_parse_and_release_tag() -> None:

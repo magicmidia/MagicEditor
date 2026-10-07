@@ -8,11 +8,11 @@ including an empty list so a closed session is not resurrected from a stale regi
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from magiceditor.services.atomic_io import write_bytes_atomic
 from magiceditor.services.session_state import SessionState, normalize_path
 
 RECOVERY_VERSION = 1
@@ -150,15 +150,13 @@ def session_recovery_payload(state: SessionState) -> dict[str, Any]:
 
 
 def write_recovery(path: Path, payload: dict[str, Any]) -> None:
-    """Atomic replace: temp file, flush, fsync, then os.replace."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    data = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    with tmp.open("w", encoding="utf-8", newline="\n") as fh:
-        fh.write(data)
-        fh.flush()
-        os.fsync(fh.fileno())
-    os.replace(tmp, path)
+    """Atomic replace. The temp name comes from ``mkstemp``, not a fixed ``.tmp``.
+
+    A predictable ``recovery.json.tmp`` can be planted as a link; opening it
+    for write would follow that link. ``mkstemp`` creates a new file instead.
+    """
+    data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    write_bytes_atomic(path, data)
 
 
 def read_recovery(path: Path) -> dict[str, Any] | None:

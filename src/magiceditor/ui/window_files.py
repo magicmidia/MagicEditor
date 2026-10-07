@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
+
+from magiceditor.services.fs_scope import regular_file
 
 
 def resolve_open_target(path: str | Path) -> tuple[str, Path]:
@@ -28,13 +31,18 @@ def apply_save_prefs(text: str, *, trim: bool, final_nl: bool) -> str:
 
 
 def same_open_path(existing: Path | None, target: Path) -> bool:
-    """True when an already-open document is the same filesystem path."""
+    """True when both paths are the same regular file.
+
+    A directory or other non-regular path does not match, and this does not
+    call ``Path.resolve`` (that opens the target).
+    """
     if existing is None:
         return False
-    try:
-        return existing.resolve() == target.resolve()
-    except OSError:
-        return existing == target
+    left = regular_file(existing)
+    right = regular_file(target)
+    if left is None or right is None:
+        return False
+    return os.path.normcase(left) == os.path.normcase(right)
 
 
 def index_of_open_path(open_paths: list[Path | None], target: Path) -> int | None:

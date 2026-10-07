@@ -5,10 +5,11 @@ For huge_mode documents, prefer operating on a line range only.
 
 from __future__ import annotations
 
+from collections import defaultdict, deque
 from collections.abc import Callable
 
 from magiceditor.core.document import Document
-from magiceditor.core.line_ops import lines_to_text, text_to_lines
+from magiceditor.core.line_ops import text_to_lines
 
 LineTransform = Callable[[list[str]], list[str]]
 
@@ -65,21 +66,77 @@ def replace_line_range(doc: Document, start: int, end: int, new_lines: list[str]
 
     restore_nl = end >= total and _ends_with_newline(doc)
     eol = _eol_str(doc)
-    if new_lines:
-        body = lines_to_text(new_lines, eol)
-        if (end < total or restore_nl) and not body.endswith(("\n", "\r")):
-            body = body + eol
-    else:
-        body = eol if restore_nl else ""
-
     enc = _enc(doc)
-    data = body.encode(enc, errors="replace")
+    data = _replacement_bytes(
+        doc, start, end, total, new_lines, eol=eol, enc=enc, restore_nl=restore_nl
+    )
     length = byte_end - byte_start
     if length > 0:
         doc.delete_bytes(byte_start, length)
     if data:
         doc.insert_bytes(byte_start, data)
     doc.invalidate_line_index()
+
+
+def _line_raw(doc: Document, line: int) -> tuple[bytes, str]:
+    idx = doc.line_index()
+    start = idx.line_start(line)
+    length = idx.line_length(line)
+    raw = doc.buffer.get_text(start, length)
+    return raw, doc.line_text(line).rstrip("\r\n")
+
+
+def _replacement_bytes(
+    doc: Document,
+    start: int,
+    end: int,
+    total: int,
+    new_lines: list[str],
+    *,
+    eol: str,
+    enc: str,
+    restore_nl: bool,
+) -> bytes:
+    """Encode ``new_lines`` without rewriting bytes the edit did not change.
+
+    A join or a permutation reuses each line's original bytes. Only a line
+    whose text is new is encoded, so a rejected sequence stays as stored.
+    """
+    eol_b = eol.encode(enc)
+    if not new_lines:
+        return eol_b if restore_nl else b""
+
+    raws: list[bytes] = []
+    texts: list[str] = []
+    if start < total:
+        for line in range(start, end):
+            raw, text = _line_raw(doc, line)
+            raws.append(raw)
+            texts.append(text)
+    if texts and texts[-1] == "" and end >= total and _ends_with_newline(doc):
+        texts.pop()
+        raws.pop()
+
+    if len(new_lines) == 1 and new_lines[0] == " ".join(texts):
+        body = " ".encode(enc).join(raws)
+    elif len(new_lines) == 1 and new_lines[0] == "".join(texts):
+        body = b"".join(raws)
+    else:
+        pool: dict[str, deque[bytes]] = defaultdict(deque)
+        for raw, text in zip(raws, texts, strict=False):
+            pool[text].append(raw)
+        parts: list[bytes] = []
+        for line in new_lines:
+            bucket = pool.get(line)
+            if bucket:
+                parts.append(bucket.popleft())
+            else:
+                parts.append(line.encode(enc, errors="replace"))
+        body = eol_b.join(parts)
+
+    if (end < total or restore_nl) and not body.endswith((b"\n", b"\r")):
+        body += eol_b
+    return body
 
 
 def transform_line_range(

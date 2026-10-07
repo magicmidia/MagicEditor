@@ -40,8 +40,15 @@ def printable_css() -> str:
     """
 
 
+class _OfflineDocument(QTextDocument):
+    """Printed HTML must not fetch images or stylesheets."""
+
+    def loadResource(self, resource_type: int, name: object) -> None:
+        del resource_type, name
+
+
 def _document_from_plain(text: str, title: str = "") -> QTextDocument:
-    doc = QTextDocument()
+    doc = _OfflineDocument()
     body = text
     truncated = False
     if len(body) > _MAX_PRINT_CHARS:
@@ -156,7 +163,7 @@ def print_rich_html(
     """
     printer = QPrinter(QPrinter.PrinterMode.ScreenResolution)
     _configure_printer(printer)
-    doc = QTextDocument()
+    doc = _OfflineDocument()
     body = html or ""
     if len(body) > _MAX_PRINT_CHARS:
         body = body[:_MAX_PRINT_CHARS] + "<p>[… truncado para impressão …]</p>"

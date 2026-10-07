@@ -8,6 +8,7 @@ from typing import Any
 
 from magiceditor.core.encoding import EncodingName, Eol, normalize_newlines
 from magiceditor.core.line_index import LineIndex
+from magiceditor.core.line_index_splice import note_delete, note_insert
 from magiceditor.core.piece_table import PieceTable
 from magiceditor.core.syntax_limits import FULL_TEXT_MAX_BYTES
 
@@ -94,26 +95,18 @@ class Document:
         if not data:
             return
         idx = self.line_index()
-        line = idx.offset_to_line(min(offset, len(self.buffer)))
         self.buffer.insert(offset, data)
         self.modified = True
-        if b"\n" not in data and b"\r" not in data:
-            idx.apply_insert_plain(offset, len(data))
-        else:
-            idx.rebuild_suffix(self.buffer, line)
+        note_insert(idx, self.buffer, offset, data)
 
     def delete_bytes(self, offset: int, length: int) -> None:
         if length <= 0:
             return
         idx = self.line_index()
         deleted = self.buffer.get_text(offset, length)
-        line = idx.offset_to_line(min(offset, len(self.buffer)))
         self.buffer.delete(offset, length)
         self.modified = True
-        if b"\n" not in deleted and b"\r" not in deleted:
-            idx.apply_delete_plain(offset, length)
-        else:
-            idx.rebuild_suffix(self.buffer, line)
+        note_delete(idx, self.buffer, offset, deleted)
 
     def display_name(self) -> str:
         mark = " *" if self.modified else ""

@@ -220,16 +220,19 @@ def delete_forward(editor) -> None:
 
 
 def duplicate_current_line(editor) -> None:
-    text = editor._doc.line_text(editor._cursor_line)
-    enc = editor._doc.encoding if editor._doc.encoding != "utf-8-sig" else "utf-8"
+    doc = editor._doc
+    idx = doc.line_index()
     line = editor._cursor_line
+    raw = doc.buffer.get_text(idx.line_start(line), idx.line_length(line))
+    enc = doc.encoding if doc.encoding != "utf-8-sig" else "utf-8"
+    newline = "\n".encode(enc)
     total = editor._line_count()
     if line < total - 1:
-        off = editor._doc.line_index().line_start(line + 1)
-        data = (text + "\n").encode(enc, errors="replace")
+        off = idx.line_start(line + 1)
+        data = raw + newline
     else:
-        off = len(editor._doc.buffer)
-        data = ("\n" + text).encode(enc, errors="replace")
+        off = len(doc.buffer)
+        data = newline + raw
     editor._insert_bytes_tracked(off, data)
     editor._clear_selection()
     editor._emit_edit()

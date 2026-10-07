@@ -29,15 +29,21 @@ def update_scrollbars(editor) -> None:
     lines = line_count(editor)
     visible = visible_line_slots(editor)
     if editor._word_wrap:
-        max_scroll = _wrapped_max_scroll(editor, lines, visible)
-        # Sub-row scroll: when the last line alone wraps to more display rows
-        # than the viewport, its tail rows are unreachable at ``lines - 1``.
-        try:
-            tail_rows = len(editor._wrap_display_rows(editor._doc.line_text(lines - 1)))
-        except IndexError:
-            tail_rows = 1
-        max_scroll += max(0, tail_rows - visible)
+        tall = _tall_nonlast(editor, lines, visible)
+        editor._wrap_tall = tall
+        if tall:
+            max_scroll = _flush_value(editor, lines, visible, tall)
+        else:
+            max_scroll = _wrapped_max_scroll(editor, lines, visible)
+            # Sub-row scroll: when the last line alone wraps to more display rows
+            # than the viewport, its tail rows are unreachable at ``lines - 1``.
+            try:
+                tail_rows = len(editor._wrap_display_rows(editor._doc.line_text(lines - 1)))
+            except IndexError:
+                tail_rows = 1
+            max_scroll += max(0, tail_rows - visible)
     else:
+        editor._wrap_tall = []
         # Flush: last document line occupies the last visible row (no empty pad).
         max_scroll = max(0, lines - visible)
     editor.verticalScrollBar().setRange(0, max_scroll)
@@ -72,19 +78,97 @@ def _wrapped_max_scroll(editor, lines: int, visible: int) -> int:
     return min(v + 1, max(0, lines - 1))
 
 
+def _tall_nonlast(editor, lines: int, visible: int) -> list[tuple[int, int]]:
+    """Non-last lines with more display rows than the viewport: ``(line, extra)``.
+
+    ``extra`` is ``rows - visible``, the sub-row slots inserted before the next
+    line. A line whose byte length is at most ``visible`` cannot wrap that far
+    (each row holds at least one byte), so it is not measured. Test fakes have
+    no ``line_length`` and are measured directly.
+    """
+    idx = editor._doc.line_index()
+    length_of = getattr(idx, "line_length", None)
+    tall: list[tuple[int, int]] = []
+    for line in range(max(0, lines - 1)):
+        if callable(length_of):
+            try:
+                if length_of(line) <= visible:
+                    continue
+            except (IndexError, TypeError):
+                pass
+        extra = _row_count(editor, line) - visible
+        if extra > 0:
+            tall.append((line, extra))
+    return tall
+
+
+def _index_of(line: int, skip: int, tall: list[tuple[int, int]]) -> int:
+    extra = 0
+    for t_line, slots in tall:
+        if t_line >= line:
+            break
+        extra += slots
+    return line + extra + skip
+
+
+def _origin_at(value: int, last: int, tall: list[tuple[int, int]]) -> tuple[int, int]:
+    if value < 0:
+        return 0, 0
+    remaining = value
+    prev = 0
+    for t_line, extra in tall:
+        gap = t_line - prev
+        if remaining < gap:
+            return prev + remaining, 0
+        remaining -= gap
+        width = extra + 1
+        if remaining < width:
+            return t_line, remaining
+        remaining -= width
+        prev = t_line + 1
+    if remaining <= last - prev:
+        return prev + remaining, 0
+    return last, remaining - (last - prev)
+
+
+def _flush_value(editor, lines: int, visible: int, tall: list[tuple[int, int]]) -> int:
+    """Smallest scroll index whose remaining display rows fit in the viewport."""
+    acc = 0
+    flush_line = 0
+    flush_skip = 0
+    for line in range(lines - 1, -1, -1):
+        rows = _row_count(editor, line)
+        needed = rows + acc - visible
+        max_skip = max(0, rows - visible)
+        if needed <= max_skip:
+            flush_line = line
+            flush_skip = max(0, needed)
+            acc += rows
+            continue
+        break
+    return _index_of(flush_line, flush_skip, tall)
+
+
 def scroll_origin(editor) -> tuple[int, int]:
     """First painted ``(doc_line, skipped_rows)`` for the current scroll value.
 
-    Normally ``(scrollbar value, 0)``. In wrap mode values past ``lines - 1``
-    scroll *inside* the last line: ``(lines - 1, value - (lines - 1))``.
+    With word wrap off, that is ``(scrollbar value, 0)``. With wrap on and no
+    non-last line taller than the viewport, values past ``lines - 1`` scroll
+    inside the last line. A taller line earlier in the file gets the same
+    sub-row slots before the lines that follow it.
     """
     value = editor.verticalScrollBar().value()
     if not editor._word_wrap:
         return value, 0
     last = line_count(editor) - 1
-    if value > last:
-        return last, value - last
-    return value, 0
+    tall = getattr(editor, "_wrap_tall", None)
+    if tall is None:
+        tall = _tall_nonlast(editor, last + 1, visible_line_slots(editor))
+    if not tall:
+        if value > last:
+            return last, value - last
+        return value, 0
+    return _origin_at(value, last, tall)
 
 
 def text_area_width(editor) -> int:
@@ -175,7 +259,12 @@ def ensure_visible(editor, line: int) -> None:
     if screen is not None and 0 <= screen < usable:
         return
     if caret_row >= usable:
-        scrollbar.setValue(min(line, _scroll_maximum(scrollbar)))
+        # Put the caret on the last usable slot of this line, including when
+        # the line is not the last line of the document.
+        skip = caret_row - usable + 1
+        tall = getattr(editor, "_wrap_tall", None) or []
+        target = _index_of(line, skip, tall)
+        scrollbar.setValue(max(0, min(target, _scroll_maximum(scrollbar))))
         return
     remaining = usable - 1 - caret_row
     probe = line
@@ -187,4 +276,9 @@ def ensure_visible(editor, line: int) -> None:
         probe -= 1
     if screen is not None and screen >= usable:
         probe = max(probe, first)
-    scrollbar.setValue(max(0, min(probe, _scroll_maximum(scrollbar))))
+    # probe is a document line. After a non-last line taller than the
+    # viewport the scrollbar counts those extra rows, so the same number
+    # is still inside the tall line.
+    tall = getattr(editor, "_wrap_tall", None) or []
+    target = _index_of(probe, 0, tall)
+    scrollbar.setValue(max(0, min(target, _scroll_maximum(scrollbar))))

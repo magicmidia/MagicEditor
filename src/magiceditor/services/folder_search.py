@@ -10,6 +10,7 @@ from pathlib import Path
 
 from magiceditor.core.safe_regex import compile_user_pattern
 from magiceditor.core.text_match import PatternError
+from magiceditor.services.fs_scope import directory_final, stays_inside
 
 # Skip obvious binaries / huge blobs
 _SKIP_SUFFIXES = {
@@ -73,7 +74,7 @@ def search_folder(
     if not needle:
         return []
     root = Path(root)
-    if not root.is_dir():
+    if directory_final(root) is None:
         return []
 
     try:
@@ -187,12 +188,20 @@ def _iter_files(root: Path) -> Iterator[Path]:
         "dist",
         "build",
     }
-    walker = root.walk() if hasattr(root, "walk") else os.walk(root)
+    if directory_final(root) is None:
+        return
+    # Do not descend into directory links. File links are checked below.
+    if hasattr(root, "walk"):
+        walker = root.walk(follow_symlinks=False)
+    else:
+        walker = os.walk(root, followlinks=False)
     for dirpath, dirnames, filenames in walker:
         dirnames[:] = [d for d in dirnames if d not in skip_dirs and not d.startswith(".")]
         base = Path(dirpath)
         for name in filenames:
             p = base / name
             if p.suffix.lower() in _SKIP_SUFFIXES:
+                continue
+            if not stays_inside(p, root):
                 continue
             yield p

@@ -1,8 +1,8 @@
 # Project Status
 
-**Updated:** 2026-09-30  
+**Updated:** 2026-10-07  
 **Branch:** `main`  
-**Version:** 0.9.8 (semver; channel BETA)
+**Version:** 0.9.9 (semver; channel BETA)
 
 ## Current phase
 **Reengenharia J–N concluída** — Inventário de todos os IDs §11 contra o código enviado: **zero Aceites abertos** (2026-08-17).  

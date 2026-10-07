@@ -25,8 +25,21 @@ def test_sanitize_blocks_javascript_href() -> None:
     assert is_safe_href("javascript:alert(1)") is False
     assert is_safe_href("file:///etc/passwd") is False
     assert is_safe_href("https://example.com") is True
+    assert is_safe_href("//evil.example/a") is False
+    assert is_safe_href("javascript&#58;alert(1)") is False
     out = sanitize_html('<a href="javascript:alert(1)">x</a>')
     assert "javascript" not in out.lower()
+    entity = sanitize_html('<a href="javascript&#58;alert(1)">x</a>')
+    assert "javascript" not in entity.lower()
+    assert "alert" not in entity.lower()
+
+
+def test_attribute_quote_cannot_inject_markup() -> None:
+    html = '<a href="https://example.com" title=\'foo" style="background:url(https://evil)\'>x</a>'
+    out = sanitize_html(html)
+    assert ' style="' not in out
+    assert "https://example.com" in out
+    assert out.lower().count("<a") == 1
 
 
 def test_render_markdown_strips_raw_html_script() -> None:

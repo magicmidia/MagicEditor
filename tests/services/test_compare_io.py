@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from magiceditor.services.compare_io import COMPARE_CAP_BYTES, read_compare_text
 from magiceditor.services.quick_open_scan import iter_workspace_files
 
@@ -19,3 +21,19 @@ def test_quick_open_scan_skips_git(tmp_path: Path) -> None:
     files = iter_workspace_files(tmp_path)
     assert any(p.endswith("keep.py") for p in files)
     assert not any(".git" in p.replace("\\", "/") for p in files)
+
+
+def test_quick_open_skips_symlink_outside_root(tmp_path: Path) -> None:
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret", encoding="utf-8")
+    root = tmp_path / "workspace"
+    root.mkdir()
+    (root / "keep.py").write_text("x", encoding="utf-8")
+    link = root / "alias.py"
+    try:
+        link.symlink_to(outside)
+    except OSError:
+        pytest.skip("symlinks are not permitted on this machine")
+    files = iter_workspace_files(root)
+    assert any(p.endswith("keep.py") for p in files)
+    assert not any(p.endswith("alias.py") for p in files)

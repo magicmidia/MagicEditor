@@ -16,7 +16,7 @@ APP_NAME: str = "MagicEditor"
 APP_ORG: str = "MagicEditor"
 
 # Semver core (keep aligned with pyproject.toml [project].version)
-VERSION: str = "0.9.8"
+VERSION: str = "0.9.9"
 
 # Marketing / channel label (empty string for stable releases)
 STAGE: str = "BETA"  # e.g. "BETA", "RC1", "" for stable

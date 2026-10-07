@@ -241,7 +241,8 @@ def try_snippet_or_complete(editor) -> bool:
     if editor.has_selection() or editor._extra_cursors:
         return False
     line_text = editor._doc.line_text(editor._cursor_line)
-    col = editor._cursor_col
+    # Up/Down keep a sticky column that can sit past a shorter line.
+    col = min(max(editor._cursor_col, 0), len(line_text))
     i = col
     while i > 0 and (line_text[i - 1].isalnum() or line_text[i - 1] in {"_", "$"}):
         i -= 1

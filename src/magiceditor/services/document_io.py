@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import errno
+import os
 from pathlib import Path
 
 from magiceditor.core.document import Document
@@ -11,6 +13,7 @@ from magiceditor.core.mmap_source import MmapSource, should_use_mmap
 from magiceditor.core.piece_table import PieceTable
 from magiceditor.core.syntax_limits import HUGE_UI_BYTES, PROBE_BYTES, syntax_enabled_for_size
 from magiceditor.services.atomic_io import write_bytes_atomic
+from magiceditor.services.fs_scope import regular_file
 
 # Soft UI threshold: above this size use VirtualEditor (no full QTextDocument).
 UI_VIRTUAL_THRESHOLD_BYTES = HUGE_UI_BYTES
@@ -24,11 +27,15 @@ def open_document(path: Path | str) -> Document:
     * smaller files → full decode into the piece table (still VirtualEditor).
     """
     path = Path(path)
-    size = path.stat().st_size
+    final = regular_file(path)
+    if final is None:
+        raise OSError(errno.EINVAL, "not a regular file", str(path))
+    size = os.lstat(final).st_size
+    source = Path(final)
     title = path.name
 
-    if should_use_mmap(path, size):
-        src = MmapSource(path)
+    if should_use_mmap(source, size):
+        src = MmapSource(source)
         view = src.as_memoryview()
         sample_n = min(len(view), 64 * 1024)
         sample = bytes(view[:sample_n]) if sample_n else b""
@@ -47,7 +54,7 @@ def open_document(path: Path | str) -> Document:
             _line_index=index,
         )
 
-    raw = path.read_bytes()
+    raw = source.read_bytes()
     probe = decode_bytes(raw[:PROBE_BYTES] if len(raw) > PROBE_BYTES else raw)
     huge = size > UI_VIRTUAL_THRESHOLD_BYTES
     syntax_on = syntax_enabled_for_size(size)

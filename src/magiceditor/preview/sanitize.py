@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 
 _ALLOWED = frozenset(
@@ -68,16 +69,31 @@ _STRIP_CLOSED = re.compile(
 _STRIP_OPEN = re.compile(r"(?is)<(script|style|iframe|object|embed|form|noscript)\b[^>]*>.*")
 
 
+def _plain_attr(value: str) -> str:
+    """Decode entities once and drop controls so they cannot hide a scheme."""
+    text = html.unescape(value or "")
+    return "".join(ch for ch in text if ch >= " " and ch != "\x7f")
+
+
 def is_safe_href(value: str) -> bool:
-    v = (value or "").strip()
+    v = _plain_attr(value).strip()
+    if not v:
+        return False
     low = v.lower()
     if any(low.startswith(s) for s in _BLOCKED_SCHEMES):
         return False
-    if low.startswith("http:") or low.startswith("https:"):
+    # Protocol-relative URLs inherit a scheme the document did not name.
+    if low.startswith(("//", "\\\\")):
+        return False
+    if low.startswith(("https://", "http://", "mailto:", "#")):
         return True
-    if low.startswith("#") or low.startswith("mailto:"):
-        return True
-    return ":" not in v.split("/", 1)[0]
+    head = v.split("/", 1)[0].split("\\", 1)[0]
+    return ":" not in head
+
+
+def _emit_attr(key: str, raw: str) -> str:
+    # Escape after unescape. A raw quote in the value would close the attribute.
+    return f'{key}="{html.escape(_plain_attr(raw), quote=True)}"'
 
 
 def sanitize_html(html: str) -> str:
@@ -116,12 +132,13 @@ def sanitize_html(html: str) -> str:
                 continue
             if name == "img" and key == "src":
                 continue
-            if _REMOTE.match(val):
+            plain = _plain_attr(val)
+            if _REMOTE.match(plain):
                 if name == "img":
                     continue
                 if key != "href":
                     continue
-            kept.append(f'{key}="{val}"')
+            kept.append(_emit_attr(key, val))
         extra = (" " + " ".join(kept)) if kept else ""
         return f"<{name}{extra}>"
 

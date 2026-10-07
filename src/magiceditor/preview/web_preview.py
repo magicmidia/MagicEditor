@@ -11,6 +11,13 @@ from magiceditor.preview.sanitize import sanitize_html
 from magiceditor.themes.tokens import chrome_tokens
 
 
+class _OfflineBrowser(QTextBrowser):
+    """Preview HTML is untrusted. Do not fetch http, file, or data resources."""
+
+    def loadResource(self, resource_type: int, name: object) -> None:
+        del resource_type, name
+
+
 class WebPreview(QWidget):
     """Renders HTML/Markdown without WebEngine (smaller, faster shipping)."""
 
@@ -18,7 +25,7 @@ class WebPreview(QWidget):
         super().__init__(parent)
         self._theme_id = "luminous_void"
         self._fragment = ""
-        self._view = QTextBrowser(self)
+        self._view = _OfflineBrowser(self)
         self._view.setObjectName("markdownPreview")
         self._view.setOpenExternalLinks(False)
         layout = QVBoxLayout(self)

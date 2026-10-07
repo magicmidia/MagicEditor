@@ -9,6 +9,8 @@ from magiceditor.core.text_match import PatternError, compile_pattern
 
 MAX_PATTERN_LEN = 256
 MAX_NESTED = 8
+# A quantifier inside a group that is itself quantified is the classic ReDoS shape.
+_NESTED_QUANTIFIER = re.compile(r"[*+][^()]*\)[*+{]")
 
 
 def compile_user_pattern(
@@ -27,5 +29,7 @@ def compile_user_pattern(
         if needle.count("(") > MAX_NESTED or needle.count("{") > MAX_NESTED:
             raise PatternError("pattern too nested")
         if re.search(r"(\.\*){3,}|(\+\+)|(\{\d{4,})", needle):
+            raise PatternError("pattern too expensive")
+        if _NESTED_QUANTIFIER.search(needle):
             raise PatternError("pattern too expensive")
     return compile_pattern(needle, case_sensitive=case_sensitive, use_regex=use_regex)

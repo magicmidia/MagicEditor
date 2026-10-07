@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from magiceditor.services.folder_search import search_folder
 
 
@@ -63,7 +65,25 @@ def test_search_texts_open_tabs() -> None:
 
 
 def test_search_rejects_dangerous_regex(tmp_path: Path) -> None:
-    (tmp_path / "a.txt").write_text("aaaaa\n", encoding="utf-8")
+    (tmp_path / "a.txt").write_text("aaaab\n", encoding="utf-8")
     dangerous = "((a+)+)+b"
     hits = search_folder(tmp_path, dangerous, use_regex=True)
     assert hits == []
+
+
+def test_search_skips_symlink_outside_root(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    secret = outside / "secret.txt"
+    secret.write_text("needle-secret\n", encoding="utf-8")
+    root = tmp_path / "workspace"
+    root.mkdir()
+    (root / "local.txt").write_text("needle-local\n", encoding="utf-8")
+    link = root / "alias.txt"
+    try:
+        link.symlink_to(secret)
+    except OSError:
+        pytest.skip("symlinks are not permitted on this machine")
+    hits = search_folder(root, "needle")
+    assert {hit.path.name for hit in hits} == {"local.txt"}
+    assert all("secret" not in hit.text for hit in hits)

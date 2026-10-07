@@ -85,42 +85,77 @@ def _extends_previous(ch: str) -> bool:
     return 0x1F3FB <= code <= 0x1F3FF
 
 
+_span_stack: list[list[tuple[int, int]]] = []
+
+
+def _record_replace(exc: UnicodeDecodeError) -> tuple[str, int]:
+    """Same resume point as ``errors='replace'``, recording each bad span."""
+    end = exc.end
+    if end <= exc.start:
+        end = exc.start + 1
+    obj = exc.object
+    if isinstance(obj, (bytes, bytearray)) and end > len(obj):
+        end = len(obj)
+    if _span_stack:
+        _span_stack[-1].append((exc.start, end))
+    return ("\ufffd", end)
+
+
+codecs.register_error("magiceditor.replace", _record_replace)
+
+
 def _char_ends(raw: bytes, encoding: str) -> list[int]:
-    """Byte offset after each character, matching ``decode(errors='replace')``."""
-    dec = codecs.getincrementaldecoder(encoding)("replace")
+    """Byte offset after each ``decode(errors='replace')`` character.
+
+    One U+FFFD owns the whole span the codec rejects. Columns stay strictly
+    increasing, so backspace always deletes at least one byte.
+    """
+    spans: list[tuple[int, int]] = []
+    _span_stack.append(spans)
+    try:
+        raw.decode(encoding, errors="magiceditor.replace")
+    finally:
+        _span_stack.pop()
     ends: list[int] = []
-    start = 0
-    for i in range(len(raw)):
-        out = dec.decode(raw[i : i + 1])
-        if not out:
-            continue
-        _append_ends(ends, start, i + 1, len(out))
-        start = i + 1
-    tail = dec.decode(b"", final=True)
-    if tail:
-        _append_ends(ends, start, len(raw), len(tail))
+    cursor = 0
+    size = len(raw)
+    for start, bad_end in spans:
+        if start > cursor:
+            _append_strict_ends(ends, raw[cursor:start], encoding, cursor)
+        span_end = bad_end if bad_end > cursor else cursor + 1
+        span_end = min(span_end, size)
+        _push_end(ends, span_end, size)
+        cursor = max(cursor + 1, span_end)
+    if cursor < size:
+        _append_strict_ends(ends, raw[cursor:], encoding, cursor)
     return ends
 
 
-def _append_ends(ends: list[int], start: int, pos: int, nchars: int) -> None:
-    span = pos - start
-    if nchars <= 0:
+def _append_strict_ends(ends: list[int], chunk: bytes, encoding: str, base: int) -> None:
+    dec = codecs.getincrementaldecoder(encoding)("strict")
+    limit = base + len(chunk)
+    for index in range(len(chunk)):
+        out = dec.decode(chunk[index : index + 1])
+        if out:
+            _push_chars(ends, len(out), base + index + 1, limit)
+    tail = dec.decode(b"", final=True)
+    if tail:
+        _push_chars(ends, len(tail), limit, limit)
+
+
+def _push_end(ends: list[int], end: int, limit: int) -> None:
+    prev = ends[-1] if ends else 0
+    if end <= prev or end > limit:
         return
-    if nchars == 1:
-        ends.append(pos)
+    ends.append(end)
+
+
+def _push_chars(ends: list[int], nchars: int, end: int, limit: int) -> None:
+    if nchars <= 1:
+        _push_end(ends, end, limit)
         return
-    if span == nchars:
-        ends.extend(range(start + 1, pos + 1))
-        return
-    if span <= 0:
-        ends.extend([pos] * nchars)
-        return
-    if span >= nchars:
-        base, rem = divmod(span, nchars)
-        acc = start
-        for k in range(nchars):
-            acc += base + (1 if k < rem else 0)
-            ends.append(acc)
-        return
-    ends.extend([start] * (nchars - 1))
-    ends.append(pos)
+    prev = ends[-1] if ends else 0
+    if end - prev >= nchars:
+        for step in range(1, nchars):
+            ends.append(prev + step)
+    _push_end(ends, end, limit)
